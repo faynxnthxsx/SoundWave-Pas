@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Concert {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  description String
+  eventDate   DateTime
+  location    String
+  venue       String
+  bannerUrl   String
+  lineupJson  String   // JSON string of bands & stages
+  scheduleJson String  // JSON string of timetable
+  status      String   @default("UPCOMING") // UPCOMING, ONGOING, COMPLETED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  zones       Zone[]
+}
+
+model Zone {
+  id            Int           @id @default(autoincrement())
+  concertId     Int
+  concert       Concert       @relation(fields: [concertId], references: [id], onDelete: Cascade)
+  name          String        // e.g. "Standing Pit A", "Grandstand Seated"
+  category      String        // STANDING, SEATED, CAMPING
+  description   String        @default("")
+  price         Float
+  totalCapacity Int
+  available     Int
+  colorCode     String        @default("#00f0ff") // Neon color for UI mapping
+
+  bookingItems  BookingItem[]
+  tickets       Ticket[]
+}
+
+model Booking {
+  id             String        @id @default(uuid())
+  bookingCode    String        @unique // e.g. "SW-98213"
+  customerName   String
+  customerPhone  String
+  customerLineId String?       // LINE User ID for Flex Message delivery
+  status         String        @default("PENDING") // PENDING, PAID, CANCELLED, EXPIRED
+  totalAmount    Float
+  expiresAt      DateTime      // 10 minutes lock
+  paidAt         DateTime?
+  paymentMethod  String        @default("PROMPTPAY")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  items          BookingItem[]
+  tickets        Ticket[]
+}
+
+model BookingItem {
+  id           Int      @id @default(autoincrement())
+  bookingId    String
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  zoneId       Int
+  zone         Zone     @relation(fields: [zoneId], references: [id])
+  quantity     Int
+  pricePerUnit Float
+}
+
+model Ticket {
+  id           String    @id @default(uuid())
+  ticketCode   String    @unique // e.g. "SWP-PIT-A8F23"
+  bookingId    String
+  booking      Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  zoneId       Int
+  zone         Zone      @relation(fields: [zoneId], references: [id])
+  attendeeName String
+  seatNumber   String?   // e.g. "A-12" for Seated, null for Standing/Camping
+  status       String    @default("VALID") // VALID, USED, CANCELLED
+  usedAt       DateTime?
+  scannedBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}

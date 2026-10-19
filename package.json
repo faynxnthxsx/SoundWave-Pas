@@ -1,0 +1,21 @@
+{
+  "name": "soundwave-pass",
+  "version": "1.0.0",
+  "description": "SoundWave Pass — Full-stack Concert & Music Festival Ticketing System (Team Alpha)",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "db:studio": "npm --prefix backend run db:studio",
+    "db:seed": "npm --prefix backend run db:seed"
+  },
+  "keywords": [
+    "soundwave-pass",
+    "concert",
+    "tickets",
+    "festival",
+    "line-flex-message",
+    "qr-scanner"
+  ],
+  "author": "Team Alpha (Faye, Time, May, Nam)",
+  "license": "MIT"
+}
