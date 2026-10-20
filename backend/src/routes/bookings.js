@@ -188,7 +188,10 @@ router.post('/:bookingCode/pay', async (req, res) => {
           const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
           const ticketCode = `SWP-${item.zone.category.substring(0, 3)}-${randomSuffix}-${Date.now().toString().slice(-4)}`;
           
-          const seat = item.zone.category === 'SEATED' ? `ROW-${String.fromCharCode(65 + Math.floor(Math.random() * 5))}-${Math.floor(Math.random() * 30) + 1}` : null;
+          const requestedSeats = Array.isArray(req.body?.selectedSeats) ? req.body.selectedSeats : [];
+          const seat = item.zone.category === 'SEATED' 
+            ? (requestedSeats[i] || `ROW-${String.fromCharCode(65 + Math.floor(Math.random() * 5))}-${Math.floor(Math.random() * 30) + 1}`) 
+            : null;
 
           const ticket = await tx.ticket.create({
             data: {
