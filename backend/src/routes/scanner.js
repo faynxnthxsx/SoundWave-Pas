@@ -3,6 +3,45 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// POST /api/scanner/login - Staff Authentication
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'กรุณากรอก Username และ Password' 
+      });
+    }
+
+    const staff = await prisma.staff.findUnique({
+      where: { username: username.trim().toLowerCase() }
+    });
+
+    if (!staff || staff.password !== password) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Username หรือ Password ไม่ถูกต้อง' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'เข้าสู่ระบบสำเร็จ',
+      staff: {
+        id: staff.id,
+        username: staff.username,
+        name: staff.name,
+        role: staff.role
+      }
+    });
+  } catch (error) {
+    console.error('Staff login error:', error);
+    res.status(500).json({ success: false, message: 'Server Internal Error' });
+  }
+});
+
 // POST /api/scanner/verify - Gate Staff ticket scanner validation
 router.post('/verify', async (req, res) => {
   try {

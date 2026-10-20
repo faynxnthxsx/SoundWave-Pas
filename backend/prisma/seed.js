@@ -5,6 +5,7 @@ async function main() {
   console.log('🌱 กำลังรีเซ็ตและเติมข้อมูลจำลอง (Seeding Database)...');
 
   // ล้างข้อมูลเก่าทั้งหมดตามลำดับความสัมพันธ์
+  await prisma.staff.deleteMany();
   await prisma.ticket.deleteMany();
   await prisma.bookingItem.deleteMany();
   await prisma.booking.deleteMany();
@@ -264,6 +265,32 @@ async function main() {
     }
   });
 
+  // -------------------------------------------------------------
+  // 8. ข้อมูลบัญชีพนักงานสแกนตั๋วหน้างาน (Staff Accounts)
+  // -------------------------------------------------------------
+  await prisma.staff.createMany({
+    data: [
+      {
+        username: "faye",
+        password: "1234",
+        name: "เฟย์ (หัวหน้าทีมสตาฟฟ์)",
+        role: "SUPERVISOR"
+      },
+      {
+        username: "nam",
+        password: "1234",
+        name: "น้ำ (เจ้าหน้าที่สแกนประตู)",
+        role: "GATE_STAFF"
+      },
+      {
+        username: "staff01",
+        password: "1234",
+        name: "เจ้าหน้าที่ประตู 1 (Alpha Gate)",
+        role: "GATE_STAFF"
+      }
+    ]
+  });
+
   console.log('----------------------------------------------------');
   console.log('🎉 เติมข้อมูลชุดทดสอบครบทุกรูปแบบสำเร็จเรียบร้อย:');
   console.log('1. ตั๋วพร้อมสแกน (ผ่านฉลุย ✅): SWP-STA-ROCKER-001');
@@ -271,6 +298,10 @@ async function main() {
   console.log('3. ตั๋วสแกนซ้ำ (ไม่ผ่าน ❌):    SWP-STA-USED99-003 (ถูกใช้ไปแล้ว)');
   console.log('4. ตั๋วโซน Camping Pass:       SWP-CMP-NATURE-004');
   console.log('5. รหัสจองรอนับถอยหลัง 10 นาที: SW-2026-LOCK10');
+  console.log('6. บัญชีพนักงานสตาฟฟ์:');
+  console.log('   - faye / 1234 (เฟย์ - หัวหน้าทีมสตาฟฟ์)');
+  console.log('   - nam / 1234  (น้ำ - เจ้าหน้าที่สแกนประตู)');
+  console.log('   - staff01 / 1234 (เจ้าหน้าที่ประตู 1)');
   console.log('----------------------------------------------------');
 }
 
