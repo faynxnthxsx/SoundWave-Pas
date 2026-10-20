@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Tent, Sparkles, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Users, Tent, Sparkles, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, Check, LogOut } from 'lucide-react';
 
 export default function ZoneSelectPage() {
   const navigate = useNavigate();
@@ -11,10 +11,17 @@ export default function ZoneSelectPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerLineId, setCustomerLineId] = useState('');
+  const [lineUser, setLineUser] = useState(null);
+  const [lineLoading, setLineLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // LINE Login Channel Config
+  const LINE_CLIENT_ID = '2012117630';
+  const LINE_CALLBACK_URL = window.location.origin + '/booking/zone-select';
+
   useEffect(() => {
+    // 1. Fetch concert & zones
     fetch('/api/concerts')
       .then(res => res.json())
       .then(data => {
@@ -30,7 +37,76 @@ export default function ZoneSelectPage() {
       .catch(err => {
         console.error('Failed to load zones:', err);
       });
+
+    // 2. Check for LINE Login callback authorization code (?code=...)
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    if (code) {
+      setLineLoading(true);
+      fetch('/api/auth/line/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.user) {
+            setLineUser(data.user);
+            setCustomerName(data.user.displayName || '');
+            setCustomerLineId(data.user.userId || '');
+            // Save in localStorage for ease
+            localStorage.setItem('soundwave_line_user', JSON.stringify(data.user));
+          } else {
+            console.error('LINE verification failed:', data.message);
+          }
+        })
+        .catch(err => console.error(err))
+        .finally(() => {
+          setLineLoading(false);
+          // Clean query string from browser bar
+          window.history.replaceState({}, document.title, window.location.pathname);
+        });
+    } else {
+      // Check existing session in localStorage
+      try {
+        const saved = localStorage.getItem('soundwave_line_user');
+        if (saved) {
+          const u = JSON.parse(saved);
+          setLineUser(u);
+          setCustomerName(u.displayName || '');
+          setCustomerLineId(u.userId || '');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }, []);
+
+  // Trigger LINE OAuth Redirect
+  const handleLineLogin = () => {
+    const state = 'swp_' + Math.random().toString(36).substring(7);
+    const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${LINE_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINE_CALLBACK_URL)}&state=${state}&scope=profile%20openid`;
+    window.location.href = lineAuthUrl;
+  };
+
+  // Mock LINE login for instant demo testing
+  const handleMockLineLogin = () => {
+    const mockUser = {
+      userId: 'U' + Math.random().toString(36).substring(2, 12) + 'demo',
+      displayName: 'สมชาย รักเสียงเพลง (LINE User)',
+      pictureUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'
+    };
+    setLineUser(mockUser);
+    setCustomerName(mockUser.displayName);
+    setCustomerLineId(mockUser.userId);
+    localStorage.setItem('soundwave_line_user', JSON.stringify(mockUser));
+  };
+
+  const handleDisconnectLine = () => {
+    setLineUser(null);
+    setCustomerLineId('');
+    localStorage.removeItem('soundwave_line_user');
+  };
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
@@ -98,102 +174,95 @@ export default function ZoneSelectPage() {
         {/* Left Col: Interactive Zone Map */}
         <div className="lg:col-span-7 bg-[#10101a] border border-[#232338] rounded-3xl p-6">
           <div className="text-center mb-4">
-            <span className="text-xs text-gray-400 uppercase tracking-widest font-semibold">
-              คลิกที่โซนเพื่อเลือกซื้อบัตร
+            <span className="text-xs uppercase tracking-widest text-gray-400 font-semibold">
+              คลิกที่โซนในแผนที่เพื่อเลือกบัตร
             </span>
           </div>
 
-          {/* Interactive Concert Stage Plan */}
-          <div className="space-y-4 max-w-lg mx-auto">
-            {/* Stage */}
-            <div className="w-full py-4 bg-gradient-to-r from-[#202035] via-[#2f1f45] to-[#202035] border-2 border-[#ff007f] rounded-2xl text-center shadow-[0_0_20px_rgba(255,0,127,0.3)]">
-              <span className="text-sm font-black tracking-widest text-white uppercase flex items-center justify-center gap-2">
-                ⚡ MAIN STAGE (เวทีหลัก) 🎸
-              </span>
+          {/* Interactive Concert Stage Diagram */}
+          <div className="relative border-2 border-[#2a2a40] rounded-2xl p-5 bg-[#08080f] overflow-hidden">
+            {/* Stage Banner */}
+            <div className="w-full py-3 mb-6 rounded-xl bg-gradient-to-r from-[#00f0ff] via-[#ff007f] to-[#ffe600] text-black font-black text-center text-sm tracking-widest uppercase shadow-[0_0_20px_rgba(0,240,255,0.4)]">
+              🎸 MAIN STAGE (เวทีการแสดงหลัก) ⚡
             </div>
 
-            {/* Standing Pit A */}
-            {zones.filter(z => z.name.includes('Pit A')).map(zone => (
-              <button
-                key={zone.id}
-                type="button"
-                onClick={() => setSelectedZone(zone)}
-                className={`w-full p-4 rounded-2xl border-2 text-center transition-all cursor-pointer ${
-                  selectedZone?.id === zone.id
-                    ? 'border-[#00f0ff] bg-[#00f0ff]/15 shadow-[0_0_20px_rgba(0,240,255,0.3)]'
-                    : 'border-[#00f0ff]/40 bg-[#00f0ff]/5 hover:bg-[#00f0ff]/10'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-sm sm:text-base">{zone.name}</span>
-                  <span className="font-extrabold text-[#00f0ff]">฿{zone.price.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between mt-1 text-xs text-gray-400">
-                  <span>บัตรยืนหน้าเวทีขอบติดรั้ว</span>
-                  <span className="text-[#39ff14]">ว่าง {zone.available} ใบ</span>
-                </div>
-              </button>
-            ))}
+            {/* Standing Pit A & B */}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              {zones.filter(z => z.category === 'STANDING').map(zone => {
+                const isSelected = selectedZone?.id === zone.id;
+                return (
+                  <button
+                    key={zone.id}
+                    type="button"
+                    onClick={() => setSelectedZone(zone)}
+                    className={`p-4 rounded-xl text-left border-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#14142b] border-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.3)] scale-[1.02]'
+                        : 'bg-[#10101e] border-[#25253e] hover:border-gray-500'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-black uppercase text-[#00f0ff]">{zone.name}</span>
+                      <Users className="w-4 h-4 text-gray-400" />
+                    </div>
+                    <div className="text-lg font-black text-white">฿{zone.price.toLocaleString()}</div>
+                    <div className="text-[11px] text-gray-400 mt-1">คงเหลือ: {zone.available} ใบ</div>
+                  </button>
+                );
+              })}
+            </div>
 
-            {/* Standing Pit B */}
-            {zones.filter(z => z.name.includes('Pit B')).map(zone => (
-              <button
-                key={zone.id}
-                type="button"
-                onClick={() => setSelectedZone(zone)}
-                className={`w-full p-4 rounded-2xl border-2 text-center transition-all cursor-pointer ${
-                  selectedZone?.id === zone.id
-                    ? 'border-[#ff007f] bg-[#ff007f]/15 shadow-[0_0_20px_rgba(255,0,127,0.3)]'
-                    : 'border-[#ff007f]/40 bg-[#ff007f]/5 hover:bg-[#ff007f]/10'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-sm sm:text-base">{zone.name}</span>
-                  <span className="font-extrabold text-[#ff007f]">฿{zone.price.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between mt-1 text-xs text-gray-400">
-                  <span>โซนยืนกึ่งกลาง กระโดดมันส์</span>
-                  <span className="text-[#39ff14]">ว่าง {zone.available} ใบ</span>
-                </div>
-              </button>
-            ))}
-
-            {/* Grandstand Seated & Camping Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {zones.filter(z => z.category === 'SEATED').map(zone => (
+            {/* Grandstand Seated */}
+            {zones.filter(z => z.category === 'SEATED').map(zone => {
+              const isSelected = selectedZone?.id === zone.id;
+              return (
                 <button
                   key={zone.id}
                   type="button"
                   onClick={() => setSelectedZone(zone)}
-                  className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${
-                    selectedZone?.id === zone.id
-                      ? 'border-[#ffe600] bg-[#ffe600]/15 shadow-[0_0_20px_rgba(255,230,0,0.3)]'
-                      : 'border-[#ffe600]/40 bg-[#ffe600]/5 hover:bg-[#ffe600]/10'
+                  className={`w-full p-4 mb-3 rounded-xl text-left border-2 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#1b1910] border-[#ffe600] shadow-[0_0_20px_rgba(255,230,0,0.3)] scale-[1.01]'
+                      : 'bg-[#12121a] border-[#25253e] hover:border-gray-500'
                   }`}
                 >
-                  <span className="font-bold text-white text-sm block">{zone.name}</span>
-                  <span className="font-extrabold text-[#ffe600] text-sm mt-1 block">฿{zone.price.toLocaleString()}</span>
-                  <span className="text-[11px] text-gray-400 mt-1 block">อัฒจันทร์ยกระดับ มีที่นั่ง</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black uppercase text-[#ffe600]">{zone.name}</span>
+                    <Sparkles className="w-4 h-4 text-[#ffe600]" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-black text-white">฿{zone.price.toLocaleString()}</div>
+                    <div className="text-[11px] text-gray-400">คงเหลือ: {zone.available} ที่นั่ง</div>
+                  </div>
                 </button>
-              ))}
+              );
+            })}
 
-              {zones.filter(z => z.category === 'CAMPING').map(zone => (
+            {/* Camping Zone */}
+            {zones.filter(z => z.category === 'CAMPING').map(zone => {
+              const isSelected = selectedZone?.id === zone.id;
+              return (
                 <button
                   key={zone.id}
                   type="button"
                   onClick={() => setSelectedZone(zone)}
-                  className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${
-                    selectedZone?.id === zone.id
-                      ? 'border-[#39ff14] bg-[#39ff14]/15 shadow-[0_0_20px_rgba(57,255,20,0.3)]'
-                      : 'border-[#39ff14]/40 bg-[#39ff14]/5 hover:bg-[#39ff14]/10'
+                  className={`w-full p-4 rounded-xl text-left border-2 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#0f1f14] border-[#39ff14] shadow-[0_0_20px_rgba(57,255,20,0.3)] scale-[1.01]'
+                      : 'bg-[#0e1610] border-[#1d2d20] hover:border-gray-500'
                   }`}
                 >
-                  <span className="font-bold text-white text-sm block">{zone.name}</span>
-                  <span className="font-extrabold text-[#39ff14] text-sm mt-1 block">฿{zone.price.toLocaleString()}</span>
-                  <span className="text-[11px] text-gray-400 mt-1 block">ลานกางเต็นท์ 2 วัน 1 คืน</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black uppercase text-[#39ff14]">{zone.name}</span>
+                    <Tent className="w-4 h-4 text-[#39ff14]" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-black text-white">฿{zone.price.toLocaleString()}</div>
+                    <div className="text-[11px] text-gray-400">คงเหลือ: {zone.available} จุดกางเต็นท์</div>
+                  </div>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
 
@@ -241,6 +310,72 @@ export default function ZoneSelectPage() {
           </div>
 
           <form onSubmit={handleBookingSubmit} className="mt-6 space-y-4">
+            {/* LINE Login Action Banner */}
+            {lineLoading ? (
+              <div className="p-3.5 bg-[#06c755]/10 border border-[#06c755]/30 rounded-2xl text-center text-xs text-[#06c755] font-semibold">
+                กำลังยืนยันตัวตนกับ LINE...
+              </div>
+            ) : lineUser ? (
+              <div className="p-3.5 bg-[#06c755]/15 border border-[#06c755]/40 rounded-2xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(6,199,85,0.15)]">
+                <div className="flex items-center gap-3 min-w-0">
+                  {lineUser.pictureUrl ? (
+                    <img src={lineUser.pictureUrl} alt={lineUser.displayName} className="w-10 h-10 rounded-full border-2 border-[#06c755] shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-[#06c755] text-white font-bold flex items-center justify-center shrink-0">
+                      L
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-white truncate">{lineUser.displayName}</p>
+                      <span className="text-[9px] bg-[#06c755] text-black font-black px-1.5 py-0.5 rounded">CONNECTED</span>
+                    </div>
+                    <p className="text-[10px] text-[#06c755] font-mono truncate mt-0.5">
+                      🟢 บัตรคอนเสิร์ตจะเด้งเข้าแชท LINE นี้อัตโนมัติ
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDisconnectLine}
+                  title="เปลี่ยนบัญชี LINE"
+                  className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="p-3.5 bg-[#06c755]/10 border border-[#06c755]/30 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#06c755] animate-ping" />
+                    ต้องการรับตั๋วเข้าแอป LINE โดยตรง?
+                  </span>
+                  <span className="text-[10px] bg-[#06c755]/20 text-[#06c755] font-bold px-2 py-0.5 rounded-full">แนะนำ</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLineLogin}
+                  className="w-full py-2.5 rounded-xl bg-[#06c755] text-white font-extrabold text-xs uppercase flex items-center justify-center gap-2 hover:bg-[#05b34c] transition-colors cursor-pointer shadow-[0_0_15px_rgba(6,199,85,0.3)]"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 5.92 2 10.75c0 4.3 3.63 7.9 8.52 8.62.33.07.78.22.89.51.1.26.07.67.03 1.04-.08.76-.36 2.9-.4 3.32-.07.64.24.78.68.54.43-.24 4.7-2.77 6.42-3.79 3.65-2.15 5.86-5.46 5.86-9.24C22 5.92 17.52 2 12 2z" />
+                  </svg>
+                  เข้าสู่ระบบด้วย LINE (Log in with LINE)
+                </button>
+                <div className="flex items-center justify-between text-[10px] text-gray-400 px-1 pt-1">
+                  <span>ไม่ต้องพิมพ์ชื่อ ระบบจะดึงโปรไฟล์ LINE ให้อัตโนมัติ</span>
+                  <button
+                    type="button"
+                    onClick={handleMockLineLogin}
+                    className="text-[#00f0ff] hover:underline cursor-pointer"
+                  >
+                    (คลิกทดสอบทันที)
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-xs text-gray-400 uppercase font-semibold block mb-1">
                 ชื่อ - นามสกุล ผู้รับตั๋ว <span className="text-[#ff007f]">*</span>
@@ -267,22 +402,6 @@ export default function ZoneSelectPage() {
                 onChange={e => setCustomerPhone(e.target.value)}
                 className="w-full bg-[#181827] border border-[#2c2c42] rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#00f0ff]"
               />
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-400 uppercase font-semibold block mb-1">
-                LINE User ID (ไม่บังคับ - สำหรับรับบัตรเข้าแชท)
-              </label>
-              <input
-                type="text"
-                placeholder="เช่น U1234567890abcdef..."
-                value={customerLineId}
-                onChange={e => setCustomerLineId(e.target.value)}
-                className="w-full bg-[#181827] border border-[#2c2c42] rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#00f0ff]"
-              />
-              <span className="text-[11px] text-gray-500 mt-1 block">
-                ระบบจะส่งการ์ดตั๋วเรืองแสง (LINE Flex Message) เข้าแชทคุณโดยอัตโนมัติ
-              </span>
             </div>
 
             {errorMsg && (

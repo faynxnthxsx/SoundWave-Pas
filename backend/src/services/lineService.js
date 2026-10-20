@@ -11,10 +11,18 @@ const config = {
 };
 
 let client = null;
-if (config.channelAccessToken && config.channelAccessToken !== 'YOUR_LINE_CHANNEL_ACCESS_TOKEN') {
-  client = new line.messagingApi.MessagingApiClient({
-    channelAccessToken: config.channelAccessToken
-  });
+
+function getLineClient() {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!token || token.trim() === '' || token === 'YOUR_LINE_CHANNEL_ACCESS_TOKEN') {
+    return null;
+  }
+  if (!client) {
+    client = new line.messagingApi.MessagingApiClient({
+      channelAccessToken: token.trim()
+    });
+  }
+  return client;
 }
 
 /**
@@ -205,14 +213,15 @@ function createTicketFlexMessage(concert, ticket, zone, booking) {
 }
 
 async function sendTicketToLineUser(userId, concert, ticket, zone, booking) {
-  if (!client || !userId) {
+  const lineClient = getLineClient();
+  if (!lineClient || !userId) {
     console.log(`[LINE Service] Skipped: No valid client or LINE userId (Simulated mode: Ticket for ${userId || 'guest'})`);
     return { success: false, reason: "Line client not configured or no userId" };
   }
 
   try {
     const flexMessage = createTicketFlexMessage(concert, ticket, zone, booking);
-    await client.pushMessage({
+    await lineClient.pushMessage({
       to: userId,
       messages: [flexMessage]
     });
