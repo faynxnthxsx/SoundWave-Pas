@@ -1,60 +1,69 @@
 /**
  * LINE Messaging API Service for SoundWave Pass
  * Responsible for sending LINE Flex Message tickets to buyers
+ * Developed by: น้ำ (Integration & Scanner Engineer)
  */
 
 const line = require('@line/bot-sdk');
 
-const config = {
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
-  channelSecret: process.env.LINE_CHANNEL_SECRET || '',
-};
-
-let client = null;
-if (config.channelAccessToken && config.channelAccessToken !== 'YOUR_LINE_CHANNEL_ACCESS_TOKEN') {
-  client = new line.messagingApi.MessagingApiClient({
-    channelAccessToken: config.channelAccessToken
+function getClient() {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!token || token === 'YOUR_LINE_CHANNEL_ACCESS_TOKEN') {
+    return null;
+  }
+  return new line.messagingApi.MessagingApiClient({
+    channelAccessToken: token
   });
 }
 
 /**
  * Generate LINE Flex Message Bubble for a Concert Ticket
+ * (Based on Nam's Flex Message Simulator design)
  */
 function createTicketFlexMessage(concert, ticket, zone, booking) {
+  // Format concert date
+  let dateText = "Monday 25, 9:00PM";
+  if (concert?.eventDate) {
+    try {
+      const d = new Date(concert.eventDate);
+      dateText = d.toLocaleDateString('th-TH', { 
+        weekday: 'short', 
+        day: 'numeric', 
+        month: 'short', 
+        year: 'numeric' 
+      });
+    } catch (e) {
+      dateText = String(concert.eventDate);
+    }
+  }
+
+  const concertName = concert?.name || "Sound Wave";
+  const placeText = concert?.venue || concert?.location || "Sound Wave Outdoor Park นครปฐม";
+  
+  let seatText = zone?.name || "Standing Pit B (Soundwave Pit)";
+  if (ticket?.seatNumber) {
+    seatText += ` - ที่นั่ง ${ticket.seatNumber}`;
+  }
+
+  const heroImageUrl = concert?.bannerUrl || "https://i.ibb.co/RpM1nNbS/6c567333-7642-45f0-8f42-ef283393e6b7.webp3";
+  const ticketCode = ticket?.ticketCode || "SWP-DEMO-2026";
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(ticketCode)}`;
+
   return {
     type: "flex",
-    altText: `🎸 ตั๋วคอนเสิร์ต ${concert.name} ของคุณพร้อมแล้ว!`,
+    altText: `🎸 ตั๋วคอนเสิร์ต ${concertName} ของคุณพร้อมแล้ว!`,
     contents: {
       type: "bubble",
-      size: "giga",
-      styles: {
-        body: { backgroundColor: "#0a0a0f" },
-        footer: { backgroundColor: "#14141e" }
-      },
-      header: {
-        type: "box",
-        layout: "vertical",
-        backgroundColor: "#11111a",
-        paddingAll: "20px",
-        contents: [
-          {
-            type: "text",
-            text: "⚡ SOUNDWAVE PASS",
-            weight: "bold",
-            color: "#00f0ff",
-            size: "sm",
-            letterSpacing: "2px"
-          },
-          {
-            type: "text",
-            text: concert.name,
-            weight: "bold",
-            color: "#ffffff",
-            size: "xl",
-            wrap: true,
-            margin: "md"
-          }
-        ]
+      hero: {
+        type: "image",
+        url: heroImageUrl,
+        size: "full",
+        aspectRatio: "20:13",
+        aspectMode: "cover",
+        action: {
+          type: "uri",
+          uri: `http://localhost:5173/tickets/${ticketCode}`
+        }
       },
       body: {
         type: "box",
@@ -62,95 +71,114 @@ function createTicketFlexMessage(concert, ticket, zone, booking) {
         spacing: "md",
         contents: [
           {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "text",
-                text: "📅 วันแสดง:",
-                color: "#888899",
-                size: "sm",
-                flex: 2
-              },
-              {
-                type: "text",
-                text: new Date(concert.eventDate).toLocaleDateString('th-TH', { dateStyle: 'medium' }),
-                color: "#ffffff",
-                size: "sm",
-                weight: "bold",
-                flex: 4
-              }
-            ]
+            type: "text",
+            text: concertName,
+            wrap: true,
+            weight: "bold",
+            gravity: "center",
+            size: "xxl",
+            color: "#283B42"
           },
           {
             type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "text",
-                text: "📍 สถานที่:",
-                color: "#888899",
-                size: "sm",
-                flex: 2
-              },
-              {
-                type: "text",
-                text: concert.location,
-                color: "#ffffff",
-                size: "sm",
-                weight: "bold",
-                flex: 4
-              }
-            ]
-          },
-          {
-            type: "separator",
-            color: "#2a2a3e",
-            margin: "lg"
-          },
-          {
-            type: "box",
-            layout: "horizontal",
-            margin: "md",
+            layout: "vertical",
+            margin: "lg",
+            spacing: "sm",
             contents: [
               {
                 type: "box",
-                layout: "vertical",
-                flex: 1,
+                layout: "baseline",
+                spacing: "sm",
                 contents: [
                   {
                     type: "text",
-                    text: "โซนบัตร",
-                    color: "#888899",
-                    size: "xs"
+                    text: "Date",
+                    color: "#0E0301",
+                    size: "md",
+                    flex: 1,
+                    weight: "bold",
+                    decoration: "underline"
                   },
                   {
                     type: "text",
-                    text: zone.name,
-                    color: zone.colorCode || "#00f0ff",
-                    weight: "bold",
-                    size: "md"
+                    text: dateText,
+                    wrap: true,
+                    size: "sm",
+                    color: "#666666",
+                    flex: 4
                   }
                 ]
               },
               {
                 type: "box",
-                layout: "vertical",
-                flex: 1,
-                alignItems: "flex-end",
+                layout: "baseline",
+                spacing: "sm",
                 contents: [
                   {
                     type: "text",
-                    text: "รหัสตั๋ว",
-                    color: "#888899",
-                    size: "xs"
+                    text: "Place",
+                    color: "#0E0301",
+                    size: "md",
+                    flex: 1,
+                    weight: "bold",
+                    decoration: "underline"
                   },
                   {
                     type: "text",
-                    text: ticket.ticketCode,
-                    color: "#ffffff",
+                    text: placeText,
+                    wrap: true,
+                    color: "#666666",
+                    size: "sm",
+                    flex: 4
+                  }
+                ]
+              },
+              {
+                type: "box",
+                layout: "baseline",
+                spacing: "sm",
+                contents: [
+                  {
+                    type: "text",
+                    text: "Seats",
+                    color: "#0E0301",
+                    size: "md",
+                    flex: 1,
                     weight: "bold",
-                    size: "md"
+                    decoration: "underline"
+                  },
+                  {
+                    type: "text",
+                    text: seatText,
+                    wrap: true,
+                    color: "#666666",
+                    size: "sm",
+                    flex: 4
+                  }
+                ]
+              },
+              {
+                type: "box",
+                layout: "baseline",
+                spacing: "sm",
+                contents: [
+                  {
+                    type: "text",
+                    text: "Ticket",
+                    color: "#0E0301",
+                    size: "md",
+                    flex: 1,
+                    weight: "bold",
+                    decoration: "underline"
+                  },
+                  {
+                    type: "text",
+                    text: ticketCode,
+                    wrap: true,
+                    color: "#283B42",
+                    weight: "bold",
+                    size: "sm",
+                    flex: 4
                   }
                 ]
               }
@@ -159,29 +187,34 @@ function createTicketFlexMessage(concert, ticket, zone, booking) {
           {
             type: "box",
             layout: "vertical",
-            backgroundColor: "#ffffff",
-            cornerRadius: "md",
-            paddingAll: "10px",
-            margin: "lg",
+            margin: "xxl",
             alignItems: "center",
             contents: [
               {
                 type: "image",
-                url: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${ticket.ticketCode}`,
+                url: qrUrl,
+                aspectMode: "cover",
                 size: "xl",
-                aspectRatio: "1:1",
-                aspectMode: "fit"
+                margin: "md"
               },
               {
                 type: "text",
-                text: "ใช้ QR Code นี้สแกนเข้าประตูหน้างาน",
-                size: "xxs",
-                color: "#666666",
-                margin: "sm"
+                text: "You can enter the theater by using this code instead of a ticket",
+                color: "#FFFFFF",
+                wrap: true,
+                margin: "md",
+                size: "xs",
+                align: "center"
               }
             ]
           }
-        ]
+        ],
+        background: {
+          type: "linearGradient",
+          angle: "0deg",
+          startColor: "#4B0082",
+          endColor: "#ffffff"
+        }
       },
       footer: {
         type: "box",
@@ -191,11 +224,11 @@ function createTicketFlexMessage(concert, ticket, zone, booking) {
           {
             type: "button",
             style: "primary",
-            color: "#00f0ff",
+            color: "#4B0082",
             action: {
               type: "uri",
-              label: "🖨️ พิมพ์บัตรที่ระลึก A4",
-              uri: `http://localhost:5173/tickets/${ticket.ticketCode}/print`
+              label: "🖨️ ดูตั๋ว / พิมพ์บัตรที่ระลึก A4",
+              uri: `http://localhost:5173/tickets/${ticketCode}/print`
             }
           }
         ]
@@ -204,7 +237,11 @@ function createTicketFlexMessage(concert, ticket, zone, booking) {
   };
 }
 
+/**
+ * Push Flex Message Ticket directly to a user's LINE chat
+ */
 async function sendTicketToLineUser(userId, concert, ticket, zone, booking) {
+  const client = getClient();
   if (!client || !userId) {
     console.log(`[LINE Service] Skipped: No valid client or LINE userId (Simulated mode: Ticket for ${userId || 'guest'})`);
     return { success: false, reason: "Line client not configured or no userId" };
