@@ -13,6 +13,8 @@ export default function PaymentPage() {
   const [paying, setPaying] = useState(false);
   const [paidSuccess, setPaidSuccess] = useState(false);
   const [tickets, setTickets] = useState([]);
+  const [lineDelivery, setLineDelivery] = useState(null);
+  const [retryingLine, setRetryingLine] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -21,6 +23,7 @@ export default function PaymentPage() {
       .then(data => {
         if (data.success) {
           setBooking(data.data);
+          setLineDelivery({ status: data.data.lineDeliveryStatus || (data.data.customerLineId ? 'UNKNOWN' : 'NOT_LINKED'), error: data.data.lineDeliveryError || null });
           if (data.data.status === 'PAID') {
             setPaidSuccess(true);
             setTickets(data.data.tickets || []);
@@ -72,6 +75,7 @@ export default function PaymentPage() {
         setPaidSuccess(true);
         const issuedTickets = data.data?.tickets || [];
         setTickets(issuedTickets);
+        setLineDelivery(data.data?.lineDelivery || { status: booking.customerLineId ? 'UNKNOWN' : 'NOT_LINKED' });
 
         // ── SAVE PURCHASE TO LOCAL STORAGE HISTORY ──
         try {
@@ -98,6 +102,20 @@ export default function PaymentPage() {
       alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
     } finally {
       setPaying(false);
+    }
+  };
+
+  const retryLineDelivery = async () => {
+    setRetryingLine(true);
+    try {
+      const response = await fetch(`/api/bookings/${encodeURIComponent(bookingCode)}/line-resend`, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'ส่งตั๋วเข้า LINE ไม่สำเร็จ');
+      setLineDelivery(result.data?.lineDelivery || { status: 'UNKNOWN' });
+    } catch (error) {
+      setLineDelivery({ status: 'FAILED', error: error.message });
+    } finally {
+      setRetryingLine(false);
     }
   };
 
@@ -142,11 +160,12 @@ export default function PaymentPage() {
           รหัสการจอง: <span className="font-mono text-white font-bold">{booking.bookingCode}</span>
         </p>
 
-        {booking.customerLineId && (
-          <div className="mt-4 p-3 bg-[#06c755]/10 border border-[#06c755]/30 rounded-2xl text-xs text-[#06c755] font-medium flex items-center justify-center gap-2">
-            <span>📲</span> ตั๋วคอนเสิร์ตถูกส่งเข้าห้องแชท LINE ของคุณแล้ว
-          </div>
-        )}
+        <div className={`mt-4 rounded-2xl border p-3 text-left text-xs ${lineDelivery?.status === 'FAILED' || lineDelivery?.status === 'NOT_LINKED' ? 'border-amber-300/30 bg-amber-300/10 text-amber-100' : 'border-[#06c755]/30 bg-[#06c755]/10 text-[#b7f7ce]'}`}>
+          {lineDelivery?.status === 'SENT' ? <p className="font-semibold">📲 LINE รับคำขอส่งตั๋วแล้ว</p> : lineDelivery?.status === 'FAILED' ? <p className="font-semibold">ตั๋วสร้างแล้ว แต่ส่งเข้า LINE ไม่สำเร็จ</p> : lineDelivery?.status === 'NOT_LINKED' ? <p className="font-semibold">รายการจองนี้ไม่มี LINE ID ที่เชื่อมไว้</p> : <p className="font-semibold">ยังยืนยันผลการส่งตั๋วเข้า LINE ไม่ได้</p>}
+          {lineDelivery?.error && <p className="mt-1 break-words text-[10px] opacity-80">{lineDelivery.error}</p>}
+          {booking.customerLineId && <div className="mt-2 flex flex-wrap items-center gap-3"><button type="button" onClick={retryLineDelivery} disabled={retryingLine} className="rounded-lg bg-[#06c755] px-3 py-1.5 font-bold text-white disabled:opacity-50">{retryingLine ? 'กำลังส่ง…' : 'ลองส่งตั๋วอีกครั้ง'}</button></div>}
+          {lineDelivery?.status === 'SENT' && <p className="mt-1 text-[10px] opacity-75">LINE รับคำขอแล้ว แต่อาจยังไม่แสดงในแชตหากยังไม่ได้เพิ่มบอตเป็นเพื่อน</p>}
+        </div>
 
         {/* Issued Tickets List */}
         <div className="space-y-3 mt-6 text-left">

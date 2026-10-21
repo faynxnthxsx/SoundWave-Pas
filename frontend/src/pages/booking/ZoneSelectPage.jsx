@@ -1,451 +1,292 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, AlertCircle, ArrowRight, LogOut, Zap, Users, Armchair } from 'lucide-react';
-
-// Pre-reserved seats to make the map look realistic
-const TAKEN_SEATS = ['A-02', 'A-06', 'B-01', 'B-04', 'C-03', 'C-07', 'D-05'];
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Check, LoaderCircle, MapPin, Minus, Plus, Ticket, UserRound } from 'lucide-react';
+import StadiumZoneMap from './StadiumZoneMap';
 
 export default function ZoneSelectPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const concertId = searchParams.get('concertId');
+  const bookingDraftKey = `soundwave_booking_draft:${concertId || 'default'}`;
+  const [bookingDraft] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(bookingDraftKey) || 'null'); }
+    catch { return null; }
+  });
   const [concert, setConcert] = useState(null);
-  const [zones, setZones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [selectedZone, setSelectedZone] = useState(null);
-  const [quantity, setQuantity] = useState(1);
-  const [selectedSeats, setSelectedSeats] = useState([]);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+  const [quantity, setQuantity] = useState(() => Math.max(1, Number(bookingDraft?.quantity) || 1));
+  const [customerName, setCustomerName] = useState(() => bookingDraft?.customerName || '');
+  const [customerPhone, setCustomerPhone] = useState(() => bookingDraft?.customerPhone || '');
   const [customerLineId, setCustomerLineId] = useState('');
   const [lineUser, setLineUser] = useState(null);
+  const [officialAccountUrl, setOfficialAccountUrl] = useState(() => localStorage.getItem('soundwave_line_bot_url') || '');
   const [lineLoading, setLineLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [step, setStep] = useState(1); // 1 = select zone/seat, 2 = fill details
-
-  const LINE_CLIENT_ID = '2012117630';
-  const LINE_CALLBACK_URL = window.location.origin + '/booking/zone-select';
 
   useEffect(() => {
-    fetch('/api/concerts')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.data.length > 0) {
-          const c = data.data[0];
-          setConcert(c);
-          setZones(c.zones || []);
-          if (c.zones && c.zones.length > 0) {
-            setSelectedZone(c.zones[0]);
-          }
-        }
-      })
-      .catch(console.error);
+    let mounted = true;
+    const load = async () => {
+      try {
+        const response = await fetch(concertId ? `/api/concerts/${encodeURIComponent(concertId)}` : '/api/concerts');
+        const data = await response.json();
+        const event = concertId ? data.data : data.data?.[0];
+        if (!response.ok || !data.success || !event) throw new Error(data.message || 'ไม่พบคอนเสิร์ตที่เลือก');
+        if (!mounted) return;
+        setConcert(event);
+        const availableZones = event.zones?.filter((zone) => zone.available > 0) || [];
+        const zoneToSelect = availableZones.find((zone) => zone.id === bookingDraft?.zoneId) || availableZones[0] || null;
+        setSelectedZone(zoneToSelect);
+        if (zoneToSelect) setQuantity(Math.min(Math.max(1, Number(bookingDraft?.quantity) || 1), 6, zoneToSelect.available));
+      } catch (err) {
+        if (mounted) setLoadError(err.message || 'โหลดข้อมูลคอนเสิร์ตไม่สำเร็จ');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
 
-    // Handle LINE Login callback
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
+    try {
+      const account = JSON.parse(localStorage.getItem('soundwave_user') || 'null');
+      if (account) {
+        if (!bookingDraft?.customerName) setCustomerName(account.username || '');
+        setCustomerLineId(account.lineUserId || '');
+      }
+      const savedLine = JSON.parse(localStorage.getItem('soundwave_line_user') || 'null');
+      if (savedLine) {
+        setLineUser(savedLine);
+        if (!bookingDraft?.customerName) setCustomerName(savedLine.displayName || account?.username || '');
+        setCustomerLineId(savedLine.userId || account?.lineUserId || '');
+      }
+    } catch { /* Ignore malformed saved profile data. */ }
+
+    fetch('/api/auth/line/config').then((response) => response.json()).then((config) => {
+      if (config.officialAccountUrl) {
+        setOfficialAccountUrl(config.officialAccountUrl);
+        localStorage.setItem('soundwave_line_bot_url', config.officialAccountUrl);
+      }
+    }).catch(() => {});
+
+    const callbackParams = new URLSearchParams(window.location.search);
+    const code = callbackParams.get('code');
+    const oauthError = callbackParams.get('error');
+    if (oauthError) {
+      const reason = callbackParams.get('error_description') || oauthError;
+      setErrorMsg(`LINE Login ไม่สำเร็จ: ${reason}`);
+      sessionStorage.removeItem('soundwave_line_state');
+      sessionStorage.removeItem('soundwave_line_return_to');
+      callbackParams.delete('error');
+      callbackParams.delete('error_description');
+      callbackParams.delete('state');
+      window.history.replaceState({}, document.title, `${window.location.pathname}${callbackParams.toString() ? `?${callbackParams}` : ''}`);
+    }
     if (code) {
+      if (sessionStorage.getItem('soundwave_line_callback_code') === code) {
+        return () => { mounted = false; };
+      }
+      const receivedState = callbackParams.get('state');
+      const expectedState = sessionStorage.getItem('soundwave_line_state');
+      if (!expectedState || receivedState !== expectedState) {
+        sessionStorage.removeItem('soundwave_line_state');
+        setErrorMsg('ยืนยันการเชื่อมต่อ LINE ไม่สำเร็จ กรุณากดเชื่อมต่ออีกครั้ง');
+        callbackParams.delete('code');
+        callbackParams.delete('state');
+        window.history.replaceState({}, document.title, `${window.location.pathname}${callbackParams.toString() ? `?${callbackParams}` : ''}`);
+        return () => { mounted = false; };
+      }
+      sessionStorage.setItem('soundwave_line_callback_code', code);
+      sessionStorage.removeItem('soundwave_line_state');
       setLineLoading(true);
       fetch('/api/auth/line/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }),
       })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.user) {
-            setLineUser(data.user);
-            setCustomerName(data.user.displayName || '');
-            setCustomerLineId(data.user.userId || '');
-            localStorage.setItem('soundwave_line_user', JSON.stringify(data.user));
+        .then((response) => response.json())
+        .then((data) => {
+          if (!data.success || !data.user) throw new Error(data.message || 'เชื่อมต่อ LINE ไม่สำเร็จ');
+          const linkedUser = {
+            ...data.user,
+            friendFlag: typeof data.user.friendFlag === 'boolean'
+              ? data.user.friendFlag
+              : callbackParams.get('friendship_status_changed') === 'true' ? true : null,
+          };
+          localStorage.setItem('soundwave_line_user', JSON.stringify(linkedUser));
+          sessionStorage.removeItem('soundwave_line_callback_code');
+          setLineUser(linkedUser);
+          setCustomerName(linkedUser.displayName || '');
+          setCustomerLineId(linkedUser.userId || '');
+          const returnTo = sessionStorage.getItem('soundwave_line_return_to');
+          sessionStorage.removeItem('soundwave_line_return_to');
+          if (returnTo) window.location.replace(returnTo);
+          else {
+            const cleaned = new URL(window.location.href);
+            cleaned.searchParams.delete('code');
+            cleaned.searchParams.delete('state');
+            cleaned.searchParams.delete('friendship_status_changed');
+            window.history.replaceState({}, document.title, `${cleaned.pathname}${cleaned.search}`);
           }
         })
-        .catch(console.error)
-        .finally(() => {
-          setLineLoading(false);
-          window.history.replaceState({}, document.title, window.location.pathname);
-        });
-    } else {
-      try {
-        const saved = localStorage.getItem('soundwave_line_user');
-        if (saved) {
-          const u = JSON.parse(saved);
-          setLineUser(u);
-          setCustomerName(u.displayName || '');
-          setCustomerLineId(u.userId || '');
-        }
-      } catch (e) {}
+        .catch((err) => {
+          sessionStorage.removeItem('soundwave_line_callback_code');
+          setErrorMsg(err.message || 'เชื่อมต่อ LINE ไม่สำเร็จ');
+          sessionStorage.removeItem('soundwave_line_return_to');
+          callbackParams.delete('code');
+          callbackParams.delete('state');
+          window.history.replaceState({}, document.title, `${window.location.pathname}${callbackParams.toString() ? `?${callbackParams}` : ''}`);
+        })
+        .finally(() => setLineLoading(false));
     }
-  }, []);
+    return () => { mounted = false; };
+  }, [concertId]);
 
-  // When zone changes, reset selected seats or set default
-  const handleZoneChange = (zone) => {
+  useEffect(() => {
+    if (!concert || loading) return;
+    sessionStorage.setItem(bookingDraftKey, JSON.stringify({
+      concertId: concert.id,
+      zoneId: selectedZone?.id || null,
+      quantity,
+      customerName,
+      customerPhone,
+    }));
+  }, [bookingDraftKey, concert, customerName, customerPhone, loading, quantity, selectedZone]);
+
+  const available = selectedZone?.available || 0;
+  const maxQuantity = Math.min(6, available);
+  const totalPrice = useMemo(() => selectedZone ? selectedZone.price * quantity : 0, [selectedZone, quantity]);
+
+  const selectZone = (zone) => {
+    if (zone.available <= 0) return;
     setSelectedZone(zone);
-    setSelectedSeats([]);
     setQuantity(1);
     setErrorMsg('');
   };
 
-  // Toggle seat selection for SEATED zones
-  const handleToggleSeat = (seatCode) => {
-    if (TAKEN_SEATS.includes(seatCode)) return;
-
-    if (selectedSeats.includes(seatCode)) {
-      const updated = selectedSeats.filter(s => s !== seatCode);
-      setSelectedSeats(updated);
-      setQuantity(Math.max(1, updated.length));
-    } else {
-      if (selectedSeats.length >= 4) {
-        setErrorMsg('สามารถเลือกที่นั่งได้สูงสุด 4 ที่นั่งต่อการจอง');
-        return;
+  const handleLineLogin = async () => {
+    setLineLoading(true);
+    setErrorMsg('');
+    try {
+      const response = await fetch('/api/auth/line/config');
+      const config = await response.json();
+      if (!response.ok || !config.channelId || !config.callbackUrl) throw new Error('ตั้งค่า LINE Login ไม่ครบ');
+      if (config.officialAccountUrl) {
+        setOfficialAccountUrl(config.officialAccountUrl);
+        localStorage.setItem('soundwave_line_bot_url', config.officialAccountUrl);
       }
-      const updated = [...selectedSeats, seatCode];
-      setSelectedSeats(updated);
-      setQuantity(updated.length);
-      setErrorMsg('');
+      const state = globalThis.crypto?.randomUUID?.().replace(/-/g, '') || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem(bookingDraftKey, JSON.stringify({
+        concertId: concert?.id || concertId,
+        zoneId: selectedZone?.id || null,
+        quantity,
+        customerName,
+        customerPhone,
+      }));
+      sessionStorage.setItem('soundwave_line_state', state);
+      sessionStorage.setItem('soundwave_line_return_to', window.location.href);
+      const query = new URLSearchParams({ response_type: 'code', client_id: config.channelId, redirect_uri: config.callbackUrl, state, scope: 'profile openid', prompt: 'consent', bot_prompt: 'aggressive' });
+      window.location.assign(`https://access.line.me/oauth2/v2.1/authorize?${query.toString()}`);
+    } catch (err) {
+      setErrorMsg(err.message || 'เริ่ม LINE Login ไม่สำเร็จ');
+      setLineLoading(false);
     }
   };
 
-  const handleLineLogin = () => {
-    const state = 'swp_' + Math.random().toString(36).substring(7);
-    window.location.href = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${LINE_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINE_CALLBACK_URL)}&state=${state}&scope=profile%20openid`;
-  };
-
-  const handleDisconnectLine = () => {
-    setLineUser(null);
-    setCustomerLineId('');
-    localStorage.removeItem('soundwave_line_user');
-  };
-
-  const handleBookingSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedZone) return;
-
-    const isSeated = selectedZone.category === 'SEATED';
-    if (isSeated && selectedSeats.length === 0) {
-      setErrorMsg('กรุณาคลิกเลือกเก้าอี้ที่ต้องการนั่งบนผังอย่างน้อย 1 ที่นั่ง');
+  const handleBookingSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedZone || maxQuantity < 1) return;
+    if (!customerName.trim() || !customerPhone.trim()) {
+      setErrorMsg('กรอกชื่อผู้ซื้อและเบอร์โทรศัพท์ให้ครบก่อนจอง');
       return;
     }
-
-    if (!customerName.trim() || !customerPhone.trim()) {
-      setErrorMsg('กรุณากรอกชื่อ-นามสกุล และเบอร์โทรศัพท์ให้ครบถ้วน');
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > maxQuantity) {
+      setErrorMsg('จำนวนบัตรเกินสต็อกที่เหลือ กรุณาเลือกจำนวนใหม่');
       return;
     }
 
     setSubmitting(true);
     setErrorMsg('');
-
     try {
-      const finalQty = isSeated ? selectedSeats.length : quantity;
-      const res = await fetch('/api/bookings', {
+      const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           concertId: concert.id,
           zoneId: selectedZone.id,
-          quantity: finalQty,
+          quantity,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
-          customerLineId: customerLineId.trim() || undefined
-        })
+          customerLineId: customerLineId.trim() || undefined,
+        }),
       });
-
-      const data = await res.json();
-      if (data.success) {
-        // Save selected seats to localStorage so PaymentPage can send it to pay endpoint
-        if (isSeated && selectedSeats.length > 0) {
-          localStorage.setItem(`soundwave_seats_${data.data.bookingCode}`, JSON.stringify(selectedSeats));
-        }
-        navigate(`/booking/payment/${data.data.bookingCode}`);
-      } else {
-        setErrorMsg(data.message || 'เกิดข้อผิดพลาดในการจอง');
-        setSubmitting(false);
-      }
-    } catch {
-      setErrorMsg('ไม่สามารถติดต่อเซิร์ฟเวอร์ได้');
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || 'จองบัตรไม่สำเร็จ');
+      sessionStorage.removeItem(bookingDraftKey);
+      navigate(`/booking/payment/${data.data.bookingCode}`);
+    } catch (err) {
+      setErrorMsg(err.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ');
       setSubmitting(false);
     }
   };
 
-  if (!concert) return (
-    <div className="min-h-[70vh] flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
-
-  const isSeatedZone = selectedZone?.category === 'SEATED';
-  const effectiveQty = isSeatedZone ? Math.max(1, selectedSeats.length) : quantity;
-  const totalPrice = selectedZone ? selectedZone.price * effectiveQty : 0;
-
-  // Generate 4 rows of seats: A, B, C, D with 8 seats each
-  const rows = ['A', 'B', 'C', 'D'];
-  const cols = [1, 2, 3, 4, 5, 6, 7, 8];
+  if (loading) return <div className="flex min-h-[65vh] items-center justify-center text-sm text-gray-400"><LoaderCircle className="mr-2 animate-spin" size={18} />กำลังโหลดผังงาน…</div>;
+  if (!concert) return <div className="flex min-h-[65vh] flex-col items-center justify-center gap-4 text-center"><p className="text-sm text-gray-400">{loadError || 'ไม่พบคอนเสิร์ต'}</p><Link to="/" className="rounded-xl border border-white/10 px-4 py-2 text-sm">กลับหน้าแรก</Link></div>;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      
-      {/* Page Header */}
-      <div className="text-center mb-8">
-        <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
-          SoundWave Festival 2026
-        </span>
-        <h1 className="text-3xl sm:text-4xl font-black text-white mt-1">
-          เลือกโซนและที่นั่ง
-        </h1>
-        <p className="text-xs text-gray-400 mt-1">
-          {concert.name} · {concert.venue}
-        </p>
-      </div>
+    <div className="min-h-screen bg-[#09090f] px-4 py-7 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <Link to={`/concerts/${concert.id}`} className="mb-5 inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white"><ArrowLeft size={14} />รายละเอียดคอนเสิร์ต</Link>
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-300">Choose your zone</p><h1 className="mt-1 text-2xl font-black sm:text-3xl">จองบัตร · {concert.name}</h1><p className="mt-2 flex items-center gap-1.5 text-xs text-gray-400"><MapPin size={13} />{concert.venue || concert.location}</p></div>
+          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300"><Ticket size={15} className="text-cyan-200" />1–6 ใบต่อรายการ</div>
+        </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* ── LEFT: Interactive Festival Stage & Seat Map ───────────────── */}
-        <div className="lg:col-span-7 bg-[#111119] border border-white/10 rounded-3xl p-6 shadow-xl">
-          
-          {/* Main Stage Representation */}
-          <div className="w-full py-3.5 mb-6 rounded-2xl bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 border border-white/20 text-center font-black text-xs uppercase tracking-widest text-white shadow-inner">
-            🎸 [ MAIN STAGE — เวทีหลัก ]
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(360px,0.7fr)]">
+          <div className="space-y-5">
+            <StadiumZoneMap zones={concert.zones || []} selectedZoneId={selectedZone?.id} onSelect={selectZone} />
+            <div className="hidden">
+              {concert.zones?.map((zone) => {
+                const soldOut = zone.available <= 0;
+                const selected = zone.id === selectedZone?.id;
+                return <button key={zone.id} type="button" disabled={soldOut} onClick={() => selectZone(zone)} className={`rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${selected ? 'border-cyan-200/70 bg-cyan-200/10 shadow-[0_0_20px_rgba(34,211,238,0.08)]' : 'border-white/10 bg-[#111119] hover:border-white/25'}`}>
+                  <div className="flex items-start justify-between gap-2"><span className="font-bold">{zone.name}</span><span className="text-[10px] font-bold text-gray-400">{soldOut ? 'SOLD OUT' : `เหลือ ${zone.available.toLocaleString()}`}</span></div>
+                  <div className="mt-2 flex items-end justify-between"><span className="text-2xl font-black text-cyan-100">฿{zone.price.toLocaleString()}<span className="ml-1 text-xs font-semibold text-gray-500">/ ใบ</span></span><span className="text-[10px] uppercase tracking-wider text-gray-500">{zone.category}</span></div>
+                </button>;
+              })}
+            </div>
           </div>
 
-          {/* Zones Selection Tabs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-            {zones.map(z => {
-              const isSelected = selectedZone?.id === z.id;
-              return (
-                <button
-                  key={z.id}
-                  type="button"
-                  onClick={() => handleZoneChange(z)}
-                  className={`p-3 rounded-2xl border text-left transition-all ${
-                    isSelected
-                      ? 'border-cyan-400 bg-white/10 shadow-lg'
-                      : 'border-white/10 bg-[#161622] hover:border-white/20'
-                  }`}
-                >
-                  <p className="text-xs font-bold text-white truncate">{z.name}</p>
-                  <p className="text-xs font-mono font-black text-cyan-300 mt-1">
-                    ฿{z.price.toLocaleString()}
-                  </p>
-                  <span className="text-[10px] text-gray-400 block mt-0.5">
-                    {z.category === 'SEATED' ? 'มีเลขที่นั่ง' : 'บัตรยืน/แคมป์'}
-                  </span>
+          <aside className="rounded-[26px] border border-white/10 bg-[#111119] p-5 shadow-2xl sm:p-6 xl:sticky xl:top-24">
+            <div className="mb-5 flex items-center gap-3"><span className="rounded-xl bg-cyan-200/10 p-2.5 text-cyan-100"><Ticket size={19} /></span><div><h2 className="font-black">สรุปการจอง</h2><p className="text-xs text-gray-500">เลือกโซนและจำนวนบัตร</p></div></div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Selected zone</p><p className="mt-1 font-bold">{selectedZone?.name || 'ไม่มีบัตรว่าง'}</p></div><span className="text-lg font-black text-cyan-100">฿{selectedZone?.price?.toLocaleString() || 0}</span></div>
+              {selectedZone && <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3"><span className="text-xs text-gray-400">จำนวนบัตร <span className="text-gray-600">(เหลือ {available.toLocaleString()})</span></span><div className="flex items-center gap-3"><button type="button" aria-label="ลดจำนวนบัตร" onClick={() => setQuantity((current) => Math.max(1, current - 1))} disabled={quantity <= 1} className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 disabled:opacity-35"><Minus size={15} /></button><span aria-live="polite" className="min-w-5 text-center text-base font-black">{quantity}</span><button type="button" aria-label="เพิ่มจำนวนบัตร" onClick={() => setQuantity((current) => Math.min(maxQuantity, current + 1))} disabled={quantity >= maxQuantity} className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 disabled:opacity-35"><Plus size={15} /></button></div></div>}
+              <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3"><span className="text-xs font-semibold text-gray-300">ยอดรวม</span><span className="text-2xl font-black text-cyan-200">฿{totalPrice.toLocaleString()}</span></div>
+            </div>
+
+            <div className="my-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="mb-3 flex items-center justify-between"><span className="text-xs font-bold">ข้อมูลผู้ซื้อ</span>{customerName && <span className="flex items-center gap-1 text-[10px] text-emerald-300"><Check size={12} />{customerName}</span>}</div>
+              <label className="mb-3 block space-y-1"><span className="text-[10px] text-gray-400">ชื่อผู้ซื้อ</span><input required value={customerName} onChange={(event) => setCustomerName(event.target.value)} className={inputClass} placeholder="ชื่อที่ใช้บนบัตร" /></label>
+              <label className="block space-y-1"><span className="text-[10px] text-gray-400">เบอร์โทรศัพท์</span><input required type="tel" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} className={inputClass} placeholder="08X-XXX-XXXX" /></label>
+              <div className="mt-3 rounded-xl border border-[#06c755]/25 bg-[#06c755]/[0.07] p-3">
+                {lineUser?.friendFlag === true
+                  ? <p className="flex items-center gap-1.5 text-[10px] text-emerald-300"><Check size={12} />เพิ่ม SoundWave Pass bot เป็นเพื่อนแล้ว · {lineUser.displayName}</p>
+                  : lineUser?.friendFlag === false
+                    ? <p className="text-[10px] leading-relaxed text-amber-200">LINE ตรวจแล้ว: ยังไม่ได้เพิ่ม SoundWave Pass bot เป็นเพื่อน · HTTP {lineUser.friendshipHttpStatus ?? '—'}</p>
+                    : <p className="text-[10px] leading-relaxed text-gray-300">{lineUser ? `ล็อกอินแล้ว แต่ตรวจสถานะเพื่อนไม่สำเร็จ (HTTP ${lineUser.friendshipHttpStatus ?? '—'}) · ตรวจการผูก Official Account กับ LINE Login channel` : 'เพิ่ม SoundWave Pass bot เป็นเพื่อน เพื่อรับตั๋วหลังชำระเงินทาง LINE'}</p>}
+                <button type="button" onClick={handleLineLogin} disabled={lineLoading} className="mt-2 flex items-center gap-2 rounded-lg bg-[#06c755] px-3 py-2 text-[10px] font-bold text-white hover:bg-[#05b04b] disabled:opacity-60">
+                  <UserRound size={13} />{lineLoading ? 'กำลังเปิด LINE…' : lineUser?.friendFlag === true ? 'ตรวจสอบเพื่อน LINE' : lineUser ? 'เพิ่มเพื่อนผ่าน LINE' : 'เพิ่มเพื่อนผ่าน LINE'}
                 </button>
-              );
-            })}
-          </div>
-
-          {/* Interactive Seat Map ONLY if SEATED, or Standing Info if STANDING */}
-          {isSeatedZone ? (
-            <div className="p-6 rounded-2xl bg-[#0c0c14] border border-white/10 text-center">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-1.5 text-xs text-white font-bold">
-                  <Armchair className="w-4 h-4 text-amber-300" />
-                  ผังเลือกที่นั่งโซน VIP Seated (คลิกเลือกเลขที่นั่ง)
-                </div>
-                <span className="text-[11px] text-gray-400">
-                  เลือกแล้ว: <strong className="text-cyan-300 font-mono">{selectedSeats.length > 0 ? selectedSeats.join(', ') : 'ยังไม่ได้เลือก'}</strong>
-                </span>
-              </div>
-
-              {/* Seating Grid */}
-              <div className="space-y-2.5 max-w-sm mx-auto my-4">
-                {rows.map(r => (
-                  <div key={r} className="flex items-center justify-center gap-2">
-                    <span className="w-5 text-xs font-mono font-bold text-gray-400">{r}</span>
-                    <div className="flex gap-1.5">
-                      {cols.map(c => {
-                        const code = `${r}-${String(c).padStart(2, '0')}`;
-                        const isTaken = TAKEN_SEATS.includes(code);
-                        const isChosen = selectedSeats.includes(code);
-
-                        return (
-                          <button
-                            key={code}
-                            type="button"
-                            disabled={isTaken}
-                            onClick={() => handleToggleSeat(code)}
-                            title={isTaken ? `ที่นั่ง ${code} มีผู้จองแล้ว` : `เลือกที่นั่ง ${code}`}
-                            className={`w-7 h-7 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center transition-all ${
-                              isTaken
-                                ? 'bg-gray-800 text-gray-600 border border-gray-700 cursor-not-allowed'
-                                : isChosen
-                                ? 'bg-cyan-400 text-black border border-cyan-300 scale-110 shadow-[0_0_10px_rgba(34,211,238,0.5)]'
-                                : 'bg-[#1a1a28] text-gray-300 border border-white/15 hover:border-cyan-400 hover:text-white'
-                            }`}
-                          >
-                            {c}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Legend */}
-              <div className="flex items-center justify-center gap-4 text-[11px] text-gray-400 border-t border-white/10 pt-3 mt-4">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-[#1a1a28] border border-white/20 inline-block" />
-                  ว่าง
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-cyan-400 inline-block" />
-                  เลือกอยู่
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-gray-800 border border-gray-700 inline-block" />
-                  มีผู้จองแล้ว
-                </span>
               </div>
             </div>
-          ) : (
-            /* Standing / Camping Zone View — Simple Quantity, No Seat Numbers Needed! */
-            <div className="p-6 rounded-2xl bg-[#0c0c14] border border-white/10 text-center">
-              <div className="w-12 h-12 rounded-full bg-white/5 border border-white/15 flex items-center justify-center mx-auto mb-3 text-cyan-400">
-                <Users className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-bold text-white">
-                {selectedZone?.name} (โซนบัตรยืนอิสระ)
-              </h3>
-              <p className="text-xs text-gray-400 max-w-md mx-auto mt-1 mb-5">
-                บัตรโซนนี้เป็นบัตรยืน/แคมป์ ไม่จำเป็นต้องเลือกเลขที่นั่ง สามารถเดินเข้างานและเลือกจุดยืนชมได้อย่างอิสระ
-              </p>
 
-              {/* Quantity Selector */}
-              <div className="inline-flex items-center gap-4 p-2 rounded-2xl bg-[#161622] border border-white/15">
-                <span className="text-xs text-gray-400 pl-3">จำนวนบัตร:</span>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4].map(num => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setQuantity(num)}
-                      className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
-                        quantity === num
-                          ? 'bg-white text-black shadow-md'
-                          : 'bg-white/5 text-gray-300 hover:bg-white/10'
-                      }`}
-                    >
-                      {num}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+            {errorMsg && <p role="alert" className="mb-4 rounded-xl border border-rose-400/25 bg-rose-400/10 p-3 text-xs text-rose-200">{errorMsg}</p>}
+            <button type="button" onClick={handleBookingSubmit} disabled={submitting || !selectedZone || !maxQuantity} className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-200 px-4 py-3.5 text-sm font-black text-[#071016] transition hover:bg-white disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400">{submitting ? <><LoaderCircle size={16} className="animate-spin" />กำลังสร้างรายการ…</> : <>ไปหน้าชำระเงิน<ArrowRight size={16} /></>}</button>
+            <p className="mt-3 text-center text-[10px] text-gray-500">ระบบกันบัตรไว้ให้ 10 นาทีหลังสร้างรายการจอง</p>
+          </aside>
         </div>
-
-        {/* ── RIGHT: Summary & Booking Form ───────────────────────────── */}
-        <div className="lg:col-span-5 bg-[#111119] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl">
-          <h2 className="text-lg font-black text-white mb-4 pb-3 border-b border-white/10">
-            สรุปการจอง & กรอกข้อมูลผู้ซื้อ
-          </h2>
-
-          {/* Booking Summary Box */}
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 mb-6 space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-gray-400">โซนที่เลือก:</span>
-              <span className="font-bold text-white">{selectedZone?.name}</span>
-            </div>
-            {isSeatedZone && (
-              <div className="flex justify-between">
-                <span className="text-gray-400">เลขที่นั่ง:</span>
-                <span className="font-mono font-bold text-cyan-300">
-                  {selectedSeats.length > 0 ? selectedSeats.join(', ') : 'ยังไม่ได้เลือก'}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-gray-400">จำนวน:</span>
-              <span className="font-bold text-white">{effectiveQty} ใบ</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-white/10 text-sm">
-              <span className="font-bold text-gray-300">ยอดรวมทั้งหมด:</span>
-              <span className="font-black text-cyan-400 text-base">฿{totalPrice.toLocaleString()}</span>
-            </div>
-          </div>
-
-          {/* Optional LINE Connection Status */}
-          <div className="mb-6 p-3 rounded-2xl bg-[#06c755]/10 border border-[#06c755]/30">
-            {lineUser ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#06c755]" />
-                  <span className="text-xs text-[#06c755] font-semibold">
-                    เชื่อมต่อ LINE: {lineUser.displayName}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDisconnectLine}
-                  className="text-[10px] text-gray-400 hover:text-white"
-                >
-                  ยกเลิก
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-300">
-                  ต้องการรับตั๋วทาง LINE อัตโนมัติ?
-                </span>
-                <button
-                  type="button"
-                  onClick={handleLineLogin}
-                  className="px-3 py-1 rounded-lg bg-[#06c755] text-white font-bold text-xs hover:bg-[#05b04b] transition-colors"
-                >
-                  เชื่อม LINE
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleBookingSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">
-                ชื่อ - นามสกุลผู้ซื้อ *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="เช่น สมชาย รักเสียงเพลง"
-                value={customerName}
-                onChange={e => setCustomerName(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-[#161622] border border-white/15 text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">
-                เบอร์โทรศัพท์มือถือ *
-              </label>
-              <input
-                type="tel"
-                required
-                placeholder="เช่น 081-234-5678"
-                value={customerPhone}
-                onChange={e => setCustomerPhone(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-[#161622] border border-white/15 text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-
-            {errorMsg && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3.5 rounded-xl bg-white text-black font-bold text-sm uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors cursor-pointer mt-4"
-            >
-              {submitting ? 'กำลังสร้างการจอง...' : 'ไปหน้าชำระเงิน (Next Step)'}
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
-
       </div>
     </div>
   );
 }
+
+const inputClass = 'w-full rounded-xl border border-white/10 bg-[#09090f] px-3 py-2.5 text-xs text-white outline-none placeholder:text-gray-600 focus:border-cyan-200/60';

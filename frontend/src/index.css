@@ -64,7 +64,7 @@ body {
 @media print {
   @page {
     size: A4 landscape;
-    margin: 10mm 12mm;
+    margin: 0;
   }
 
   /* Force color printing */
@@ -98,21 +98,32 @@ body {
   }
 
   #souvenir-print-area {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 220mm !important;
+    height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     background: white !important;
+    overflow: visible !important;
   }
 
-  /* Make ticket fill page width */
+  /* Keep the souvenir ticket at a fixed physical size on A4. */
   .ticket-a4-wrap {
-    width: 100% !important;
+    width: 220mm !important;
+    height: 82mm !important;
+    min-height: 82mm !important;
+    flex: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
+
+  .ticket-feature { min-height: 27mm !important; }
+  .ticket-main-content { padding: 3mm !important; }
 }

@@ -5,6 +5,7 @@
  */
 
 const line = require('@line/bot-sdk');
+const os = require('os');
 
 const config = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
@@ -12,6 +13,26 @@ const config = {
 };
 
 let client = null;
+
+function getAppBaseUrl() {
+  const configuredUrl = process.env.PUBLIC_APP_URL?.trim();
+  if (configuredUrl) return configuredUrl.replace(/\/+$/, '');
+
+  const callbackUrl = process.env.LINE_LOGIN_CALLBACK_URL?.trim();
+  if (callbackUrl) {
+    try {
+      const callbackOrigin = new URL(callbackUrl).origin;
+      if (!['localhost', '127.0.0.1'].includes(new URL(callbackOrigin).hostname)) return callbackOrigin;
+    } catch { /* Fall back to the local development address. */ }
+  }
+
+  // Resolve the current LAN address for local development instead of using a stale IP.
+  const addresses = Object.values(os.networkInterfaces()).flat().filter(Boolean);
+  const lanAddress = addresses.find((entry) => entry.family === 'IPv4' && !entry.internal && /^192\.168\./.test(entry.address))
+    || addresses.find((entry) => entry.family === 'IPv4' && !entry.internal);
+  if (lanAddress) return `http://${lanAddress.address}:5173`;
+  return 'http://localhost:5173';
+}
 
 function getLineClient() {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
@@ -24,6 +45,12 @@ function getLineClient() {
     });
   }
   return client;
+}
+
+async function getLineBotInfo() {
+  const lineClient = getLineClient();
+  if (!lineClient) return null;
+  return lineClient.getBotInfo();
 }
 
 /**
@@ -60,8 +87,8 @@ function createTicketFlexMessage(concert, ticket, zone, booking) {
   const ticketCode = ticket?.ticketCode || "SWP-DEMO-2026";
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(ticketCode)}`;
 
-  // Mobile-accessible network URL (accessible from phone on the same Wi-Fi)
-  const appBaseUrl = process.env.PUBLIC_APP_URL || 'http://192.168.0.119:5173';
+  // Set PUBLIC_APP_URL to the public HTTPS origin in production.
+  const appBaseUrl = getAppBaseUrl();
   const ticketWebUrl = `${appBaseUrl}/tickets/${ticketCode}`;
 
   return {
@@ -246,7 +273,16 @@ function createTicketFlexMessage(concert, ticket, zone, booking) {
             color: "#4B0082",
             action: {
               type: "uri",
-              label: "🖨️ ดูตั๋วออนไลน์ / พิมพ์บัตร",
+              label: "ดูตั๋วออนไลน์",
+              uri: ticketWebUrl
+            }
+          },
+          {
+            type: "button",
+            style: "secondary",
+            action: {
+              type: "uri",
+              label: "พิมพ์ตั๋วที่ระลึก",
               uri: `${appBaseUrl}/tickets/${ticketCode}/print`
             }
           }
@@ -282,5 +318,6 @@ async function sendTicketToLineUser(userId, concert, ticket, zone, booking) {
 
 module.exports = {
   createTicketFlexMessage,
-  sendTicketToLineUser
+  sendTicketToLineUser,
+  getLineBotInfo
 };

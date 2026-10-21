@@ -1,7 +1,31 @@
 const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
+const fs = require('fs/promises');
+const path = require('path');
+const crypto = require('crypto');
 const prisma = new PrismaClient();
+
+// Accept small poster images as data URLs and keep the files outside the database.
+router.post('/upload', async (req, res) => {
+  try {
+    const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(req.body?.image || '');
+    if (!match) return res.status(400).json({ success: false, message: 'รองรับไฟล์ JPG, PNG หรือ WebP เท่านั้น' });
+    const image = Buffer.from(match[2], 'base64');
+    if (!image.length || image.length > 4 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: 'ขนาดไฟล์โปสเตอร์ต้องไม่เกิน 4 MB' });
+    }
+    const extension = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[match[1]];
+    const filename = `${crypto.randomUUID()}.${extension}`;
+    const uploadDir = path.join(__dirname, '../../uploads');
+    await fs.mkdir(uploadDir, { recursive: true });
+    await fs.writeFile(path.join(uploadDir, filename), image, { flag: 'wx' });
+    res.status(201).json({ success: true, data: { url: `/uploads/${filename}` } });
+  } catch (err) {
+    console.error('Admin poster upload error:', err);
+    res.status(500).json({ success: false, message: 'อัปโหลดโปสเตอร์ไม่สำเร็จ' });
+  }
+});
 
 // ─── GET /api/admin/stats ────────────────────────────────────────────────────
 // Summary numbers: tickets, revenue, check-ins, concerts
@@ -73,13 +97,18 @@ router.get('/concerts', async (req, res) => {
 // Create a new concert + zones
 router.post('/concerts', async (req, res) => {
   try {
-    const { name, slug, description, eventDate, location, venue, bannerUrl, lineupJson, zones } =
+    const { name, slug, description, eventDate, location, venue, latitude, longitude, bannerUrl, lineupJson, zones } =
       req.body;
 
-    if (!name || !slug || !eventDate || !location) {
+    const parsedDate = new Date(eventDate);
+    const validZones = Array.isArray(zones) && zones.length > 0 && zones.every((zone) =>
+      zone.name?.trim() && Number.isFinite(Number(zone.price)) && Number(zone.price) >= 0 &&
+      Number.isInteger(Number(zone.capacity)) && Number(zone.capacity) > 0
+    );
+    if (!name?.trim() || !slug?.trim() || !eventDate || Number.isNaN(parsedDate.getTime()) || !location?.trim() || !validZones) {
       return res.status(400).json({
         success: false,
-        message: 'กรุณากรอกข้อมูล: name, slug, eventDate, location',
+        message: 'กรุณากรอกชื่อคอนเสิร์ต URL วันที่ สถานที่ และข้อมูลโซนให้ครบถ้วน',
       });
     }
 
@@ -98,9 +127,11 @@ router.post('/concerts', async (req, res) => {
           name,
           slug,
           description: description || '',
-          eventDate: new Date(eventDate),
+          eventDate: parsedDate,
           location,
           venue: venue || location,
+          latitude: latitude !== null && latitude !== '' && Number.isFinite(Number(latitude)) ? Number(latitude) : null,
+          longitude: longitude !== null && longitude !== '' && Number.isFinite(Number(longitude)) ? Number(longitude) : null,
           bannerUrl: bannerUrl || '',
           lineupJson: lineupJson || '[]',
           scheduleJson: '[]',
@@ -108,21 +139,17 @@ router.post('/concerts', async (req, res) => {
         },
       });
 
-      if (Array.isArray(zones) && zones.length > 0) {
-        for (const z of zones) {
-          await tx.zone.create({
-            data: {
-              concertId: newConcert.id,
-              name: z.name,
-              category: z.category || 'STANDING',
-              price: parseFloat(z.price) || 0,
-              totalCapacity: parseInt(z.capacity) || 100,
-              available: parseInt(z.capacity) || 100,
-              colorCode: z.colorCode || '#ffffff',
-            },
-          });
-        }
-      }
+      await tx.zone.createMany({
+        data: zones.map((z) => ({
+          concertId: newConcert.id,
+          name: z.name.trim(),
+          category: z.category || 'STANDING',
+          price: Number(z.price),
+          totalCapacity: Number(z.capacity),
+          available: Number(z.capacity),
+          colorCode: z.colorCode || '#ffffff',
+        })),
+      });
 
       return newConcert;
     });
@@ -143,7 +170,7 @@ router.post('/concerts', async (req, res) => {
 router.put('/concerts/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { name, description, eventDate, location, venue, bannerUrl, lineupJson, status } =
+    const { name, description, eventDate, location, venue, latitude, longitude, bannerUrl, lineupJson, status } =
       req.body;
 
     const updated = await prisma.concert.update({
@@ -154,6 +181,8 @@ router.put('/concerts/:id', async (req, res) => {
         ...(eventDate && { eventDate: new Date(eventDate) }),
         ...(location && { location }),
         ...(venue && { venue }),
+        ...(latitude !== undefined && { latitude: latitude !== null && latitude !== '' && Number.isFinite(Number(latitude)) ? Number(latitude) : null }),
+        ...(longitude !== undefined && { longitude: longitude !== null && longitude !== '' && Number.isFinite(Number(longitude)) ? Number(longitude) : null }),
         ...(bannerUrl !== undefined && { bannerUrl }),
         ...(lineupJson !== undefined && { lineupJson }),
         ...(status && { status }),

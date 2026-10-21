@@ -15,6 +15,8 @@ model Concert {
   eventDate   DateTime
   location    String
   venue       String
+  latitude    Float?
+  longitude   Float?
   bannerUrl   String
   lineupJson  String   // JSON string of bands & stages
   scheduleJson String  // JSON string of timetable
@@ -47,6 +49,8 @@ model Booking {
   customerName   String
   customerPhone  String
   customerLineId String?       // LINE User ID for Flex Message delivery
+  lineDeliveryStatus String?   // SENT, FAILED, or NOT_LINKED
+  lineDeliveryError String?
   status         String        @default("PENDING") // PENDING, PAID, CANCELLED, EXPIRED
   totalAmount    Float
   expiresAt      DateTime      // 10 minutes lock
@@ -91,5 +95,23 @@ model Staff {
   password  String
   name      String
   role      String   @default("GATE_STAFF") // GATE_STAFF, SUPERVISOR
+  createdAt DateTime @default(now())
+}
+
+model Customer {
+  id         String        @id @default(uuid())
+  username   String        @unique
+  passwordHash String
+  lineUserId String?       @unique
+  createdAt  DateTime      @default(now())
+  sessions   AuthSession[]
+}
+
+model AuthSession {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  customerId String
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
   createdAt DateTime @default(now())
 }

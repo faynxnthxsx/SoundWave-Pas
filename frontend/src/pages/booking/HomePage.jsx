@@ -97,6 +97,7 @@ const SCHEDULE = [
 
 export default function HomePage() {
   const [concert, setConcert] = useState(null);
+  const [concerts, setConcerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [featuredIdx, setFeaturedIdx] = useState(0);
 
@@ -104,7 +105,10 @@ export default function HomePage() {
     fetch('/api/concerts')
       .then(res => res.json())
       .then(data => {
-        if (data.success && data.data.length > 0) setConcert(data.data[0]);
+        if (data.success && data.data.length > 0) {
+          setConcerts(data.data);
+          setConcert(data.data[0]);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -181,7 +185,7 @@ export default function HomePage() {
           {/* Action Button */}
           <div className="flex flex-wrap justify-center gap-4 mt-8">
             <Link
-              to="/booking/zone-select"
+              to={concert ? `/concerts/${concert.id}` : '/booking/zone-select'}
               className="px-8 py-3.5 rounded-xl font-bold text-black text-sm uppercase tracking-wider flex items-center gap-2 bg-white hover:bg-gray-200 transition-all shadow-lg hover:scale-105"
             >
               <Zap className="w-4 h-4 text-black" />
@@ -273,7 +277,7 @@ export default function HomePage() {
                 </div>
 
                 <Link
-                  to="/booking/zone-select"
+                  to={concert ? `/concerts/${concert.id}` : '/booking/zone-select'}
                   className="w-full py-3 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors mt-2"
                 >
                   จองบัตรดู {featured.name}
@@ -344,6 +348,21 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Live events</p><h2 className="mt-1 text-2xl font-black text-white sm:text-3xl">เลือกคอนเสิร์ต</h2></div>
+          <span className="text-xs text-gray-500">{concerts.length} งาน</span>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {concerts.map((event) => (
+            <Link key={event.id} to={`/concerts/${event.id}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-[#111119] transition hover:-translate-y-1 hover:border-cyan-300/40">
+              <div className="h-44 bg-[#191925]">{event.bannerUrl && <img src={event.bannerUrl} alt={`โปสเตอร์ ${event.name}`} className="h-full w-full object-cover transition group-hover:scale-[1.02]" />}</div>
+              <div className="p-4"><h3 className="truncate font-bold text-white">{event.name}</h3><p className="mt-2 flex items-center gap-1.5 text-xs text-gray-400"><Calendar className="h-3.5 w-3.5 text-cyan-300" />{new Date(event.eventDate).toLocaleDateString('th-TH', { dateStyle: 'long' })}</p><p className="mt-1 flex items-center gap-1.5 truncate text-xs text-gray-400"><MapPin className="h-3.5 w-3.5 text-pink-300" />{event.venue || event.location}</p><div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3"><span className="text-xs text-gray-400">{event.zones?.length || 0} โซน</span><span className="text-xs font-bold text-cyan-200">{event.zones?.length ? `เริ่ม ฿${Math.min(...event.zones.map((zone) => zone.price)).toLocaleString()}` : 'ดูรายละเอียด'}</span></div></div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {/* ═══════════════════════════════════════════════════════════════
           TICKET CALL TO ACTION — Clean, Elegant, Less Garish Colors
       ══════════════════════════════════════════════════════════════════ */}
@@ -391,7 +410,7 @@ export default function HomePage() {
           </div>
 
           <Link
-            to="/booking/zone-select"
+            to={concert ? `/concerts/${concert.id}` : '/booking/zone-select'}
             className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-bold text-black text-sm uppercase tracking-wider bg-white hover:bg-gray-200 transition-all shadow-md hover:scale-105"
           >
             เลือกโซนและซื้อบัตรเลย

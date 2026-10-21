@@ -12,7 +12,7 @@ function BarcodeStrips({ value = '' }) {
     return w;
   });
   return (
-    <div className="flex items-stretch gap-[1.5px] h-12 px-1">
+    <div className="flex h-8 items-stretch gap-[1.5px] px-1">
       {bars.map((w, i) => (
         <div
           key={i}
@@ -53,6 +53,10 @@ export default function SouvenirPrintPage() {
   const paidAtFormatted = ticket.booking?.paidAt
     ? new Date(ticket.booking.paidAt).toLocaleDateString('th-TH', { dateStyle: 'short' })
     : '—';
+  const artists = (Array.isArray(ticket.concert.lineup) ? ticket.concert.lineup : [])
+    .flatMap((stage) => typeof stage === 'string' ? [{ name: stage }] : (stage.bands || stage.artists || (stage.name ? [stage] : [])))
+    .filter((artist) => artist?.name);
+  const artistNames = artists.slice(0, 4).map((artist) => artist.name).join(' · ');
 
   return (
     <div className="min-h-screen bg-[#09090f] py-8 px-4">
@@ -92,8 +96,8 @@ export default function SouvenirPrintPage() {
       {/* ─── PRINTABLE AREA ─────────────────────────────────────────── */}
       <div
         id="souvenir-print-area"
-        className="max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
-        style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
+        className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+        style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", width: 'min(100%, 220mm)' }}
       >
         {/* ── Cut Guide Row ── */}
         <div className="flex items-center justify-between px-6 py-2 bg-white border-b-2 border-dashed border-gray-300">
@@ -107,7 +111,7 @@ export default function SouvenirPrintPage() {
         </div>
 
         {/* ─── TICKET BODY ─────────────────────────────────────────── */}
-        <div className="ticket-a4-wrap flex" style={{ minHeight: '160mm' }}>
+        <div className="ticket-a4-wrap flex" style={{ minHeight: '82mm' }}>
 
           {/* ═══ LEFT MAIN TICKET (75%) ════════════════════════════ */}
           <div
@@ -128,9 +132,9 @@ export default function SouvenirPrintPage() {
             {/* Top neon accent line */}
             <div className="absolute top-0 left-0 right-0 h-1" style={{ background: 'linear-gradient(90deg, #00f0ff, #ff007f, #ffe600, #39ff14)' }} />
 
-            <div className="relative z-10 p-7 flex flex-col h-full">
+            <div className="ticket-main-content relative z-10 flex h-full flex-col p-3">
               {/* Header Row */}
-              <div className="flex items-start justify-between mb-5">
+              <div className="mb-3 flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[10px] font-black tracking-[4px] uppercase text-cyan-400">⚡ SOUNDWAVE</span>
@@ -149,25 +153,12 @@ export default function SouvenirPrintPage() {
                 </div>
               </div>
 
-              {/* Artist Showcase Strip */}
-              <div
-                className="relative rounded-xl overflow-hidden mb-5"
-                style={{ height: '90px' }}
-              >
-                <img
-                  src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&q=80"
-                  alt="Artist"
-                  className="w-full h-full object-cover object-top"
-                />
-                <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)' }} />
-                <div className="absolute inset-0 flex items-center px-5">
-                  <div>
-                    <p className="text-[9px] font-bold tracking-widest uppercase text-cyan-300 mb-0.5">HEADLINER LIVE SHOW</p>
-                    <p className="text-base font-black text-white leading-tight">
-                      SLOT MACHINE · TAITOSMITH
-                    </p>
-                    <p className="text-xs font-bold text-gray-300">THREE MAN DOWN · TILLY BIRDS · +8 MORE</p>
-                  </div>
+              <div className="ticket-feature relative mb-3 flex items-end overflow-hidden rounded-xl border border-white/15 p-3" style={{ minHeight: '27mm', background: `linear-gradient(125deg,rgba(6,15,30,.28),rgba(7,9,18,.94)), url('${ticket.concert.bannerUrl || ''}') center 42% / cover, linear-gradient(120deg,#123343,#29163b 58%,#10281f)` }}>
+                <div className="absolute right-5 top-4 rounded-full border border-white/25 bg-black/25 px-3 py-1 text-[8px] font-bold uppercase tracking-[.22em] text-cyan-100">Live · Thailand</div>
+                <div className="relative max-w-[82%]">
+                  <p className="mb-1 text-[9px] font-bold uppercase tracking-[.24em] text-cyan-200">On stage</p>
+                  <p className="text-2xl font-black leading-tight text-white">{ticket.concert.name}</p>
+                  <p className="mt-2 text-xs font-semibold text-gray-200">{artistNames || 'A night to remember'}</p>
                 </div>
               </div>
 
@@ -194,7 +185,7 @@ export default function SouvenirPrintPage() {
 
               {/* Zone & Seat Detail Grid */}
               <div
-                className="grid grid-cols-4 gap-3 p-3 rounded-xl mb-5"
+                className="grid grid-cols-4 gap-2 rounded-xl p-2.5 mb-3"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
               >
                 {[
@@ -211,7 +202,7 @@ export default function SouvenirPrintPage() {
               </div>
 
               {/* Barcode Row */}
-              <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="mt-auto pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[8px] text-gray-500 font-mono uppercase tracking-widest mb-1">BARCODE / TICKET IDENTIFIER</p>
@@ -257,11 +248,11 @@ export default function SouvenirPrintPage() {
 
           {/* ═══ RIGHT STUB (25%) ══════════════════════════════════ */}
           <div
-            className="flex flex-col items-center justify-between p-6 relative overflow-hidden"
+            className="relative flex flex-col items-center justify-between overflow-hidden p-4"
             style={{
-              width: '200px',
-              minWidth: '200px',
-              background: 'linear-gradient(160deg, #0d0d1a 0%, #110d22 100%)',
+              width: '56mm',
+              minWidth: '56mm',
+              background: 'linear-gradient(160deg, #101d2d 0%, #1b1028 100%)',
             }}
           >
             {/* Top accent line */}
@@ -286,10 +277,10 @@ export default function SouvenirPrintPage() {
 
             {/* QR Code */}
             <div className="my-3">
-              <div className="bg-white p-3 rounded-xl shadow-md">
+                <div className="rounded-lg bg-white p-2 shadow-md">
                 <QRCodeSVG
                   value={ticket.ticketCode}
-                  size={115}
+                  size={88}
                   level="H"
                   includeMargin={false}
                 />

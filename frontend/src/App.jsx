@@ -14,6 +14,9 @@ import SouvenirPrintPage from './pages/tickets/SouvenirPrintPage';
 
 // Gate Staff Scanner Page (Nam)
 import GateScannerPage from './pages/scanner/GateScannerPage';
+import AdminPage from './pages/admin/AdminPage';
+import ConcertDetailPage from './pages/booking/ConcertDetailPage';
+import TeamPortalPage from './pages/TeamPortalPage';
 
 export default function App() {
   return (
@@ -27,6 +30,7 @@ export default function App() {
           <Routes>
             {/* Booking Flow (ทาม) */}
             <Route path="/" element={<HomePage />} />
+            <Route path="/concerts/:id" element={<ConcertDetailPage />} />
             <Route path="/booking/zone-select" element={<ZoneSelectPage />} />
             <Route path="/booking/payment/:bookingCode" element={<PaymentPage />} />
 
@@ -36,6 +40,8 @@ export default function App() {
 
             {/* Gate Scanner (น้ำ) */}
             <Route path="/scanner" element={<GateScannerPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/team" element={<TeamPortalPage />} />
           </Routes>
         </main>
 

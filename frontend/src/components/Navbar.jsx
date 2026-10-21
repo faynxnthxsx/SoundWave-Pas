@@ -1,11 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Ticket, QrCode, Music, Clock, X, ExternalLink, Printer } from 'lucide-react';
+import { Ticket, Music, Clock, X, ExternalLink, Printer, LogOut, UserRound } from 'lucide-react';
+import AuthModal from './AuthModal';
 
 export default function Navbar() {
   const location = useLocation();
+  const isTeamSurface = ['/admin', '/scanner', '/team'].some((path) => location.pathname.startsWith(path));
   const [showHistory, setShowHistory] = useState(false);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
+  const [authUser, setAuthUser] = useState(null);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('soundwave_session');
+    if (!token) return;
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error('Session expired');
+        setAuthUser(data.user);
+        localStorage.setItem('soundwave_user', JSON.stringify(data.user));
+      })
+      .catch(() => {
+        localStorage.removeItem('soundwave_session');
+        localStorage.removeItem('soundwave_user');
+        setAuthUser(null);
+      });
+  }, []);
 
   const isActive = (path) => location.pathname === path;
 
@@ -18,6 +39,22 @@ export default function Navbar() {
       setPurchaseHistory([]);
     }
     setShowHistory(true);
+  };
+
+  const finishLogin = ({ user, token }) => {
+    localStorage.setItem('soundwave_session', token);
+    localStorage.setItem('soundwave_user', JSON.stringify(user));
+    setAuthUser(user);
+  };
+
+  const logout = async () => {
+    const token = localStorage.getItem('soundwave_session');
+    if (token) {
+      try { await fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } catch { /* clear local session while offline */ }
+    }
+    localStorage.removeItem('soundwave_session');
+    localStorage.removeItem('soundwave_user');
+    setAuthUser(null);
   };
 
   return (
@@ -38,7 +75,9 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Navigation Links */}
+          {isTeamSurface ? (
+            <div className="flex items-center gap-2"><Link to="/team" className="rounded-xl border border-white/10 px-3 py-2 text-xs text-gray-300 hover:bg-white/5">พื้นที่ทีมงาน</Link><Link to="/" className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-black">กลับหน้าร้าน</Link></div>
+          ) : (
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to="/"
@@ -61,21 +100,21 @@ export default function Navbar() {
               <span>ประวัติการซื้อบัตร</span>
             </button>
 
-            {/* Scanner Link */}
-            <Link
-              to="/scanner"
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                isActive('/scanner')
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                  : 'bg-white/5 text-gray-300 border border-white/10 hover:border-emerald-500/40 hover:text-emerald-400'
-              }`}
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              <span>สแกนหน้างาน</span>
-            </Link>
+            {authUser ? (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1.5">
+                <UserRound size={14} className="text-emerald-300" />
+                <span className="max-w-24 text-left text-[10px] leading-tight"><span className="block truncate font-bold text-white">{authUser.username}</span><span className="text-emerald-300">ออนไลน์</span></span>
+                <button type="button" onClick={logout} aria-label="ออกจากระบบ" title="ออกจากระบบ" className="ml-1 text-gray-400 hover:text-white"><LogOut size={14} /></button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setAuthOpen(true)} className="rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-300/20">เข้าสู่ระบบ</button>
+            )}
           </div>
+          )}
         </div>
       </nav>
+
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onAuthenticated={finishLogin} />}
 
       {/* ── PURCHASE HISTORY MODAL ────────────────────────────────────── */}
       {showHistory && (

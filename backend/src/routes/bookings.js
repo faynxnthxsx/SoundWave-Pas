@@ -4,6 +4,26 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { sendTicketToLineUser } = require('../services/lineService');
 
+async function deliverTicketsToLine(booking, tickets) {
+  if (!booking.customerLineId) {
+    await prisma.booking.update({ where: { id: booking.id }, data: { lineDeliveryStatus: 'NOT_LINKED', lineDeliveryError: 'ยังไม่มี LINE ID ในรายการจอง' } });
+    return { status: 'NOT_LINKED', error: 'รายการจองนี้ไม่มี LINE ID' };
+  }
+
+  const results = await Promise.all(tickets.map((ticket) => {
+    const item = booking.items?.find((entry) => entry.zoneId === ticket.zoneId);
+    const zone = item?.zone || ticket.zone;
+    const concert = zone?.concert || ticket.zone?.concert;
+    if (!zone || !concert) return Promise.resolve({ success: false, error: 'ข้อมูลคอนเสิร์ตของตั๋วไม่ครบ' });
+    return sendTicketToLineUser(booking.customerLineId, concert, ticket, zone, booking);
+  }));
+  const failed = results.find((result) => !result.success);
+  const status = failed ? 'FAILED' : 'SENT';
+  const error = failed?.error || failed?.reason || null;
+  await prisma.booking.update({ where: { id: booking.id }, data: { lineDeliveryStatus: status, lineDeliveryError: error } });
+  return { status, error };
+}
+
 // POST /api/bookings - Create new reservation with 10-minute hold
 router.post('/', async (req, res) => {
   try {
@@ -13,8 +33,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
     }
 
-    const qty = parseInt(quantity, 10);
-    if (qty <= 0 || qty > 6) {
+    const qty = Number(quantity);
+    if (!Number.isInteger(qty) || qty <= 0 || qty > 6) {
       return res.status(400).json({ success: false, message: 'สามารถจองได้ 1 - 6 ใบต่อครั้ง' });
     }
 
@@ -24,7 +44,7 @@ router.post('/', async (req, res) => {
       include: { concert: true }
     });
 
-    if (!zone || zone.available < qty) {
+    if (!zone || zone.concertId !== Number(concertId) || zone.available < qty) {
       return res.status(400).json({ success: false, message: 'บัตรในโซนนี้ไม่เพียงพอหรือหมดแล้ว' });
     }
 
@@ -38,11 +58,12 @@ router.post('/', async (req, res) => {
 
     // Use transaction to hold quota and create booking
     const booking = await prisma.$transaction(async (tx) => {
-      // Deduct available
-      await tx.zone.update({
-        where: { id: zone.id },
+      // Atomically reserve inventory so simultaneous checkouts cannot oversell.
+      const reserved = await tx.zone.updateMany({
+        where: { id: zone.id, available: { gte: qty } },
         data: { available: { decrement: qty } }
       });
+      if (reserved.count !== 1) return null;
 
       return await tx.booking.create({
         data: {
@@ -68,6 +89,10 @@ router.post('/', async (req, res) => {
         }
       });
     });
+
+    if (!booking) {
+      return res.status(409).json({ success: false, message: 'บัตรในโซนนี้เพิ่งหมด กรุณาเลือกจำนวนใหม่' });
+    }
 
     res.status(201).json({
       success: true,
@@ -156,7 +181,8 @@ router.post('/:bookingCode/pay', async (req, res) => {
               include: { concert: true }
             }
           }
-        }
+        },
+        tickets: true
       }
     });
 
@@ -165,7 +191,7 @@ router.post('/:bookingCode/pay', async (req, res) => {
     }
 
     if (booking.status === 'PAID') {
-      return res.json({ success: true, message: 'การจองนี้ชำระเงินเรียบร้อยแล้ว' });
+      return res.json({ success: true, message: 'การจองนี้ชำระเงินเรียบร้อยแล้ว', data: { bookingCode: booking.bookingCode, tickets: booking.tickets, lineDelivery: { status: booking.lineDeliveryStatus || 'UNKNOWN', error: booking.lineDeliveryError } } });
     }
 
     if (booking.status === 'EXPIRED' || new Date() > new Date(booking.expiresAt)) {
@@ -209,28 +235,40 @@ router.post('/:bookingCode/pay', async (req, res) => {
       return ticketsList;
     });
 
-    // Optional: Send LINE Flex Message if LINE User ID is present
-    if (booking.customerLineId) {
-      const concert = booking.items[0]?.zone?.concert;
-      const zone = booking.items[0]?.zone;
-      for (const ticket of createdTickets) {
-        sendTicketToLineUser(booking.customerLineId, concert, ticket, zone, booking).catch(err => {
-          console.error("Async LINE send failed:", err);
-        });
-      }
-    }
+    const lineDelivery = await deliverTicketsToLine(booking, createdTickets);
 
     res.json({
       success: true,
       message: 'ชำระเงินสำเร็จ ออกตั๋วคอนเสิร์ตเรียบร้อย',
       data: {
         bookingCode: booking.bookingCode,
-        tickets: createdTickets
+        tickets: createdTickets,
+        lineDelivery
       }
     });
   } catch (error) {
     console.error('Error confirming payment:', error);
     res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+// POST /api/bookings/:bookingCode/line-resend - Retry ticket delivery after payment
+router.post('/:bookingCode/line-resend', async (req, res) => {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { bookingCode: req.params.bookingCode },
+      include: {
+        items: { include: { zone: { include: { concert: true } } } },
+        tickets: { include: { zone: { include: { concert: true } } } }
+      }
+    });
+    if (!booking) return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
+    if (booking.status !== 'PAID') return res.status(400).json({ success: false, message: 'ส่งตั๋วได้หลังชำระเงินสำเร็จเท่านั้น' });
+    const lineDelivery = await deliverTicketsToLine(booking, booking.tickets);
+    res.json({ success: true, data: { lineDelivery } });
+  } catch (error) {
+    console.error('LINE ticket retry failed:', error);
+    res.status(500).json({ success: false, message: 'ลองส่งตั๋วเข้า LINE อีกครั้งไม่สำเร็จ' });
   }
 });
 
