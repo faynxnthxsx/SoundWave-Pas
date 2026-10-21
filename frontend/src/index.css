@@ -57,40 +57,62 @@ body {
   background: #00f0ff;
 }
 
-/* Print Styles for A4 Festival Souvenir Ticket */
+/* ====================================================
+   PRINT STYLES — A4 Landscape Souvenir Ticket
+   Target: Printed correctly on any office printer
+   ==================================================== */
 @media print {
   @page {
-    size: A4 portrait;
-    margin: 10mm;
+    size: A4 landscape;
+    margin: 10mm 12mm;
   }
-  
+
+  /* Force color printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Hide all non-print UI */
   body {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-  }
-
-  /* Hide everything except print container */
-  body * {
-    visibility: hidden;
-  }
-
-  #souvenir-print-area, #souvenir-print-area * {
-    visibility: visible;
-  }
-
-  #souvenir-print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
     background: white !important;
-    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
+  nav,
+  footer,
   .no-print {
     display: none !important;
   }
-}
 
+  /* Hide everything by default, show only print area */
+  body > * {
+    visibility: hidden !important;
+  }
+
+  #souvenir-print-area,
+  #souvenir-print-area * {
+    visibility: visible !important;
+  }
+
+  #souvenir-print-area {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: white !important;
+  }
+
+  /* Make ticket fill page width */
+  .ticket-a4-wrap {
+    width: 100% !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}

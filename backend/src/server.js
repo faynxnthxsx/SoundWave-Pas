@@ -7,6 +7,7 @@ const bookingsRouter = require('./routes/bookings');
 const ticketsRouter = require('./routes/tickets');
 const scannerRouter = require('./routes/scanner');
 const authRouter = require('./routes/auth');
+const adminRouter = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +22,7 @@ app.use('/api/bookings', bookingsRouter);
 app.use('/api/tickets', ticketsRouter);
 app.use('/api/scanner', scannerRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
 
 // Root & Health check
 app.get('/', (req, res) => {
