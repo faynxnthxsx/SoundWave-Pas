@@ -1,14 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ImagePlus, RotateCcw, X, ZoomIn, Move } from 'lucide-react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { ImagePlus, RotateCcw, X, ZoomIn, Move, Maximize2, Smartphone, Monitor, User } from 'lucide-react';
 
-const BOX_WIDTH = 320;
-const BOX_HEIGHT = 400;
+const RATIO_CONFIGS = {
+  poster: { label: '4:5 โปสเตอร์', icon: Smartphone, width: 320, height: 400, canvasW: 1200, canvasH: 1500 },
+  banner: { label: '16:9 แบนเนอร์', icon: Monitor, width: 360, height: 202.5, canvasW: 1600, canvasH: 900 },
+  square: { label: '1:1 จัตุรัส/ศิลปิน', icon: User, width: 320, height: 320, canvasW: 1000, canvasH: 1000 },
+  original: { label: 'เต็มรูป (ไม่ตัดขอบ)', icon: Maximize2, width: 340, height: 340, canvasW: 1200, canvasH: 1200 },
+};
 
-export default function CropImageModal({ file, onCancel, onApply }) {
+export default function CropImageModal({ file, initialRatio = 'poster', onCancel, onApply }) {
   const [source, setSource] = useState('');
   const [dimensions, setDimensions] = useState(null);
+  const [selectedRatio, setSelectedRatio] = useState(initialRatio || 'poster');
   const [zoom, setZoom] = useState(1);
-  const [fitMode, setFitMode] = useState('cover');
+  const [fitMode, setFitMode] = useState('cover'); // 'cover' | 'contain'
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -16,41 +21,71 @@ export default function CropImageModal({ file, onCancel, onApply }) {
   const dragRef = useRef(null);
 
   useEffect(() => {
+    if (!file) return;
     const url = URL.createObjectURL(file);
     setSource(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  const baseScale = dimensions
-    ? (fitMode === 'cover' ? Math.max(BOX_WIDTH / dimensions.width, BOX_HEIGHT / dimensions.height) : Math.min(BOX_WIDTH / dimensions.width, BOX_HEIGHT / dimensions.height))
-    : 1;
-  const imageWidth = dimensions ? dimensions.width * baseScale * zoom : BOX_WIDTH;
-  const imageHeight = dimensions ? dimensions.height * baseScale * zoom : BOX_HEIGHT;
-  const left = (BOX_WIDTH - imageWidth) / 2 + offset.x;
-  const top = (BOX_HEIGHT - imageHeight) / 2 + offset.y;
+  const currentBox = RATIO_CONFIGS[selectedRatio] || RATIO_CONFIGS.poster;
+  const boxW = currentBox.width;
+  const boxH = currentBox.height;
+
+  // Calculate scaling
+  const baseScale = useMemo(() => {
+    if (!dimensions) return 1;
+    if (selectedRatio === 'original' || fitMode === 'contain') {
+      return Math.min(boxW / dimensions.width, boxH / dimensions.height);
+    }
+    return Math.max(boxW / dimensions.width, boxH / dimensions.height);
+  }, [dimensions, boxW, boxH, selectedRatio, fitMode]);
+
+  const imageWidth = dimensions ? dimensions.width * baseScale * zoom : boxW;
+  const imageHeight = dimensions ? dimensions.height * baseScale * zoom : boxH;
+  const left = (boxW - imageWidth) / 2 + offset.x;
+  const top = (boxH - imageHeight) / 2 + offset.y;
 
   const onPointerDown = (event) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = { x: event.clientX, y: event.clientY, offsetX: offset.x, offsetY: offset.y };
   };
+
   const onPointerMove = (event) => {
     if (!dragRef.current || !dimensions) return;
     const nextX = dragRef.current.offsetX + event.clientX - dragRef.current.x;
     const nextY = dragRef.current.offsetY + event.clientY - dragRef.current.y;
-    const maxX = Math.max(0, (imageWidth - BOX_WIDTH) / 2);
-    const maxY = Math.max(0, (imageHeight - BOX_HEIGHT) / 2);
-    setOffset({ x: Math.min(maxX, Math.max(-maxX, nextX)), y: Math.min(maxY, Math.max(-maxY, nextY)) });
+    const maxX = Math.max(0, (imageWidth - boxW) / 2);
+    const maxY = Math.max(0, (imageHeight - boxH) / 2);
+    setOffset({
+      x: Math.min(maxX, Math.max(-maxX, nextX)),
+      y: Math.min(maxY, Math.max(-maxY, nextY)),
+    });
   };
+
   const changeZoom = (value) => {
     const nextZoom = Number(value);
-    if (!dimensions || zoom === 0) { setZoom(nextZoom); return; }
+    if (!dimensions || zoom === 0) {
+      setZoom(nextZoom);
+      return;
+    }
     const ratio = nextZoom / zoom;
     const nextWidth = dimensions.width * baseScale * nextZoom;
     const nextHeight = dimensions.height * baseScale * nextZoom;
-    const maxX = Math.max(0, (nextWidth - BOX_WIDTH) / 2);
-    const maxY = Math.max(0, (nextHeight - BOX_HEIGHT) / 2);
-    setOffset({ x: Math.min(maxX, Math.max(-maxX, offset.x * ratio)), y: Math.min(maxY, Math.max(-maxY, offset.y * ratio)) });
+    const maxX = Math.max(0, (nextWidth - boxW) / 2);
+    const maxY = Math.max(0, (nextHeight - boxH) / 2);
+    setOffset({
+      x: Math.min(maxX, Math.max(-maxX, offset.x * ratio)),
+      y: Math.min(maxY, Math.max(-maxY, offset.y * ratio)),
+    });
     setZoom(nextZoom);
+  };
+
+  const handleRatioSwitch = (ratioKey) => {
+    setSelectedRatio(ratioKey);
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+    if (ratioKey === 'original') setFitMode('contain');
+    else setFitMode('cover');
   };
 
   const crop = async () => {
@@ -59,36 +94,279 @@ export default function CropImageModal({ file, onCancel, onApply }) {
     setError('');
     try {
       const canvas = document.createElement('canvas');
-      canvas.width = 1200;
-      canvas.height = 1500;
+      canvas.width = currentBox.canvasW;
+      canvas.height = currentBox.canvasH;
       const context = canvas.getContext('2d');
-      context.fillStyle = '#111119';
+      context.fillStyle = '#0a0a10';
+      context.fillStyle = '#08080e';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(imageRef.current, left * canvas.width / BOX_WIDTH, top * canvas.height / BOX_HEIGHT, imageWidth * canvas.width / BOX_WIDTH, imageHeight * canvas.height / BOX_HEIGHT);
-      await onApply(canvas.toDataURL('image/jpeg', 0.88));
+
+      if (fitMode === 'contain' || selectedRatio === 'original') {
+        // Draw subtle blurred ambient background so empty borders look polished instead of harsh black
+        try {
+          context.save();
+          context.filter = 'blur(40px) brightness(0.35)';
+          context.drawImage(imageRef.current, -40, -40, canvas.width + 80, canvas.height + 80);
+          context.restore();
+        } catch { /* ignore fallback */ }
+      }
+
+      // Draw proportionally onto high-res export canvas
+      const drawX = (left * canvas.width) / boxW;
+      const drawY = (top * canvas.height) / boxH;
+      const drawW = (imageWidth * canvas.width) / boxW;
+      const drawH = (imageHeight * canvas.height) / boxH;
+
+      context.drawImage(imageRef.current, drawX, drawY, drawW, drawH);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      await onApply(dataUrl);
     } catch {
-      setError('ครอปรูปไม่สำเร็จ ลองเลือกไฟล์ใหม่อีกครั้ง');
+      setError('บันทึกรูปภาพไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setBusy(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm">
-      <section role="dialog" aria-modal="true" aria-labelledby="crop-title" className="my-auto w-full max-w-lg overflow-hidden rounded-3xl border border-cyan-100/15 bg-[radial-gradient(ellipse_at_top_right,_rgba(34,211,238,0.12),_transparent_42%),#101018] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.6)] sm:p-6">
-        <header className="mb-4 flex items-start justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Poster studio</p><h2 id="crop-title" className="mt-1 text-xl font-black">จัดกรอบรูปด้วยตัวเอง</h2><p className="mt-1 text-xs text-gray-400">ลากภาพเพื่อเลือกส่วนที่ต้องการแสดง แล้วปรับซูมได้ · 4:5</p></div><button type="button" onClick={onCancel} aria-label="ปิดหน้าครอบรูป" className="rounded-lg p-2 text-gray-400 hover:bg-white/10 hover:text-white"><X size={17} /></button></header>
+  const useOriginalFile = () => {
+    if (!file) return;
+    setBusy(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        await onApply(e.target.result);
+      } finally {
+        setBusy(false);
+      }
+    };
+    reader.onerror = () => {
+      setError('ไม่สามารถอ่านไฟล์ต้นฉบับได้');
+      setBusy(false);
+    };
+    reader.readAsDataURL(file);
+  };
 
-        <div className="group relative mx-auto w-full max-w-[320px] cursor-grab overflow-hidden rounded-2xl border border-white/20 bg-[radial-gradient(ellipse_at_center,_#24303b,_#090b10)] shadow-[0_18px_55px_rgba(0,0,0,0.55)] active:cursor-grabbing" style={{ aspectRatio: '4 / 5', touchAction: 'none' }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={() => { dragRef.current = null; }} onPointerCancel={() => { dragRef.current = null; }}>
-          {source && <img ref={imageRef} src={source} alt="ครอบตัดโปสเตอร์" draggable="false" onLoad={(event) => setDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} className="pointer-events-none absolute max-w-none select-none" style={{ width: imageWidth, height: imageHeight, left, top }} />}
-          <div className="pointer-events-none absolute inset-0 z-10 grid grid-cols-3 grid-rows-3 opacity-70"><i className="border-b border-r border-white/35" /><i className="border-b border-r border-white/35" /><i className="border-b border-white/35" /><i className="border-b border-r border-white/35" /><i className="border-b border-r border-white/35" /><i className="border-b border-white/35" /><i className="border-r border-white/35" /><i className="border-r border-white/35" /><i /></div>
-          <div className="pointer-events-none absolute inset-0 z-20"><span className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border border-white/15 bg-black/65 px-3 py-2 text-[10px] font-semibold text-white/90 shadow-lg backdrop-blur"><Move size={13} />ลากภาพเพื่อจัดองค์ประกอบ</span><span className="absolute right-3 top-3 rounded-full border border-white/15 bg-black/55 px-2 py-1 text-[9px] font-bold tracking-wider text-white/80">4:5 POSTER</span></div>
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/85 p-4 backdrop-blur-md">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="crop-title"
+        className="my-auto w-full max-w-xl overflow-hidden rounded-3xl border border-white/15 bg-[#101018] p-5 sm:p-6 shadow-2xl"
+      >
+        <header className="mb-4 flex items-start justify-between border-b border-white/10 pb-3">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">
+              Image Framing Studio
+            </span>
+            <h2 id="crop-title" className="mt-0.5 text-lg sm:text-xl font-black text-white">
+              ปรับแต่งและจัดสัดส่วนรูปภาพ
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-400">
+              เลือกสัดส่วนที่ต้องการ และลากภาพเพื่อเลือกส่วนสำคัญ ไม่ให้โดนตัดขอบ
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="ปิด"
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-white/10 hover:text-white"
+          >
+            <X size={18} />
+          </button>
+        </header>
+
+        {/* ── Aspect Ratio Switcher ── */}
+        <div className="mb-4">
+          <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">
+            เลือกสัดส่วนรูปภาพ (Aspect Ratio):
+          </span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {Object.entries(RATIO_CONFIGS).map(([key, cfg]) => {
+              const Icon = cfg.icon;
+              const isActive = selectedRatio === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleRatioSwitch(key)}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl border py-2 px-2.5 text-xs font-bold transition-all ${
+                    isActive
+                      ? 'border-cyan-300 bg-cyan-300 text-black shadow-md shadow-cyan-300/30'
+                      : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/20 hover:bg-white/5'
+                  }`}
+                >
+                  <Icon size={14} />
+                  <span>{cfg.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.035] p-3"><span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">จัดวางภาพ</span><div className="flex rounded-xl border border-white/10 bg-black/30 p-1"><button type="button" onClick={() => { setFitMode('contain'); setZoom(1); setOffset({ x: 0, y: 0 }); }} className={`rounded-lg px-3 py-2 text-[10px] font-semibold transition ${fitMode === 'contain' ? 'bg-white text-gray-900 shadow' : 'text-gray-400 hover:text-white'}`}>เห็นทั้งรูป</button><button type="button" onClick={() => { setFitMode('cover'); setZoom(1); setOffset({ x: 0, y: 0 }); }} className={`rounded-lg px-3 py-2 text-[10px] font-semibold transition ${fitMode === 'cover' ? 'bg-cyan-200 text-gray-900 shadow' : 'text-gray-400 hover:text-white'}`}>เต็มกรอบ</button></div></div>
+        {/* ── Visual Crop Frame ── */}
+        <div className="relative mx-auto flex items-center justify-center p-3 rounded-2xl bg-black/40 border border-white/5 overflow-hidden">
+          <div
+            className="group relative cursor-grab overflow-hidden rounded-xl border-2 border-dashed border-cyan-400/60 bg-[#07070b] shadow-2xl active:cursor-grabbing transition-all"
+            style={{
+              width: `${boxW}px`,
+              height: `${boxH}px`,
+              touchAction: 'none',
+            }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={() => {
+              dragRef.current = null;
+            }}
+            onPointerCancel={() => {
+              dragRef.current = null;
+            }}
+          >
+            {source && (
+              <img
+                ref={imageRef}
+                src={source}
+                alt="พรีวิวรูปภาพ"
+                draggable="false"
+                onLoad={(event) =>
+                  setDimensions({
+                    width: event.currentTarget.naturalWidth,
+                    height: event.currentTarget.naturalHeight,
+                  })
+                }
+                className="pointer-events-none absolute max-w-none select-none transition-transform"
+                style={{
+                  width: imageWidth,
+                  height: imageHeight,
+                  left,
+                  top,
+                }}
+              />
+            )}
 
-        <div className="mt-5 flex items-center gap-3"><ZoomIn size={16} className="shrink-0 text-gray-400" /><input aria-label="ซูมโปสเตอร์" type="range" min="1" max="3" step="0.01" value={zoom} onChange={(event) => changeZoom(event.target.value)} className="w-full accent-cyan-200" /><span className="w-10 text-right text-[10px] text-gray-400">{zoom.toFixed(1)}×</span></div>
-        {error && <p role="alert" className="mt-3 rounded-xl bg-rose-400/10 p-2 text-xs text-rose-200">{error}</p>}
-        <div className="mt-5 flex flex-wrap justify-between gap-2"><button type="button" onClick={() => { setFitMode('cover'); setZoom(1); setOffset({ x: 0, y: 0 }); }} className="flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-xs text-gray-300 hover:bg-white/5"><RotateCcw size={13} />รีเซ็ต</button><div className="flex gap-2"><button type="button" onClick={onCancel} className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-gray-300 hover:bg-white/5">ยกเลิก</button><button type="button" onClick={crop} disabled={!dimensions || busy} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-200 to-sky-300 px-4 py-2 text-xs font-black text-[#071016] shadow-lg shadow-cyan-950/40 transition hover:brightness-110 disabled:opacity-50"><ImagePlus size={14} />{busy ? 'กำลังบันทึก…' : 'ใช้กรอบนี้'}</button></div></div>
+            {/* Rule of Thirds Grid */}
+            <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-40">
+              <i className="border-b border-r border-white/30" />
+              <i className="border-b border-r border-white/30" />
+              <i className="border-b border-white/30" />
+              <i className="border-b border-r border-white/30" />
+              <i className="border-b border-r border-white/30" />
+              <i className="border-b border-white/30" />
+              <i className="border-r border-white/30" />
+              <i className="border-r border-white/30" />
+              <i />
+            </div>
+
+            {/* Overlay hint */}
+            <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[10px] font-bold text-white shadow-md backdrop-blur border border-white/10 flex items-center gap-1.5 whitespace-nowrap">
+              <Move size={12} className="text-cyan-300" />
+              <span>คลิกลากเพื่อเลื่อนตำแหน่งภาพ</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Fit Mode & Zoom Controls ── */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-gray-400">การแสดงผล:</span>
+            <div className="flex rounded-xl bg-black/40 p-1 border border-white/10">
+              <button
+                type="button"
+                onClick={() => {
+                  setFitMode('contain');
+                  setZoom(1);
+                  setOffset({ x: 0, y: 0 });
+                }}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
+                  fitMode === 'contain' ? 'bg-white text-black font-bold shadow' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                เห็นทั้งรูป (ไม่ตัดขอบ)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFitMode('cover');
+                  setZoom(1);
+                  setOffset({ x: 0, y: 0 });
+                }}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
+                  fitMode === 'cover' ? 'bg-cyan-300 text-black font-bold shadow' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                เต็มกรอบ (Crop)
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-1 min-w-[160px] justify-end">
+            <ZoomIn size={14} className="text-gray-400" />
+            <input
+              aria-label="ซูมรูปภาพ"
+              type="range"
+              min="1"
+              max="3"
+              step="0.05"
+              value={zoom}
+              onChange={(event) => changeZoom(event.target.value)}
+              className="w-28 sm:w-36 accent-cyan-300 cursor-pointer"
+            />
+            <span className="font-mono text-[11px] text-gray-300 min-w-8 text-right">
+              {zoom.toFixed(1)}×
+            </span>
+          </div>
+        </div>
+
+        {error && (
+          <p role="alert" className="mt-3 rounded-xl bg-rose-400/10 p-2 text-xs text-rose-200 border border-rose-400/20">
+            {error}
+          </p>
+        )}
+
+        {/* ── Footer Actions ── */}
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+          <button
+            type="button"
+            onClick={() => {
+              setZoom(1);
+              setOffset({ x: 0, y: 0 });
+            }}
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10"
+          >
+            <RotateCcw size={13} />
+            <span>รีเซ็ตตำแหน่ง</span>
+          </button>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={useOriginalFile}
+              disabled={busy}
+              title="ใช้ภาพขนาดและสัดส่วนต้นฉบับ 100% โดยไม่ต้องตัดขอบใดๆ"
+              className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-gray-200 hover:bg-white/10 hover:border-white/30 transition-all disabled:opacity-50"
+            >
+              <Maximize2 size={13} className="text-cyan-300" />
+              <span>ใช้รูปต้นฉบับ (ไม่ตัดขอบ)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-xl border border-white/10 px-3.5 py-2 text-xs font-semibold text-gray-300 hover:bg-white/5"
+            >
+              ยกเลิก
+            </button>
+
+            <button
+              type="button"
+              onClick={crop}
+              disabled={!dimensions || busy}
+              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-300 to-blue-500 px-4 py-2 text-xs font-black text-black shadow-lg shadow-cyan-400/25 transition-all hover:brightness-110 disabled:opacity-50"
+            >
+              <ImagePlus size={14} />
+              <span>{busy ? 'กำลังบันทึก…' : 'ใช้รูปที่ครอบตัดนี้'}</span>
+            </button>
+          </div>
+        </div>
       </section>
     </div>
   );

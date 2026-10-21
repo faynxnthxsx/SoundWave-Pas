@@ -62,13 +62,16 @@ router.get('/stats', async (req, res) => {
 });
 
 // ─── GET /api/admin/concerts ─────────────────────────────────────────────────
-// List all concerts with zone + ticket stats
+// List all concerts with detailed zone, ticket, financial & check-in stats
 router.get('/concerts', async (req, res) => {
   try {
     const concerts = await prisma.concert.findMany({
       include: {
         zones: {
           include: {
+            tickets: {
+              select: { id: true, status: true, seatNumber: true },
+            },
             _count: { select: { tickets: true } },
           },
         },
@@ -76,15 +79,45 @@ router.get('/concerts', async (req, res) => {
       orderBy: { eventDate: 'asc' },
     });
 
-    const result = concerts.map((c) => ({
-      ...c,
-      totalZones: c.zones.length,
-      totalTicketsSold: c.zones.reduce((sum, z) => sum + z._count.tickets, 0),
-      revenue: c.zones.reduce(
-        (sum, z) => sum + z._count.tickets * z.price,
-        0
-      ),
-    }));
+    const result = concerts.map((c) => {
+      const allTickets = c.zones.flatMap((z) => z.tickets || []);
+      const totalCapacity = c.zones.reduce((sum, z) => sum + (z.totalCapacity || 0), 0);
+      const totalAvailable = c.zones.reduce((sum, z) => sum + (z.available || 0), 0);
+      const totalTicketsSold = c.zones.reduce((sum, z) => sum + z._count.tickets, 0);
+      const checkedIn = allTickets.filter((t) => t.status === 'USED').length;
+      const validPending = allTickets.filter((t) => t.status === 'VALID').length;
+      const revenue = c.zones.reduce((sum, z) => sum + z._count.tickets * z.price, 0);
+
+      const zoneStats = c.zones.map((z) => {
+        const zoneTickets = z.tickets || [];
+        const zoneCheckedIn = zoneTickets.filter((t) => t.status === 'USED').length;
+        const zoneSold = z._count.tickets;
+        const zoneRevenue = zoneSold * z.price;
+        return {
+          id: z.id,
+          name: z.name,
+          category: z.category,
+          price: z.price,
+          totalCapacity: z.totalCapacity,
+          available: z.available,
+          sold: zoneSold,
+          checkedIn: zoneCheckedIn,
+          revenue: zoneRevenue,
+        };
+      });
+
+      return {
+        ...c,
+        totalZones: c.zones.length,
+        totalCapacity,
+        totalAvailable,
+        totalTicketsSold,
+        checkedIn,
+        validPending,
+        revenue,
+        zoneStats,
+      };
+    });
 
     res.json({ success: true, data: result });
   } catch (err) {

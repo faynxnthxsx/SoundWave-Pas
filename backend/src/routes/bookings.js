@@ -212,12 +212,18 @@ router.post('/:bookingCode/pay', async (req, res) => {
       for (const item of booking.items) {
         for (let i = 0; i < item.quantity; i++) {
           const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-          const ticketCode = `SWP-${item.zone.category.substring(0, 3)}-${randomSuffix}-${Date.now().toString().slice(-4)}`;
+          const catCode = (item.zone.category || 'TKT')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .slice(0, 4)
+            .toUpperCase() || 'PASS';
+          const ticketCode = `SWP-${catCode}-${randomSuffix}-${Date.now().toString().slice(-4)}`;
           
           const requestedSeats = Array.isArray(req.body?.selectedSeats) ? req.body.selectedSeats : [];
-          const seat = item.zone.category === 'SEATED' 
-            ? (requestedSeats[i] || `ROW-${String.fromCharCode(65 + Math.floor(Math.random() * 5))}-${Math.floor(Math.random() * 30) + 1}`) 
+          const isSeatCategory = /seat|chair|นั่ง|vip/i.test(item.zone.category || '');
+          const defaultSeat = isSeatCategory
+            ? `ROW-${String.fromCharCode(65 + Math.floor(Math.random() * 5))}-${Math.floor(Math.random() * 30) + 1}`
             : null;
+          const seat = requestedSeats[i] || defaultSeat;
 
           const ticket = await tx.ticket.create({
             data: {
