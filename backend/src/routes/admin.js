@@ -250,4 +250,246 @@ router.get('/bookings', async (req, res) => {
   }
 });
 
+
+// ─── GET /api/admin/zones/:zoneId/seats ───────────────────────────────────────
+// Get full seat inventory & details for a specific zone
+router.get('/zones/:zoneId/seats', async (req, res) => {
+  try {
+    const zoneId = parseInt(req.params.zoneId, 10);
+    const zone = await prisma.zone.findUnique({
+      where: { id: zoneId },
+      include: {
+        concert: true,
+        tickets: {
+          include: { booking: true },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซนนี้' });
+
+    // Active pending bookings
+    const activePending = await prisma.booking.findMany({
+      where: {
+        status: 'PENDING',
+        expiresAt: { gt: new Date() },
+        items: { some: { zoneId } }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        zone,
+        tickets: zone.tickets,
+        activePending
+      }
+    });
+  } catch (err) {
+    console.error('Admin get zone seats error:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+});
+
+// ─── POST /api/admin/zones/:zoneId/seats/block ──────────────────────────────
+// Admin blocks / locks a specific seat (so customers cannot book it)
+router.post('/zones/:zoneId/seats/block', async (req, res) => {
+  try {
+    const zoneId = parseInt(req.params.zoneId, 10);
+    const { seatNumber, reason } = req.body;
+    if (!seatNumber) return res.status(400).json({ success: false, message: 'กรุณาระบุเลขที่นั่งที่ต้องการล็อก' });
+
+    const zone = await prisma.zone.findUnique({ where: { id: zoneId } });
+    if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซน' });
+
+    // Check if already taken
+    const existingTicket = await prisma.ticket.findFirst({
+      where: { zoneId, seatNumber: String(seatNumber).trim(), status: { in: ['VALID', 'USED'] } }
+    });
+    if (existingTicket) {
+      return res.status(400).json({ success: false, message: `ที่นั่ง ${seatNumber} ถูกใช้งานอยู่แล้วโดย ${existingTicket.attendeeName}` });
+    }
+
+    // Create a special Admin Reserved booking & ticket
+    const blockCode = `ADMIN-BLK-${Date.now().toString().slice(-6)}`;
+    const ticketCode = `SWP-BLK-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    const created = await prisma.$transaction(async (tx) => {
+      const b = await tx.booking.create({
+        data: {
+          bookingCode: blockCode,
+          customerName: reason || 'Admin Reserved / ที่นั่งสำหรับทีมงาน',
+          customerPhone: '0000000000',
+          selectedSeats: JSON.stringify([String(seatNumber).trim()]),
+          status: 'PAID',
+          totalAmount: 0,
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          paidAt: new Date(),
+          items: {
+            create: {
+              zoneId,
+              quantity: 1,
+              pricePerUnit: 0
+            }
+          }
+        }
+      });
+
+      const t = await tx.ticket.create({
+        data: {
+          ticketCode,
+          bookingId: b.id,
+          zoneId,
+          attendeeName: reason || 'Admin Reserved / ล็อกที่นั่ง',
+          seatNumber: String(seatNumber).trim(),
+          status: 'VALID'
+        }
+      });
+
+      await tx.zone.update({
+        where: { id: zoneId },
+        data: { available: { decrement: 1 } }
+      });
+
+      return { booking: b, ticket: t };
+    });
+
+    res.json({ success: true, message: `ล็อกที่นั่ง ${seatNumber} สำเร็จ`, data: created });
+  } catch (err) {
+    console.error('Admin block seat error:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+});
+
+// ─── POST /api/admin/tickets/:ticketId/cancel ───────────────────────────────
+// Admin cancels / releases a ticket so the seat becomes available again
+router.post('/tickets/:ticketId/cancel', async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { zone: true, booking: true }
+    });
+
+    if (!ticket) return res.status(404).json({ success: false, message: 'ไม่พบตั๋วใบนี้' });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: { status: 'CANCELLED' }
+      });
+
+      // If booking had this seat, remove from selectedSeats
+      if (ticket.booking?.selectedSeats) {
+        try {
+          const seats = JSON.parse(ticket.booking.selectedSeats);
+          const remaining = seats.filter((s) => s !== ticket.seatNumber);
+          await tx.booking.update({
+            where: { id: ticket.bookingId },
+            data: { selectedSeats: JSON.stringify(remaining) }
+          });
+        } catch (e) {}
+      }
+
+      // Return quota to zone
+      await tx.zone.update({
+        where: { id: ticket.zoneId },
+        data: { available: { increment: 1 } }
+      });
+    });
+
+    res.json({ success: true, message: `ยกเลิกตั๋ว ${ticket.ticketCode} และคืนที่นั่ง ${ticket.seatNumber || ''} เรียบร้อยแล้ว` });
+  } catch (err) {
+    console.error('Admin cancel ticket error:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+});
+
+// ─── PUT /api/admin/tickets/:ticketId/edit ──────────────────────────────────
+// Admin edits seat number or attendee name of a ticket
+router.put('/tickets/:ticketId/edit', async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    const { seatNumber, attendeeName, status } = req.body;
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { booking: true }
+    });
+    if (!ticket) return res.status(404).json({ success: false, message: 'ไม่พบตั๋วใบนี้' });
+
+    const newSeat = seatNumber !== undefined ? String(seatNumber).trim() : ticket.seatNumber;
+
+    // If changing seat number, check if the new seat is already occupied by another ticket
+    if (newSeat && newSeat !== ticket.seatNumber) {
+      const conflict = await prisma.ticket.findFirst({
+        where: {
+          zoneId: ticket.zoneId,
+          seatNumber: newSeat,
+          status: { in: ['VALID', 'USED'] },
+          id: { not: ticketId }
+        }
+      });
+      if (conflict) {
+        return res.status(400).json({ success: false, message: `ที่นั่ง ${newSeat} มีผู้อื่นใช้งานอยู่แล้ว (${conflict.attendeeName})` });
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const t = await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          ...(newSeat && { seatNumber: newSeat }),
+          ...(attendeeName && { attendeeName: String(attendeeName).trim() }),
+          ...(status && { status })
+        }
+      });
+
+      // Update selectedSeats in booking
+      if (ticket.booking?.selectedSeats && newSeat && newSeat !== ticket.seatNumber) {
+        try {
+          const seats = JSON.parse(ticket.booking.selectedSeats);
+          const updatedSeats = seats.map((s) => (s === ticket.seatNumber ? newSeat : s));
+          await tx.booking.update({
+            where: { id: ticket.bookingId },
+            data: { selectedSeats: JSON.stringify(updatedSeats) }
+          });
+        } catch (e) {}
+      }
+
+      return t;
+    });
+
+    res.json({ success: true, message: 'แก้ไขข้อมูลที่นั่งสำเร็จ', data: updated });
+  } catch (err) {
+    console.error('Admin edit ticket error:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+});
+
+// ─── POST /api/admin/zones/:zoneId/capacity ─────────────────────────────────
+// Admin adjusts zone totalCapacity and available
+router.post('/zones/:zoneId/capacity', async (req, res) => {
+  try {
+    const zoneId = parseInt(req.params.zoneId, 10);
+    const { totalCapacity, available, price } = req.body;
+
+    const updated = await prisma.zone.update({
+      where: { id: zoneId },
+      data: {
+        ...(totalCapacity !== undefined && { totalCapacity: Number(totalCapacity) }),
+        ...(available !== undefined && { available: Number(available) }),
+        ...(price !== undefined && { price: Number(price) })
+      }
+    });
+
+    res.json({ success: true, message: 'ปรับความจุและราคาโซนสำเร็จ', data: updated });
+  } catch (err) {
+    console.error('Admin update zone capacity error:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+});
+
 module.exports = router;
+

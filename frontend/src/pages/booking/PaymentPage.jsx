@@ -26,7 +26,22 @@ export default function PaymentPage() {
           setLineDelivery({ status: data.data.lineDeliveryStatus || (data.data.customerLineId ? 'UNKNOWN' : 'NOT_LINKED'), error: data.data.lineDeliveryError || null });
           if (data.data.status === 'PAID') {
             setPaidSuccess(true);
-            setTickets(data.data.tickets || []);
+            const tList = data.data.tickets || [];
+            setTickets(tList);
+            try {
+              const history = JSON.parse(localStorage.getItem('soundwave_purchase_history') || '[]');
+              const newEntry = {
+                bookingCode: data.data.bookingCode,
+                customerName: data.data.customerName,
+                customerPhone: data.data.customerPhone,
+                zoneName: data.data.items?.[0]?.zone?.name || 'Festival Zone',
+                totalAmount: data.data.totalAmount,
+                tickets: tList,
+                paidAt: data.data.paidAt || new Date().toISOString()
+              };
+              const updatedHistory = [newEntry, ...history.filter((h) => h.bookingCode !== data.data.bookingCode)];
+              localStorage.setItem('soundwave_purchase_history', JSON.stringify(updatedHistory));
+            } catch (err) {}
           } else if (data.data.status === 'EXPIRED') {
             setIsExpired(true);
           } else {
@@ -160,13 +175,6 @@ export default function PaymentPage() {
           รหัสการจอง: <span className="font-mono text-white font-bold">{booking.bookingCode}</span>
         </p>
 
-        <div className={`mt-4 rounded-2xl border p-3 text-left text-xs ${lineDelivery?.status === 'FAILED' || lineDelivery?.status === 'NOT_LINKED' ? 'border-amber-300/30 bg-amber-300/10 text-amber-100' : 'border-[#06c755]/30 bg-[#06c755]/10 text-[#b7f7ce]'}`}>
-          {lineDelivery?.status === 'SENT' ? <p className="font-semibold">📲 LINE รับคำขอส่งตั๋วแล้ว</p> : lineDelivery?.status === 'FAILED' ? <p className="font-semibold">ตั๋วสร้างแล้ว แต่ส่งเข้า LINE ไม่สำเร็จ</p> : lineDelivery?.status === 'NOT_LINKED' ? <p className="font-semibold">รายการจองนี้ไม่มี LINE ID ที่เชื่อมไว้</p> : <p className="font-semibold">ยังยืนยันผลการส่งตั๋วเข้า LINE ไม่ได้</p>}
-          {lineDelivery?.error && <p className="mt-1 break-words text-[10px] opacity-80">{lineDelivery.error}</p>}
-          {booking.customerLineId && <div className="mt-2 flex flex-wrap items-center gap-3"><button type="button" onClick={retryLineDelivery} disabled={retryingLine} className="rounded-lg bg-[#06c755] px-3 py-1.5 font-bold text-white disabled:opacity-50">{retryingLine ? 'กำลังส่ง…' : 'ลองส่งตั๋วอีกครั้ง'}</button></div>}
-          {lineDelivery?.status === 'SENT' && <p className="mt-1 text-[10px] opacity-75">LINE รับคำขอแล้ว แต่อาจยังไม่แสดงในแชตหากยังไม่ได้เพิ่มบอตเป็นเพื่อน</p>}
-        </div>
-
         {/* Issued Tickets List */}
         <div className="space-y-3 mt-6 text-left">
           {tickets.map(tkt => (
@@ -210,14 +218,22 @@ export default function PaymentPage() {
         <div className="mt-8 flex flex-col gap-2">
           <Link
             to={`/tickets/${tickets[0]?.ticketCode || ''}`}
-            className="w-full py-3 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
+            className="w-full py-3 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors shadow-lg"
           >
             เปิดหน้าตั๋วเข้างานทันที
             <ArrowRight className="w-4 h-4" />
           </Link>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open_soundwave_history'))}
+            className="w-full py-2.5 rounded-xl bg-cyan-400/10 border border-cyan-400/30 text-cyan-300 font-bold text-xs uppercase flex items-center justify-center gap-1.5 hover:bg-cyan-400/20 transition-colors cursor-pointer"
+          >
+            <Ticket className="w-3.5 h-3.5" />
+            ดูประวัติการซื้อตั๋วทั้งหมดในเครื่องนี้
+          </button>
           <Link
             to="/"
-            className="w-full py-2.5 rounded-xl text-gray-400 text-xs hover:text-white"
+            className="w-full py-2 rounded-xl text-gray-400 text-xs hover:text-white"
           >
             กลับสู่หน้าหลัก
           </Link>
@@ -309,6 +325,14 @@ export default function PaymentPage() {
             <span className="text-gray-400">โซน:</span>
             <span className="font-medium text-white">{booking.items?.[0]?.zone?.name}</span>
           </div>
+          {(booking.selectedSeatsList?.length > 0 || booking.selectedSeats) && (
+            <div className="flex justify-between">
+              <span className="text-gray-400">ที่นั่งที่ระบุ:</span>
+              <span className="font-mono font-bold text-cyan-300">
+                {(booking.selectedSeatsList || (booking.selectedSeats ? JSON.parse(booking.selectedSeats) : [])).join(', ')}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-gray-400">จำนวน:</span>
             <span className="font-medium text-white">{booking.items?.[0]?.quantity} ใบ</span>

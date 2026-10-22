@@ -23,6 +23,9 @@ import {
   Link2,
   X,
   PenLine,
+  Lock,
+  Unlock,
+  Settings2,
 } from 'lucide-react';
 import CropImageModal from '../../components/CropImageModal';
 import LocationPicker from '../../components/LocationPicker';
@@ -98,8 +101,123 @@ export default function AdminPage() {
   // Per-zone custom category text input state: { [zoneIndex]: string }
   const [customCatInputs, setCustomCatInputs] = useState({});
 
+  // ── Seat Management State ────────────────────────────────────────────────────
+  const [zoneSeatsModal, setZoneSeatsModal] = useState(null); // { zoneId, zoneName, data }
+  const [zoneSeatsLoading, setZoneSeatsLoading] = useState(false);
+  const [editingTicket, setEditingTicket] = useState(null); // ticket object
+  const [editSeatInput, setEditSeatInput] = useState('');
+  const [editNameInput, setEditNameInput] = useState('');
+  const [blockSeatInput, setBlockSeatInput] = useState('');
+  const [blockNameInput, setBlockNameInput] = useState('');
+  const [capacityEditInput, setCapacityEditInput] = useState('');
+  const [seatActionLoading, setSeatActionLoading] = useState(false);
+  const [seatActionError, setSeatActionError] = useState('');
+
   const toggleExpand = (id) => {
     setExpandedConcerts((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // ── Seat Management Functions ────────────────────────────────────────────────
+  const openZoneSeats = async (zoneId, zoneName) => {
+    setZoneSeatsLoading(true);
+    setSeatActionError('');
+    try {
+      const data = await api(/zones//seats);
+      setZoneSeatsModal({ zoneId, zoneName, data });
+      setCapacityEditInput(String(data.zone?.totalCapacity || ''));
+      setBlockSeatInput('');
+      setBlockNameInput('');
+      setEditingTicket(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setZoneSeatsLoading(false);
+    }
+  };
+
+  const refreshZoneSeats = async () => {
+    if (!zoneSeatsModal) return;
+    try {
+      const data = await api(/zones//seats);
+      setZoneSeatsModal((prev) => ({ ...prev, data }));
+    } catch (err) {
+      setSeatActionError(err.message);
+    }
+  };
+
+  const handleBlockSeat = async () => {
+    if (!zoneSeatsModal || !blockSeatInput.trim()) return;
+    setSeatActionLoading(true);
+    setSeatActionError('');
+    try {
+      await api(/zones//seats/block, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seatNumber: blockSeatInput.trim(), attendeeName: blockNameInput.trim() || 'ล็อกโดยแอดมิน' }),
+      });
+      setBlockSeatInput('');
+      setBlockNameInput('');
+      await refreshZoneSeats();
+    } catch (err) {
+      setSeatActionError(err.message);
+    } finally {
+      setSeatActionLoading(false);
+    }
+  };
+
+  const handleCancelTicket = async (ticketId) => {
+    if (!window.confirm('ยืนยันยกเลิกตั๋วและคืนที่นั่งนี้?')) return;
+    setSeatActionLoading(true);
+    setSeatActionError('');
+    try {
+      await api(/tickets//cancel, { method: 'POST' });
+      await refreshZoneSeats();
+      if (editingTicket?.id === ticketId) setEditingTicket(null);
+    } catch (err) {
+      setSeatActionError(err.message);
+    } finally {
+      setSeatActionLoading(false);
+    }
+  };
+
+  const handleEditTicket = async () => {
+    if (!editingTicket) return;
+    setSeatActionLoading(true);
+    setSeatActionError('');
+    try {
+      await api(/tickets//edit, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seatNumber: editSeatInput.trim(), attendeeName: editNameInput.trim() }),
+      });
+      setEditingTicket(null);
+      await refreshZoneSeats();
+    } catch (err) {
+      setSeatActionError(err.message);
+    } finally {
+      setSeatActionLoading(false);
+    }
+  };
+
+  const handleUpdateCapacity = async () => {
+    if (!zoneSeatsModal || !capacityEditInput) return;
+    const cap = parseInt(capacityEditInput, 10);
+    if (isNaN(cap) || cap < 1) { setSeatActionError('ความจุต้องเป็นตัวเลขมากกว่า 0'); return; }
+    setSeatActionLoading(true);
+    setSeatActionError('');
+    try {
+      await api(/zones//capacity, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ totalCapacity: cap }),
+      });
+      await refreshZoneSeats();
+      await loadDashboard();
+    } catch (err) {
+      setSeatActionError(err.message);
+    } finally {
+      setSeatActionLoading(false);
+    }
   };
 
   const loadDashboard = useCallback(async () => {
@@ -647,6 +765,7 @@ export default function AdminPage() {
                               <th className="py-2.5 px-3 text-center">คงเหลือ</th>
                               <th className="py-2.5 px-3 text-center">สแกนเข้างาน</th>
                               <th className="py-2.5 px-3 text-right">รายได้โซน</th>
+                              <th className="py-2.5 px-3 text-center">จัดการที่นั่ง</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { sendTicketToLineUser } = require('../services/lineService');
+const { sendTicketToLineUser, sendTicketsToLineUser } = require('../services/lineService');
 
 async function deliverTicketsToLine(booking, tickets) {
   if (!booking.customerLineId) {
@@ -10,24 +10,75 @@ async function deliverTicketsToLine(booking, tickets) {
     return { status: 'NOT_LINKED', error: 'รายการจองนี้ไม่มี LINE ID' };
   }
 
-  const results = await Promise.all(tickets.map((ticket) => {
-    const item = booking.items?.find((entry) => entry.zoneId === ticket.zoneId);
-    const zone = item?.zone || ticket.zone;
-    const concert = zone?.concert || ticket.zone?.concert;
-    if (!zone || !concert) return Promise.resolve({ success: false, error: 'ข้อมูลคอนเสิร์ตของตั๋วไม่ครบ' });
-    return sendTicketToLineUser(booking.customerLineId, concert, ticket, zone, booking);
-  }));
-  const failed = results.find((result) => !result.success);
-  const status = failed ? 'FAILED' : 'SENT';
-  const error = failed?.error || failed?.reason || null;
+  const item = booking.items?.find((entry) => entry.zoneId === tickets[0]?.zoneId);
+  const zone = item?.zone || tickets[0]?.zone;
+  const concert = zone?.concert || tickets[0]?.zone?.concert;
+  if (!zone || !concert) {
+    await prisma.booking.update({ where: { id: booking.id }, data: { lineDeliveryStatus: 'FAILED', lineDeliveryError: 'ข้อมูลคอนเสิร์ตของตั๋วไม่ครบ' } });
+    return { status: 'FAILED', error: 'ข้อมูลคอนเสิร์ตของตั๋วไม่ครบ' };
+  }
+
+  const result = await sendTicketsToLineUser(booking.customerLineId, concert, tickets, zone, booking);
+  const status = result.success ? 'SENT' : 'FAILED';
+  const error = result.error || result.reason || null;
   await prisma.booking.update({ where: { id: booking.id }, data: { lineDeliveryStatus: status, lineDeliveryError: error } });
   return { status, error };
 }
 
-// POST /api/bookings - Create new reservation with 10-minute hold
+// GET /api/bookings/zones/:zoneId/occupied-seats - List all occupied/reserved seats
+router.get('/zones/:zoneId/occupied-seats', async (req, res) => {
+  try {
+    const zoneId = parseInt(req.params.zoneId, 10);
+    if (isNaN(zoneId)) return res.status(400).json({ success: false, message: 'Invalid zoneId' });
+
+    // 1. Seats already issued in valid or used tickets
+    const tickets = await prisma.ticket.findMany({
+      where: {
+        zoneId,
+        status: { in: ['VALID', 'USED'] },
+        seatNumber: { not: null }
+      },
+      select: { seatNumber: true }
+    });
+    const ticketSeats = tickets.map((t) => t.seatNumber).filter(Boolean);
+
+    // 2. Seats locked in active pending bookings (within 10-minute hold window)
+    const activeBookings = await prisma.booking.findMany({
+      where: {
+        status: 'PENDING',
+        expiresAt: { gt: new Date() },
+        items: { some: { zoneId } }
+      },
+      select: { selectedSeats: true }
+    });
+
+    const pendingSeats = [];
+    for (const b of activeBookings) {
+      if (b.selectedSeats) {
+        try {
+          const parsed = JSON.parse(b.selectedSeats);
+          if (Array.isArray(parsed)) pendingSeats.push(...parsed);
+        } catch (e) {}
+      }
+    }
+
+    const occupiedSeats = Array.from(new Set([...ticketSeats, ...pendingSeats]));
+
+    res.json({
+      success: true,
+      zoneId,
+      occupiedSeats
+    });
+  } catch (error) {
+    console.error('Error getting occupied seats:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+// POST /api/bookings - Create new reservation with 10-minute hold & unique seat validation
 router.post('/', async (req, res) => {
   try {
-    const { concertId, zoneId, quantity, customerName, customerPhone, customerLineId } = req.body;
+    const { concertId, zoneId, quantity, customerName, customerPhone, customerLineId, selectedSeats } = req.body;
 
     if (!concertId || !zoneId || !quantity || !customerName || !customerPhone) {
       return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
@@ -46,6 +97,70 @@ router.post('/', async (req, res) => {
 
     if (!zone || zone.concertId !== Number(concertId) || zone.available < qty) {
       return res.status(400).json({ success: false, message: 'บัตรในโซนนี้ไม่เพียงพอหรือหมดแล้ว' });
+    }
+
+    // Validate selectedSeats if provided (Cinema Seat Unique Selection)
+    let seatsToReserve = [];
+    if (Array.isArray(selectedSeats) && selectedSeats.length > 0) {
+      seatsToReserve = selectedSeats.map((s) => String(s).trim()).filter(Boolean);
+      
+      if (seatsToReserve.length !== qty) {
+        return res.status(400).json({
+          success: false,
+          message: `จำนวนที่นั่งที่เลือก (${seatsToReserve.length} ที่นั่ง) ไม่ตรงกับจำนวนบัตรที่ต้องการ (${qty} ใบ)`
+        });
+      }
+
+      // Check for duplicate seats within the current selection
+      if (new Set(seatsToReserve).size !== seatsToReserve.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'พบที่นั่งซ้ำกันในรายการที่เลือก กรุณาเลือกที่นั่งที่ไม่ซ้ำกัน'
+        });
+      }
+
+      // Check conflict with already issued tickets in this zone
+      const conflictTicket = await prisma.ticket.findFirst({
+        where: {
+          zoneId: zone.id,
+          status: { in: ['VALID', 'USED'] },
+          seatNumber: { in: seatsToReserve }
+        }
+      });
+
+      if (conflictTicket) {
+        return res.status(409).json({
+          success: false,
+          message: `ขออภัย ที่นั่ง ${conflictTicket.seatNumber} มีผู้จองไปแล้ว กรุณาเลือกที่นั่งอื่น`
+        });
+      }
+
+      // Check conflict with other users' active pending bookings (within 10-minute hold window)
+      const activePending = await prisma.booking.findMany({
+        where: {
+          status: 'PENDING',
+          expiresAt: { gt: new Date() },
+          items: { some: { zoneId: zone.id } }
+        },
+        select: { selectedSeats: true }
+      });
+
+      for (const b of activePending) {
+        if (b.selectedSeats) {
+          try {
+            const taken = JSON.parse(b.selectedSeats);
+            if (Array.isArray(taken)) {
+              const conflict = seatsToReserve.find((s) => taken.includes(s));
+              if (conflict) {
+                return res.status(409).json({
+                  success: false,
+                  message: `ขออภัย ที่นั่ง ${conflict} กำลังมีผู้ทำรายการจองอยู่ กรุณาเลือกที่นั่งอื่น`
+                });
+              }
+            }
+          } catch (e) {}
+        }
+      }
     }
 
     // Generate Booking Code: SW-YEAR-RANDOM
@@ -71,6 +186,7 @@ router.post('/', async (req, res) => {
           customerName,
           customerPhone,
           customerLineId: customerLineId || null,
+          selectedSeats: seatsToReserve.length > 0 ? JSON.stringify(seatsToReserve) : null,
           totalAmount,
           expiresAt,
           status: 'PENDING',
@@ -104,6 +220,7 @@ router.post('/', async (req, res) => {
         expiresAt: booking.expiresAt,
         zoneName: zone.name,
         quantity: qty,
+        selectedSeats: seatsToReserve,
         concertName: zone.concert.name
       }
     });
@@ -157,9 +274,19 @@ router.get('/:bookingCode', async (req, res) => {
       booking.status = 'EXPIRED';
     }
 
+    let parsedSeats = [];
+    if (booking.selectedSeats) {
+      try {
+        parsedSeats = JSON.parse(booking.selectedSeats);
+      } catch (e) {}
+    }
+
     res.json({
       success: true,
-      data: booking
+      data: {
+        ...booking,
+        selectedSeatsList: parsedSeats
+      }
     });
   } catch (error) {
     console.error('Error getting booking:', error);
@@ -198,7 +325,19 @@ router.post('/:bookingCode/pay', async (req, res) => {
       return res.status(400).json({ success: false, message: 'หมดเวลาชำระเงินแล้ว รายการนี้ถูกยกเลิก' });
     }
 
-    // Generate Tickets
+    // Retrieve reserved seats from booking record or fallback to request body
+    let bookingSeats = [];
+    if (booking.selectedSeats) {
+      try {
+        bookingSeats = JSON.parse(booking.selectedSeats);
+      } catch (e) {}
+    }
+    if (!bookingSeats.length && Array.isArray(req.body?.selectedSeats)) {
+      bookingSeats = req.body.selectedSeats;
+    }
+
+    // Generate Tickets with unique seat numbers
+    let seatIndex = 0;
     const createdTickets = await prisma.$transaction(async (tx) => {
       await tx.booking.update({
         where: { id: booking.id },
@@ -217,13 +356,14 @@ router.post('/:bookingCode/pay', async (req, res) => {
             .slice(0, 4)
             .toUpperCase() || 'PASS';
           const ticketCode = `SWP-${catCode}-${randomSuffix}-${Date.now().toString().slice(-4)}`;
-          
-          const requestedSeats = Array.isArray(req.body?.selectedSeats) ? req.body.selectedSeats : [];
+
           const isSeatCategory = /seat|chair|นั่ง|vip/i.test(item.zone.category || '');
-          const defaultSeat = isSeatCategory
-            ? `ROW-${String.fromCharCode(65 + Math.floor(Math.random() * 5))}-${Math.floor(Math.random() * 30) + 1}`
-            : null;
-          const seat = requestedSeats[i] || defaultSeat;
+          const fallbackSeat = isSeatCategory
+            ? `ROW-A-${String(seatIndex + 1).padStart(2, '0')}`
+            : `SPOT-${String(seatIndex + 1).padStart(2, '0')}`;
+          
+          const seat = bookingSeats[seatIndex] || fallbackSeat;
+          seatIndex++;
 
           const ticket = await tx.ticket.create({
             data: {

@@ -10,6 +10,51 @@ export default function Navbar() {
   const [purchaseHistory, setPurchaseHistory] = useState([]);
   const [authUser, setAuthUser] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
+  useEffect(() => {
+    const handleOpen = () => openHistoryModal();
+    window.addEventListener('open_soundwave_history', handleOpen);
+    return () => window.removeEventListener('open_soundwave_history', handleOpen);
+  }, []);
+
+  const handleLookupBooking = async (codeToSearch) => {
+    const query = (codeToSearch || historySearch).trim();
+    if (!query) return;
+    setSearchLoading(true);
+    setSearchError('');
+    try {
+      const res = await fetch(`/api/bookings/${encodeURIComponent(query)}`);
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.data) {
+        throw new Error(data.message || 'ไม่พบรายการจองนี้ในระบบ');
+      }
+      const b = data.data;
+      if (b.status !== 'PAID') {
+        throw new Error(`รายการจองนี้ยังไม่สำเร็จ (สถานะ: ${b.status})`);
+      }
+      const newEntry = {
+        bookingCode: b.bookingCode,
+        customerName: b.customerName,
+        customerPhone: b.customerPhone,
+        zoneName: b.items?.[0]?.zone?.name || 'Festival Zone',
+        totalAmount: b.totalAmount,
+        tickets: b.tickets || [],
+        paidAt: b.paidAt || new Date().toISOString()
+      };
+      const saved = JSON.parse(localStorage.getItem('soundwave_purchase_history') || '[]');
+      const updated = [newEntry, ...saved.filter(item => item.bookingCode !== b.bookingCode)];
+      localStorage.setItem('soundwave_purchase_history', JSON.stringify(updated));
+      setPurchaseHistory(updated);
+      setHistorySearch('');
+    } catch (err) {
+      setSearchError(err.message || 'ค้นหาไม่สำเร็จ');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('soundwave_session');
@@ -138,6 +183,31 @@ export default function Navbar() {
 
             {/* Modal Content */}
             <div className="p-5 overflow-y-auto space-y-4 flex-1">
+            {/* Search or Lookup by Booking Code */}
+            <div className="p-3 bg-white/5 border border-white/10 rounded-2xl space-y-2">
+              <span className="text-[11px] text-gray-300 font-bold block">ค้นหารายการจอง / กู้คืนตั๋ว:</span>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={historySearch}
+                  onChange={(e) => { setHistorySearch(e.target.value); setSearchError(''); }}
+                  placeholder="พิมพ์รหัสจอง เช่น SW-2026-..."
+                  className="flex-1 bg-black/50 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 font-mono"
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLookupBooking(); } }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleLookupBooking()}
+                  disabled={searchLoading || !historySearch.trim()}
+                  className="px-3 py-1.5 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-40 text-black font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  {searchLoading ? 'ค้นหา…' : 'ค้นหา'}
+                </button>
+              </div>
+              {searchError && (
+                <p className="text-[10px] text-rose-400 font-semibold">{searchError}</p>
+              )}
+            </div>
               {purchaseHistory.length === 0 ? (
                 <div className="text-center py-12 text-gray-400 text-xs">
                   <Ticket className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />

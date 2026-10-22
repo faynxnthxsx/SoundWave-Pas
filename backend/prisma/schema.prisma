@@ -49,6 +49,7 @@ model Booking {
   customerName   String
   customerPhone  String
   customerLineId String?       // LINE User ID for Flex Message delivery
+  selectedSeats  String?       // JSON array of selected seat numbers
   lineDeliveryStatus String?   // SENT, FAILED, or NOT_LINKED
   lineDeliveryError String?
   status         String        @default("PENDING") // PENDING, PAID, CANCELLED, EXPIRED
