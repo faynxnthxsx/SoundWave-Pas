@@ -96,9 +96,12 @@ router.post('/', requireCustomer, async (req, res) => {
       include: { concert: true }
     });
 
-    if (!zone || zone.concertId !== Number(concertId) || zone.available < qty) {
+  if (!zone || zone.concertId !== Number(concertId) || zone.available < qty) {
       return res.status(400).json({ success: false, message: 'บัตรในโซนนี้ไม่เพียงพอหรือหมดแล้ว' });
     }
+  if (!['ON_SALE'].includes(zone.status) || !['ON_SALE', 'UPCOMING'].includes(zone.concert.status)) {
+    return res.status(409).json({ success: false, message: 'คอนเสิร์ตหรือโซนนี้พักการขาย/ปิดการขายแล้ว' });
+  }
 
     if (zone.concert?.status === 'PAUSED') {
       return res.status(400).json({ success: false, message: 'คอนเสิร์ตนี้พักการจำหน่ายบัตรชั่วคราว' });

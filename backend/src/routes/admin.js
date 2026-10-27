@@ -33,6 +33,113 @@ router.post('/upload', async (req, res) => {
   }
 });
 
+// Event Discovery Radar ------------------------------------------------------
+// Configure one or more JSON feeds with EVENT_RADAR_FEED_URLS (comma-separated).
+// Each feed may return an array, { events: [] }, or { data: [] }.
+const radarDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const normalizeRadarEvent = (event, source, index) => {
+  const title = String(event.title || event.name || event.eventName || '').trim();
+  if (!title) return null;
+  const eventDate = radarDate(event.eventDate || event.date || event.startDate || event.start_time);
+  const sourceUrl = event.url || event.link || event.sourceUrl || null;
+  const externalId = String(event.id || event.slug || sourceUrl || `${source}:${title}:${eventDate?.toISOString() || index}`);
+  return {
+    externalId: `${source}:${externalId}`.slice(0, 190),
+    source,
+    sourceUrl,
+    title,
+    eventDate,
+    venue: event.venue || event.place || event.location || null,
+    location: event.city || event.province || event.location || 'ประเทศไทย',
+    description: event.description || event.detail || '',
+    imageUrl: event.imageUrl || event.image || event.bannerUrl || null,
+    rawJson: JSON.stringify(event).slice(0, 100000),
+  };
+};
+
+router.get('/radar/candidates', async (req, res) => {
+  try {
+    const candidates = await prisma.radarCandidate.findMany({ orderBy: [{ status: 'asc' }, { eventDate: 'asc' }, { createdAt: 'desc' }] });
+    res.json({ success: true, data: candidates });
+  } catch (error) {
+    console.error('Radar list error:', error);
+    res.status(500).json({ success: false, message: 'โหลด Event Radar ไม่สำเร็จ' });
+  }
+});
+
+router.post('/radar/discover', async (req, res) => {
+  const feedUrls = String(process.env.EVENT_RADAR_FEED_URLS || '').split(',').map((url) => url.trim()).filter(Boolean);
+  if (!feedUrls.length) return res.json({ success: true, data: { candidates: [], sources: [], message: 'ยังไม่ได้ตั้งค่า EVENT_RADAR_FEED_URLS' } });
+  try {
+    const discovered = [];
+    const sources = [];
+    for (const feedUrl of feedUrls) {
+      const response = await fetch(feedUrl, { headers: { Accept: 'application/json' } });
+      if (!response.ok) continue;
+      const payload = await response.json();
+      const events = Array.isArray(payload) ? payload : payload.events || payload.data || payload.results || [];
+      const source = new URL(feedUrl).hostname;
+      sources.push(source);
+      events.forEach((event, index) => {
+        const normalized = normalizeRadarEvent(event, source, index);
+        if (normalized) discovered.push(normalized);
+      });
+    }
+    for (const candidate of discovered) {
+      await prisma.radarCandidate.upsert({ where: { externalId: candidate.externalId }, create: candidate, update: candidate });
+    }
+    const candidates = await prisma.radarCandidate.findMany({ where: { status: 'NEW' }, orderBy: { eventDate: 'asc' } });
+    res.json({ success: true, data: { candidates, sources, discovered: discovered.length } });
+  } catch (error) {
+    console.error('Radar discovery error:', error);
+    res.status(502).json({ success: false, message: `ตรวจจับอีเวนต์ไม่สำเร็จ: ${error.message}` });
+  }
+});
+
+router.post('/radar/candidates/:id/import', async (req, res) => {
+  try {
+    const candidate = await prisma.radarCandidate.findUnique({ where: { id: Number(req.params.id) } });
+    if (!candidate) return res.status(404).json({ success: false, message: 'ไม่พบอีเวนต์จาก Radar' });
+    const slugBase = candidate.title.toLowerCase().replace(/[^a-z0-9ก-๙]+/gi, '-').replace(/^-|-$/g, '') || `radar-${candidate.id}`;
+    let slug = slugBase;
+    let suffix = 2;
+    while (await prisma.concert.findUnique({ where: { slug } })) slug = `${slugBase}-${suffix++}`;
+    const concert = await prisma.concert.create({
+      data: {
+        name: candidate.title,
+        slug,
+        description: candidate.description || `นำเข้าจาก Event Discovery Radar: ${candidate.source}`,
+        eventDate: candidate.eventDate || new Date(Date.now() + 86400000 * 30),
+        location: candidate.location || 'ประเทศไทย',
+        venue: candidate.venue || candidate.location || 'รอยืนยันสถานที่',
+        bannerUrl: candidate.imageUrl || '',
+        lineupJson: '[]',
+        scheduleJson: '[]',
+        status: 'UPCOMING',
+        zones: { create: { name: 'General Admission', category: 'STANDING', price: 0, totalCapacity: 1, available: 1 } },
+      },
+      include: { zones: true },
+    });
+    await prisma.radarCandidate.update({ where: { id: candidate.id }, data: { status: 'IMPORTED' } });
+    res.status(201).json({ success: true, message: 'นำเข้าอีเวนต์สำเร็จ', data: concert });
+  } catch (error) {
+    console.error('Radar import error:', error);
+    res.status(500).json({ success: false, message: 'นำเข้าอีเวนต์ไม่สำเร็จ' });
+  }
+});
+
+router.patch('/radar/candidates/:id/status', async (req, res) => {
+  const status = String(req.body?.status || 'DISMISSED');
+  if (!['NEW', 'IMPORTED', 'DISMISSED'].includes(status)) return res.status(400).json({ success: false, message: 'สถานะ Radar ไม่ถูกต้อง' });
+  const candidate = await prisma.radarCandidate.update({ where: { id: Number(req.params.id) }, data: { status } });
+  res.json({ success: true, data: candidate });
+});
+
 // ─── GET /api/admin/stats ────────────────────────────────────────────────────
 // Summary numbers: tickets, revenue, check-ins, concerts
 router.get('/stats', async (req, res) => {
@@ -218,6 +325,9 @@ router.put('/concerts/:id', async (req, res) => {
     const { name, description, eventDate, location, venue, latitude, longitude, bannerUrl, lineupJson, scheduleJson, status } =
       req.body;
 
+    if (status && !['UPCOMING', 'ON_SALE', 'PAUSED', 'CLOSED', 'COMPLETED'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'สถานะคอนเสิร์ตไม่ถูกต้อง' });
+    }
     const updated = await prisma.concert.update({
       where: { id },
       data: {
@@ -261,6 +371,19 @@ router.patch('/concerts/:id/status', async (req, res) => {
   }
 });
 
+// PATCH /api/admin/zones/:id/status - Pause or close one ticket zone
+router.patch('/zones/:id/status', async (req, res) => {
+  try {
+    const status = String(req.body?.status || 'ON_SALE');
+    if (!['ON_SALE', 'PAUSED', 'CLOSED'].includes(status)) return res.status(400).json({ success: false, message: 'สถานะโซนไม่ถูกต้อง' });
+    const zone = await prisma.zone.update({ where: { id: Number(req.params.id) }, data: { status }, include: { concert: true } });
+    res.json({ success: true, message: `เปลี่ยนสถานะโซนเป็น ${status} สำเร็จ`, data: zone });
+  } catch (error) {
+    console.error('Admin update zone status error:', error);
+    res.status(500).json({ success: false, message: 'เปลี่ยนสถานะโซนไม่สำเร็จ' });
+  }
+});
+
 // ─── GET /api/admin/bookings ─────────────────────────────────────────────────
 // Recent bookings list
 router.get('/bookings', async (req, res) => {
@@ -273,7 +396,7 @@ router.get('/bookings', async (req, res) => {
           include: { zone: { include: { concert: true } } },
         },
         tickets: {
-          select: { id: true, ticketCode: true, status: true, attendeeName: true, seatNumber: true, usedAt: true },
+          select: { id: true, ticketCode: true, status: true, attendeeName: true, seatNumber: true, usedAt: true, zone: { select: { id: true, name: true, category: true, price: true, concert: { select: { id: true, name: true, eventDate: true, venue: true } } } } },
         },
         _count: { select: { tickets: true } },
       },

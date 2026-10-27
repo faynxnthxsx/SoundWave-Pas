@@ -20,7 +20,7 @@ model Concert {
   bannerUrl   String
   lineupJson  String   // JSON string of bands & stages
   scheduleJson String  // JSON string of timetable
-  status      String   @default("UPCOMING") // UPCOMING, ONGOING, COMPLETED
+  status      String   @default("UPCOMING") // UPCOMING, ON_SALE, PAUSED, CLOSED, COMPLETED
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -33,6 +33,7 @@ model Zone {
   concert       Concert       @relation(fields: [concertId], references: [id], onDelete: Cascade)
   name          String        // e.g. "Standing Pit A", "Grandstand Seated"
   category      String        // STANDING, SEATED, CAMPING
+  status        String        @default("ON_SALE") // ON_SALE, PAUSED, CLOSED
   description   String        @default("")
   price         Float
   totalCapacity Int
@@ -42,6 +43,23 @@ model Zone {
 
   bookingItems  BookingItem[]
   tickets       Ticket[]
+}
+
+model RadarCandidate {
+  id          Int      @id @default(autoincrement())
+  externalId  String   @unique
+  source      String
+  sourceUrl   String?
+  title       String
+  eventDate   DateTime?
+  venue       String?
+  location    String?
+  description String   @default("")
+  imageUrl    String?
+  rawJson     String   @default("{}")
+  status      String   @default("NEW") // NEW, IMPORTED, DISMISSED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Booking {
