@@ -5,6 +5,8 @@ const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const { requireOrganizer } = require('../middleware/organizerAuth');
+const { sendTicketsToLineUser } = require('../services/lineService');
+const { getDiscoveredConcerts, importDiscoveredConcert } = require('../services/concertDiscoveryService');
 const prisma = new PrismaClient();
 
 // Organizer dashboard accounts are separate from gate staff accounts.
@@ -108,6 +110,8 @@ router.get('/concerts', async (req, res) => {
           price: z.price,
           totalCapacity: z.totalCapacity,
           available: z.available,
+          colorCode: z.colorCode,
+          isActive: z.isActive !== false,
           sold: zoneSold,
           checkedIn: zoneCheckedIn,
           revenue: zoneRevenue,
@@ -583,6 +587,353 @@ router.post('/zones/:zoneId/capacity', async (req, res) => {
   } catch (err) {
     console.error('Admin update zone capacity error:', err);
     res.status(err.status || 500).json({ success: false, message: err.status ? err.message : 'Internal Server Error' });
+  }
+});
+
+// ─── PATCH /api/admin/zones/:id/toggle-active ──────────────────────────────
+// Toggle zone sales status (active / paused)
+router.patch('/zones/:id/toggle-active', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { isActive } = req.body;
+    const current = await prisma.zone.findUnique({ where: { id } });
+    if (!current) return res.status(404).json({ success: false, message: 'ไม่พบโซนนี้' });
+
+    const newActive = typeof isActive === 'boolean' ? isActive : !current.isActive;
+    const updated = await prisma.zone.update({
+      where: { id },
+      data: { isActive: newActive }
+    });
+    res.json({
+      success: true,
+      message: `${updated.isActive ? 'เปิดขาย' : 'พักการจำหน่าย'} โซน ${updated.name} แล้ว`,
+      data: updated
+    });
+  } catch (err) {
+    console.error('Admin toggle zone error:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
+  }
+});
+
+// ─── POST /api/admin/zones/:zoneId/seats/batch-block ───────────────────────
+// Batch lock / reserve multiple seats (e.g. an entire row)
+router.post('/zones/:zoneId/seats/batch-block', async (req, res) => {
+  try {
+    const zoneId = parseInt(req.params.zoneId, 10);
+    const { seatNumbers, attendeeName } = req.body;
+    if (!Array.isArray(seatNumbers) || seatNumbers.length === 0) {
+      return res.status(400).json({ success: false, message: 'กรุณาระบุที่นั่งที่ต้องการล็อก' });
+    }
+
+    const zone = await prisma.zone.findUnique({ where: { id: zoneId } });
+    if (!zone) return res.status(404).json({ success: false, message: 'ไม่พบโซนนี้' });
+
+    const reservedFor = String(attendeeName || 'Admin Reserved').trim();
+    const cleanSeats = [...new Set(seatNumbers.map((s) => String(s).trim()).filter(Boolean))];
+
+    // Find already occupied seats
+    const existingTickets = await prisma.ticket.findMany({
+      where: {
+        zoneId,
+        seatNumber: { in: cleanSeats },
+        status: { in: ['VALID', 'USED', 'RESERVED'] }
+      },
+      select: { seatNumber: true }
+    });
+    const takenSet = new Set(existingTickets.map((t) => t.seatNumber));
+    const seatsToLock = cleanSeats.filter((s) => !takenSet.has(s));
+
+    if (seatsToLock.length === 0) {
+      return res.status(400).json({ success: false, message: 'ทุกที่นั่งในรายการนี้ถูกใช้งานหรือล็อกอยู่แล้ว' });
+    }
+
+    if (zone.available < seatsToLock.length) {
+      return res.status(409).json({ success: false, message: `โควตาคงเหลือไม่เพียงพอ (ต้องการ ${seatsToLock.length} แต่เหลือ ${zone.available})` });
+    }
+
+    const created = await prisma.$transaction(async (tx) => {
+      await tx.zone.update({
+        where: { id: zoneId },
+        data: { available: { decrement: seatsToLock.length } }
+      });
+
+      const blockCode = `ADMIN-BLK-${Date.now().toString().slice(-6)}`;
+      const booking = await tx.booking.create({
+        data: {
+          bookingCode: blockCode,
+          customerName: reservedFor,
+          customerPhone: '0000000000',
+          selectedSeats: JSON.stringify(seatsToLock),
+          status: 'RESERVED',
+          totalAmount: 0,
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          paidAt: new Date(),
+          items: {
+            create: {
+              zoneId,
+              quantity: seatsToLock.length,
+              pricePerUnit: 0
+            }
+          }
+        }
+      });
+
+      const tickets = [];
+      for (const seatNumber of seatsToLock) {
+        const ticketCode = `SWP-BLK-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        const t = await tx.ticket.create({
+          data: {
+            ticketCode,
+            bookingId: booking.id,
+            zoneId,
+            attendeeName: reservedFor,
+            seatNumber,
+            status: 'RESERVED'
+          }
+        });
+        tickets.push(t);
+      }
+
+      return { booking, tickets, lockedCount: seatsToLock.length };
+    });
+
+    res.json({
+      success: true,
+      message: `ล็อกสำรอง ${created.lockedCount} ที่นั่งเรียบร้อยแล้ว`,
+      data: created
+    });
+  } catch (err) {
+    console.error('Admin batch block error:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการล็อกที่นั่ง' });
+  }
+});
+
+// ─── POST /api/admin/zones/:zoneId/seats/batch-release ─────────────────────
+// Batch release multiple reserved seats (e.g. an entire row)
+router.post('/zones/:zoneId/seats/batch-release', async (req, res) => {
+  try {
+    const zoneId = parseInt(req.params.zoneId, 10);
+    const { seatNumbers } = req.body;
+    if (!Array.isArray(seatNumbers) || seatNumbers.length === 0) {
+      return res.status(400).json({ success: false, message: 'กรุณาระบุที่นั่งที่ต้องการปลดล็อก' });
+    }
+
+    const cleanSeats = [...new Set(seatNumbers.map((s) => String(s).trim()).filter(Boolean))];
+    const reservedTickets = await prisma.ticket.findMany({
+      where: {
+        zoneId,
+        seatNumber: { in: cleanSeats },
+        status: 'RESERVED'
+      }
+    });
+
+    if (reservedTickets.length === 0) {
+      return res.status(400).json({ success: false, message: 'ไม่พบที่นั่งที่อยู่ในสถานะสำรอง' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const ticketIds = reservedTickets.map((t) => t.id);
+      const bookingIds = [...new Set(reservedTickets.map((t) => t.bookingId))];
+
+      await tx.ticket.updateMany({
+        where: { id: { in: ticketIds } },
+        data: { status: 'CANCELLED' }
+      });
+
+      for (const bId of bookingIds) {
+        const remainingValid = await tx.ticket.count({
+          where: { bookingId: bId, status: { not: 'CANCELLED' } }
+        });
+        if (remainingValid === 0) {
+          await tx.booking.update({
+            where: { id: bId },
+            data: { status: 'CANCELLED' }
+          });
+        }
+      }
+
+      await tx.zone.update({
+        where: { id: zoneId },
+        data: { available: { increment: reservedTickets.length } }
+      });
+    });
+
+    res.json({
+      success: true,
+      message: `ปลดล็อกและคืนโควตา ${reservedTickets.length} ที่นั่งเรียบร้อยแล้ว`
+    });
+  } catch (err) {
+    console.error('Admin batch release error:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการปลดล็อกที่นั่ง' });
+  }
+});
+
+// ─── GET /api/admin/search ─────────────────────────────────────────────────
+// Universal Quick Search across Bookings & Tickets
+router.get('/search', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.json({ success: true, data: { bookings: [], tickets: [] } });
+
+    const [bookings, tickets] = await Promise.all([
+      prisma.booking.findMany({
+        where: {
+          OR: [
+            { bookingCode: { contains: q } },
+            { customerName: { contains: q } },
+            { customerPhone: { contains: q } },
+            { customerLineId: { contains: q } }
+          ]
+        },
+        take: 20,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          items: { include: { zone: { include: { concert: true } } } },
+          tickets: true
+        }
+      }),
+      prisma.ticket.findMany({
+        where: {
+          OR: [
+            { ticketCode: { contains: q } },
+            { attendeeName: { contains: q } },
+            { seatNumber: { contains: q } }
+          ]
+        },
+        take: 30,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          zone: { include: { concert: true } },
+          booking: true
+        }
+      })
+    ]);
+
+    res.json({ success: true, data: { bookings, tickets } });
+  } catch (err) {
+    console.error('Admin search error:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการค้นหา' });
+  }
+});
+
+// ─── POST /api/admin/bookings/:bookingId/resend-line ───────────────────────
+// Resend LINE Flex Message ticket to attendee
+router.post('/bookings/:bookingId/resend-line', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        items: { include: { zone: { include: { concert: true } } } },
+        tickets: { include: { zone: { include: { concert: true } } } }
+      }
+    });
+
+    if (!booking) return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
+    if (!booking.customerLineId) {
+      return res.status(400).json({ success: false, message: 'รายการจองนี้ยังไม่ได้ผูกกับบัญชี LINE ของลูกค้า' });
+    }
+
+    const item = booking.items?.find((entry) => entry.zoneId === booking.tickets[0]?.zoneId);
+    const zone = item?.zone || booking.tickets[0]?.zone;
+    const concert = zone?.concert || booking.tickets[0]?.zone?.concert;
+
+    if (!zone || !concert) {
+      return res.status(400).json({ success: false, message: 'ข้อมูลคอนเสิร์ตหรือโซนไม่สมบูรณ์' });
+    }
+
+    const result = await sendTicketsToLineUser(booking.customerLineId, concert, booking.tickets, zone, booking);
+    const status = result.success ? 'SENT' : 'FAILED';
+    const error = result.error || result.reason || null;
+
+    const updated = await prisma.booking.update({
+      where: { id: booking.id },
+      data: { lineDeliveryStatus: status, lineDeliveryError: error }
+    });
+
+    if (!result.success) {
+      return res.status(502).json({
+        success: false,
+        message: `ส่งตั๋วเข้า LINE ไม่สำเร็จ: ${error || 'เกิดข้อผิดพลาดจาก LINE API'}`,
+        data: updated
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'ส่งตั๋ว Flex Message เข้า LINE ลูกค้าสำเร็จแล้ว',
+      data: updated
+    });
+  } catch (err) {
+    console.error('Admin resend line error:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการส่ง LINE' });
+  }
+});
+
+// ─── GET /api/admin/export/attendees ───────────────────────────────────────
+// Export attendees list for reporting
+router.get('/export/attendees', async (req, res) => {
+  try {
+    const { concertId } = req.query;
+    const where = {};
+    if (concertId) {
+      where.zone = { concertId: parseInt(concertId, 10) };
+    }
+
+    const tickets = await prisma.ticket.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        zone: { include: { concert: true } },
+        booking: true
+      }
+    });
+
+    const exportRows = tickets.map((t) => ({
+      ticketCode: t.ticketCode,
+      concertName: t.zone?.concert?.name || '',
+      zoneName: t.zone?.name || '',
+      category: t.zone?.category || '',
+      seatNumber: t.seatNumber || 'N/A',
+      attendeeName: t.attendeeName,
+      customerPhone: t.booking?.customerPhone || '',
+      bookingCode: t.booking?.bookingCode || '',
+      bookingStatus: t.booking?.status || '',
+      ticketStatus: t.status,
+      scannedAt: t.usedAt ? new Date(t.usedAt).toISOString() : '',
+      createdAt: new Date(t.createdAt).toISOString()
+    }));
+
+    res.json({ success: true, data: exportRows });
+  } catch (err) {
+    console.error('Admin export attendees error:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการส่งออกข้อมูล' });
+  }
+});
+
+// ─── GET /api/admin/discovery ──────────────────────────────────────────────
+// Discovery radar: lists real concerts in Thailand with unimported badge
+router.get('/discovery', async (req, res) => {
+  try {
+    const data = await getDiscoveredConcerts();
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('Admin discovery error:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการค้นหาคอนเสิร์ต' });
+  }
+});
+
+// ─── POST /api/admin/discovery/import ──────────────────────────────────────
+// 1-Click Import discovered concert into SoundWave Pass
+router.post('/discovery/import', async (req, res) => {
+  try {
+    const { externalId } = req.body;
+    if (!externalId) return res.status(400).json({ success: false, message: 'กรุณาระบุรหัสคอนเสิร์ต' });
+    const imported = await importDiscoveredConcert(externalId);
+    res.json({ success: true, message: `นำเข้าคอนเสิร์ต "${imported.name}" สำเร็จแล้ว`, data: imported });
+  } catch (err) {
+    console.error('Admin import discovery error:', err);
+    res.status(500).json({ success: false, message: err.message || 'เกิดข้อผิดพลาดในการนำเข้าคอนเสิร์ต' });
   }
 });
 

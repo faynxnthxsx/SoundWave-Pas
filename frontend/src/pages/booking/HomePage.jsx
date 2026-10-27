@@ -233,6 +233,16 @@ export default function HomePage() {
 
           {/* Quick Info Bar */}
           <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
+            {selectedConcert?.status === 'PAUSED' && (
+              <div className="flex items-center gap-2 bg-amber-400/20 border border-amber-400/40 px-4 py-2 rounded-xl text-xs text-amber-200 font-bold animate-pulse">
+                <span>⏸️ พักการจำหน่ายบัตรชั่วคราว</span>
+              </div>
+            )}
+            {selectedConcert?.status === 'CLOSED' && (
+              <div className="flex items-center gap-2 bg-rose-500/20 border border-rose-500/40 px-4 py-2 rounded-xl text-xs text-rose-200 font-bold">
+                <span>🔴 ปิดจำหน่ายบัตรแล้ว</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-xs text-gray-200 font-medium">
               <Calendar className="w-4 h-4 text-cyan-400" />
               {eventDateFormatted}
@@ -249,14 +259,24 @@ export default function HomePage() {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap justify-center gap-4 mt-8">
-            <Link
-              to={selectedConcert ? `/booking/zone-select?concertId=${selectedConcert.id}` : '/booking/zone-select'}
-              className="px-8 py-3.5 rounded-xl font-bold text-black text-sm uppercase tracking-wider flex items-center gap-2 bg-cyan-300 hover:bg-cyan-200 transition-all shadow-lg shadow-cyan-400/20 hover:scale-105"
-            >
-              <Zap className="w-4 h-4 text-black" />
-              เลือกโซนและจองบัตร
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            {selectedConcert?.status === 'PAUSED' ? (
+              <div className="px-8 py-3.5 rounded-xl font-bold text-amber-200 text-sm border border-amber-400/40 bg-amber-400/10 flex items-center gap-2">
+                <span>⏸️ พักการจำหน่ายชั่วคราว (กรุณารอประกาศเพิ่มเติม)</span>
+              </div>
+            ) : selectedConcert?.status === 'CLOSED' ? (
+              <div className="px-8 py-3.5 rounded-xl font-bold text-gray-400 text-sm border border-white/10 bg-white/5 flex items-center gap-2 cursor-not-allowed">
+                <span>🔴 ปิดการจำหน่ายบัตรแล้ว</span>
+              </div>
+            ) : (
+              <Link
+                to={selectedConcert ? `/booking/zone-select?concertId=${selectedConcert.id}` : '/booking/zone-select'}
+                className="px-8 py-3.5 rounded-xl font-bold text-black text-sm uppercase tracking-wider flex items-center gap-2 bg-cyan-300 hover:bg-cyan-200 transition-all shadow-lg shadow-cyan-400/20 hover:scale-105"
+              >
+                <Zap className="w-4 h-4 text-black" />
+                เลือกโซนและจองบัตร
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
             <a
               href="#artists-section"
               className="px-6 py-3.5 rounded-xl font-semibold text-gray-300 text-sm border border-white/15 bg-white/5 hover:bg-white/10 transition-all"
@@ -330,6 +350,16 @@ export default function HomePage() {
                       <span className={`text-xs font-black truncate ${isSelected ? 'text-cyan-200' : 'text-white'}`}>
                         {c.name}
                       </span>
+                      {c.status === 'PAUSED' && (
+                        <span className="shrink-0 rounded bg-amber-400/20 px-1 py-0.2 text-[9px] font-bold text-amber-300 border border-amber-400/40">
+                          พักการขาย
+                        </span>
+                      )}
+                      {c.status === 'CLOSED' && (
+                        <span className="shrink-0 rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300 border border-rose-500/40">
+                          ปิดขาย
+                        </span>
+                      )}
                       {isSelected && (
                         <span className="h-2 w-2 rounded-full bg-cyan-400 shrink-0 animate-ping" />
                       )}

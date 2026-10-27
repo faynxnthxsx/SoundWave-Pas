@@ -100,6 +100,16 @@ router.post('/', requireCustomer, async (req, res) => {
       return res.status(400).json({ success: false, message: 'บัตรในโซนนี้ไม่เพียงพอหรือหมดแล้ว' });
     }
 
+    if (zone.concert?.status === 'PAUSED') {
+      return res.status(400).json({ success: false, message: 'คอนเสิร์ตนี้พักการจำหน่ายบัตรชั่วคราว' });
+    }
+    if (zone.concert?.status === 'CLOSED' || zone.concert?.status === 'COMPLETED') {
+      return res.status(400).json({ success: false, message: 'คอนเสิร์ตนี้ปิดการจำหน่ายบัตรแล้ว' });
+    }
+    if (zone.isActive === false) {
+      return res.status(400).json({ success: false, message: `โซน ${zone.name} พักการจำหน่ายบัตรชั่วคราว` });
+    }
+
     // Validate selectedSeats if provided (Cinema Seat Unique Selection)
     let seatsToReserve = [];
     if (Array.isArray(selectedSeats) && selectedSeats.length > 0) {

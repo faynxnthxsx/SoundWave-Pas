@@ -16,6 +16,7 @@ import {
   AlertCircle,
   X,
   Sparkles,
+  RotateCcw,
 } from 'lucide-react';
 import StadiumZoneMap from './StadiumZoneMap';
 import AuthModal from '../../components/AuthModal';
@@ -190,7 +191,39 @@ export default function ZoneSelectPage() {
     [formatSeatCode]
   );
 
-  // Fetch Occupied Seats whenever Selected Zone changes
+  // Helper: Fetch occupied seats
+  const fetchOccupiedSeats = useCallback(async (isInitial = false) => {
+    if (!selectedZone?.id) return;
+    if (isInitial) setLoadingSeats(true);
+    try {
+      const res = await fetch(`/api/bookings/zones/${selectedZone.id}/occupied-seats`);
+      const data = await res.json();
+      const taken = Array.isArray(data.occupiedSeats) ? data.occupiedSeats : [];
+      setOccupiedSeats(taken);
+
+      if (isInitial) {
+        const initialCount = Math.max(1, Math.min(quantity, 6));
+        const initial = getFirstAvailableSeats(initialCount, taken);
+        setSelectedSeats(initial);
+        setQuantity(initial.length || 1);
+      } else {
+        // Check if any currently selected seat was taken by someone else
+        setSelectedSeats((prev) => {
+          const valid = prev.filter((s) => !taken.includes(s));
+          if (valid.length < prev.length) {
+            setErrorMsg('บางที่นั่งที่คุณเลือกถูกจองไปแล้ว ระบบได้นำออกจากรายการให้แล้ว');
+          }
+          return valid;
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to refresh occupied seats:', err);
+    } finally {
+      if (isInitial) setLoadingSeats(false);
+    }
+  }, [selectedZone?.id, quantity, getFirstAvailableSeats]);
+
+  // Fetch Occupied Seats on Zone change & Auto-poll every 18 seconds
   useEffect(() => {
     if (!selectedZone) {
       setOccupiedSeats([]);
@@ -198,40 +231,23 @@ export default function ZoneSelectPage() {
       return;
     }
 
-    let active = true;
-    setLoadingSeats(true);
+    fetchOccupiedSeats(true);
 
-    fetch(`/api/bookings/zones/${selectedZone.id}/occupied-seats`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!active) return;
-        const taken = Array.isArray(data.occupiedSeats) ? data.occupiedSeats : [];
-        setOccupiedSeats(taken);
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchOccupiedSeats(false);
+      }
+    }, 18000);
 
-        // Pick initial available seat(s) that are definitely NOT taken
-        const initialCount = Math.max(1, Math.min(quantity, 6));
-        const initial = getFirstAvailableSeats(initialCount, taken);
-        setSelectedSeats(initial);
-        setQuantity(initial.length || 1);
-      })
-      .catch((err) => {
-        console.error('Failed to load occupied seats:', err);
-        if (active) {
-          const fallback = getFirstAvailableSeats(1, []);
-          setSelectedSeats(fallback);
-        }
-      })
-      .finally(() => {
-        if (active) setLoadingSeats(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [selectedZone?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => clearInterval(interval);
+  }, [selectedZone?.id, fetchOccupiedSeats]);
 
   // Handle Zone Switching
   const selectZone = (zone) => {
+    if (zone.isActive === false) {
+      setErrorMsg(`โซน ${zone.name} พักการจำหน่ายบัตรชั่วคราว`);
+      return;
+    }
     if (zone.available <= 0) return;
     setSelectedZone(zone);
     setErrorMsg('');
@@ -449,6 +465,19 @@ export default function ZoneSelectPage() {
           </div>
         </header>
 
+        {concert.status === 'PAUSED' && (
+          <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-xs font-bold text-amber-200 flex items-center gap-2.5 shadow-lg shadow-amber-950/30">
+            <AlertCircle size={18} className="text-amber-400 shrink-0" />
+            <span>คอนเสิร์ตนี้กำลังพักการจำหน่ายบัตรชั่วคราว (PAUSED) ไม่สามารถทำรายการสั่งซื้อได้ในขณะนี้</span>
+          </div>
+        )}
+        {concert.status === 'CLOSED' && (
+          <div className="mb-6 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-xs font-bold text-rose-200 flex items-center gap-2.5 shadow-lg shadow-rose-950/30">
+            <AlertCircle size={18} className="text-rose-400 shrink-0" />
+            <span>คอนเสิร์ตนี้ปิดการจำหน่ายบัตรแล้ว (CLOSED)</span>
+          </div>
+        )}
+
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(380px,0.7fr)]">
           {/* ── Left Column: Stadium Map & Cinema Theater Matrix ── */}
           <div className="space-y-6">
@@ -476,8 +505,19 @@ export default function ZoneSelectPage() {
                     </div>
                   </div>
 
-                  {/* Selected Seats Badges */}
+                  {/* Selected Seats Badges & Refresh */}
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={loadingSeats}
+                      onClick={() => fetchOccupiedSeats(false)}
+                      title="รีเฟรชสถานะที่นั่งล่าสุด"
+                      className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-gray-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                    >
+                      <RotateCcw size={12} className={loadingSeats ? 'animate-spin text-cyan-300' : ''} />
+                      <span className="hidden sm:inline">รีเฟรชผัง</span>
+                    </button>
+
                     <span className="text-[11px] text-gray-400">เลือกแล้ว:</span>
                     <span className="rounded-lg bg-cyan-400/15 px-3 py-1 font-mono text-xs font-black text-cyan-300 border border-cyan-400/30">
                       {selectedSeats.length > 0 ? selectedSeats.join(', ') : 'ยังไม่ได้เลือก'}
@@ -838,7 +878,14 @@ export default function ZoneSelectPage() {
 
               <button
                 type="submit"
-                disabled={submitting || !selectedZone || selectedSeats.length === 0}
+                disabled={
+                  submitting ||
+                  !selectedZone ||
+                  selectedSeats.length === 0 ||
+                  concert.status === 'PAUSED' ||
+                  concert.status === 'CLOSED' ||
+                  selectedZone.isActive === false
+                }
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-200 px-4 py-3.5 text-sm font-black text-[#071016] transition hover:bg-white disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400 shadow-lg shadow-cyan-400/20 cursor-pointer"
               >
                 {submitting ? (
@@ -846,6 +893,12 @@ export default function ZoneSelectPage() {
                     <LoaderCircle size={16} className="animate-spin" />
                     กำลังล็อกที่นั่งและสร้างรายการ…
                   </>
+                ) : concert.status === 'PAUSED' ? (
+                  <span>คอนเสิร์ตพักการจำหน่ายชั่วคราว</span>
+                ) : concert.status === 'CLOSED' ? (
+                  <span>คอนเสิร์ตปิดการจำหน่ายแล้ว</span>
+                ) : selectedZone.isActive === false ? (
+                  <span>โซนนี้พักการจำหน่ายชั่วคราว</span>
                 ) : (
                   <>
                     <span>ยืนยันที่นั่ง ({selectedSeats.join(', ')}) และไปชำระเงิน</span>

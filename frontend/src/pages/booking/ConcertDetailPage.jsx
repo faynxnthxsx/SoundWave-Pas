@@ -57,7 +57,27 @@ export default function ConcertDetailPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#09090f] via-[#09090f]/30 to-black/20" />
         <Link to="/" className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-xl border border-white/20 bg-black/40 px-3 py-2 text-xs font-semibold backdrop-blur"><ArrowLeft size={15} />กลับ</Link>
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-4 pb-7 sm:px-6">
-          <span className="rounded-full border border-cyan-200/20 bg-cyan-200/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-100">{concert.status}</span>
+          <div className="flex items-center gap-2">
+            <span
+              className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest border ${
+                concert.status === 'ON_SALE'
+                  ? 'border-emerald-400/40 bg-emerald-400/20 text-emerald-200'
+                  : concert.status === 'PAUSED'
+                  ? 'border-amber-400/40 bg-amber-400/20 text-amber-200 animate-pulse'
+                  : concert.status === 'CLOSED'
+                  ? 'border-rose-400/40 bg-rose-400/20 text-rose-200'
+                  : 'border-cyan-200/20 bg-cyan-200/10 text-cyan-100'
+              }`}
+            >
+              {concert.status === 'ON_SALE'
+                ? '🟢 เปิดจำหน่ายบัตร'
+                : concert.status === 'PAUSED'
+                ? '⏸️ พักการจำหน่ายชั่วคราว'
+                : concert.status === 'CLOSED'
+                ? '🔴 ปิดจำหน่ายแล้ว'
+                : concert.status}
+            </span>
+          </div>
           <h1 className="mt-3 max-w-4xl text-3xl font-black sm:text-5xl">{concert.name}</h1>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-200 sm:text-sm"><span className="flex items-center gap-1.5"><CalendarDays size={15} />{eventDate.toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}</span><span className="flex items-center gap-1.5"><MapPin size={15} />{concert.venue || concert.location}</span></div>
         </div>
@@ -87,12 +107,68 @@ export default function ConcertDetailPage() {
 
         <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
           <div className="mb-4 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Ticket zones</p><h2 className="mt-1 text-xl font-black">โซนบัตร</h2></div><Ticket className="text-cyan-200" size={19} /></div>
+
+          {concert.status === 'PAUSED' && (
+            <div className="rounded-2xl border border-amber-400/40 bg-amber-400/10 p-3.5 text-xs text-amber-200 font-bold flex items-center gap-2">
+              <span>⏸️ คอนเสิร์ตนี้พักการจำหน่ายบัตรชั่วคราว</span>
+            </div>
+          )}
+          {concert.status === 'CLOSED' && (
+            <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-3.5 text-xs text-rose-200 font-bold flex items-center gap-2">
+              <span>🔴 คอนเสิร์ตนี้ปิดการจำหน่ายแล้ว</span>
+            </div>
+          )}
+
           {concert.zones?.map((zone) => {
+            const isPaused = zone.isActive === false;
             const soldOut = zone.available <= 0;
-            return <article key={zone.id} className={`rounded-2xl border bg-[#111119] p-4 ${soldOut ? 'border-white/5 opacity-55' : 'border-white/10'}`}><div className="flex items-start justify-between gap-2"><h3 className="font-bold">{zone.name}</h3><span className="shrink-0 rounded-full bg-white/5 px-2 py-1 text-[9px] font-bold text-gray-400">{soldOut ? 'SOLD OUT' : `${zone.available.toLocaleString()} ใบ`}</span></div><p className="mt-2 text-2xl font-black text-cyan-200">฿{zone.price.toLocaleString()}<span className="ml-1 text-xs font-medium text-gray-500">/ ใบ</span></p><p className="mt-1 text-xs text-gray-500">{zone.category}</p></article>;
+            return (
+              <article
+                key={zone.id}
+                className={`rounded-2xl border bg-[#111119] p-4 ${
+                  isPaused || soldOut ? 'border-white/5 opacity-60' : 'border-white/10'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-bold">{zone.name}</h3>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                      isPaused
+                        ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
+                        : soldOut
+                        ? 'bg-rose-500/20 text-rose-300'
+                        : 'bg-white/5 text-gray-400'
+                    }`}
+                  >
+                    {isPaused ? 'พักการขาย' : soldOut ? 'SOLD OUT' : `${zone.available.toLocaleString()} ใบ`}
+                  </span>
+                </div>
+                <p className="mt-2 text-2xl font-black text-cyan-200">
+                  ฿{zone.price.toLocaleString()}
+                  <span className="ml-1 text-xs font-medium text-gray-500">/ ใบ</span>
+                </p>
+                <p className="mt-1 text-xs text-gray-500">{zone.category}</p>
+              </article>
+            );
           })}
           {!concert.zones?.length && <EmptyMessage>ยังไม่มีโซนบัตรสำหรับงานนี้</EmptyMessage>}
-          <Link to={bookingLink} className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-cyan-200/30 bg-cyan-200/10 px-4 py-3 text-sm font-bold text-cyan-100 hover:bg-cyan-200/20">เลือกโซนจากผังคอนเสิร์ต <ArrowRight size={15} /></Link>
+
+          {concert.status === 'PAUSED' ? (
+            <div className="mt-3 flex items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-bold text-amber-200">
+              พักการจำหน่ายชั่วคราว
+            </div>
+          ) : concert.status === 'CLOSED' ? (
+            <div className="mt-3 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-gray-400">
+              ปิดการจำหน่ายบัตรแล้ว
+            </div>
+          ) : (
+            <Link
+              to={bookingLink}
+              className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-cyan-200/30 bg-cyan-200/10 px-4 py-3 text-sm font-bold text-cyan-100 hover:bg-cyan-200/20 transition-all shadow-lg shadow-cyan-400/10"
+            >
+              เลือกโซนจากผังคอนเสิร์ต <ArrowRight size={15} />
+            </Link>
+          )}
         </aside>
       </div>
     </div>

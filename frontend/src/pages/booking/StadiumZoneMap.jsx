@@ -8,15 +8,32 @@ export default function StadiumZoneMap({ zones, selectedZoneId, onSelect }) {
   const standing = zones.filter((zone) => zone.category === 'STANDING');
   const camping = zones.filter((zone) => zone.category === 'CAMPING');
   const other = zones.filter((zone) => !['SEATED', 'STANDING', 'CAMPING'].includes(zone.category));
-  const zoneProps = (zone) => ({
-    role: 'button', tabIndex: zone.available > 0 ? 0 : -1,
-    'aria-label': `${zone.name}, ฿${zone.price}, ${zone.available > 0 ? `เหลือ ${zone.available} ใบ` : 'บัตรหมด'}`,
-    onClick: () => zone.available > 0 && onSelect(zone),
-    onKeyDown: (event) => { if ((event.key === 'Enter' || event.key === ' ') && zone.available > 0) { event.preventDefault(); onSelect(zone); } },
-    style: { cursor: zone.available > 0 ? 'pointer' : 'not-allowed' },
-  });
+  const zoneProps = (zone) => {
+    const isPaused = zone.isActive === false;
+    const canSelect = zone.available > 0 && !isPaused;
+    return {
+      role: 'button',
+      tabIndex: canSelect ? 0 : -1,
+      'aria-label': `${zone.name}, ฿${zone.price}, ${isPaused ? 'พักการขาย' : zone.available > 0 ? `เหลือ ${zone.available} ใบ` : 'บัตรหมด'}`,
+      onClick: () => canSelect && onSelect(zone),
+      onKeyDown: (event) => {
+        if ((event.key === 'Enter' || event.key === ' ') && canSelect) {
+          event.preventDefault();
+          onSelect(zone);
+        }
+      },
+      style: { cursor: canSelect ? 'pointer' : 'not-allowed' },
+    };
+  };
   const zoneColor = (zone, fallback) => zone.colorCode || fallback;
-  const zoneFill = (zone, fallback) => zone.available <= 0 ? '#414653' : zone.id === selectedZoneId ? '#f8d477' : zoneColor(zone, fallback);
+  const zoneFill = (zone, fallback) =>
+    zone.isActive === false
+      ? '#2e303d'
+      : zone.available <= 0
+      ? '#414653'
+      : zone.id === selectedZoneId
+      ? '#f8d477'
+      : zoneColor(zone, fallback);
   const labelColor = (zone) => zone.id === selectedZoneId ? '#211a0a' : '#fff';
   const seatedBox = (zone, index, count) => {
     const columns = Math.min(4, count);

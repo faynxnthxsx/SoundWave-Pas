@@ -38,6 +38,7 @@ model Zone {
   totalCapacity Int
   available     Int
   colorCode     String        @default("#00f0ff") // Neon color for UI mapping
+  isActive      Boolean       @default(true)
 
   bookingItems  BookingItem[]
   tickets       Ticket[]
