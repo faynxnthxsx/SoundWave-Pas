@@ -54,6 +54,8 @@ model Booking {
   lineDeliveryError String?
   status         String        @default("PENDING") // PENDING, PAID, CANCELLED, EXPIRED
   totalAmount    Float
+  refundedAmount Float         @default(0)
+  refundedAt     DateTime?
   expiresAt      DateTime      // 10 minutes lock
   paidAt         DateTime?
   paymentMethod  String        @default("PROMPTPAY")
@@ -84,6 +86,8 @@ model Ticket {
   attendeeName String
   seatNumber   String?   // e.g. "A-12" for Seated, null for Standing/Camping
   status       String    @default("VALID") // VALID, USED, CANCELLED
+  refundedAmount Float   @default(0)
+  refundedAt   DateTime?
   usedAt       DateTime?
   scannedBy    String?
   createdAt    DateTime  @default(now())
@@ -91,12 +95,45 @@ model Ticket {
 }
 
 model Staff {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  name      String
-  role      String   @default("GATE_STAFF") // GATE_STAFF, SUPERVISOR
+  id           Int            @id @default(autoincrement())
+  username     String         @unique
+  password     String?        // Legacy field; cleared after a successful password migration
+  passwordHash String?
+  resetTokenHash String?
+  resetExpiresAt DateTime?
+  name         String
+  role         String         @default("GATE_STAFF") // GATE_STAFF, SUPERVISOR
+  createdAt    DateTime       @default(now())
+  sessions     StaffSession[]
+}
+
+model StaffSession {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  staffId   Int
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model Organizer {
+  id           Int                 @id @default(autoincrement())
+  username     String              @unique
+  passwordHash String
+  resetTokenHash String?
+  resetExpiresAt DateTime?
+  name         String
+  createdAt    DateTime            @default(now())
+  sessions     OrganizerSession[]
+}
+
+model OrganizerSession {
+  id           String    @id @default(uuid())
+  tokenHash    String    @unique
+  organizerId  Int
+  organizer    Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
 }
 
 model Customer {
@@ -104,6 +141,8 @@ model Customer {
   username   String        @unique
   passwordHash String
   lineUserId String?       @unique
+  resetTokenHash String?
+  resetExpiresAt DateTime?
   createdAt  DateTime      @default(now())
   sessions   AuthSession[]
 }

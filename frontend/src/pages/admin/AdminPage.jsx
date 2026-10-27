@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
   Check,
@@ -24,6 +24,8 @@ import {
   X,
   PenLine,
   Lock,
+  Eye,
+  EyeOff,
   Unlock,
   Settings2,
 } from 'lucide-react';
@@ -61,6 +63,7 @@ const emptyForm = () => ({
   latitude: null,
   longitude: null,
   bannerUrl: '',
+  schedule: [{ time: '', stage: 'Main Stage', artist: '' }],
   zones: [emptyZone()],
 });
 
@@ -75,17 +78,49 @@ const dateLabel = (date) => {
   return `${dateStr} · ${timeStr} น.`;
 };
 
-async function api(path, options) {
-  const response = await fetch(`/api/admin${path}`, options);
+async function getOrganizerSession() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('soundwave_organizer') || 'null');
+    if (saved?.sessionToken) return saved;
+  } catch {
+    localStorage.removeItem('soundwave_organizer');
+  }
+  throw new Error('กรุณาเข้าสู่ระบบด้วยบัญชี Supervisor ที่หน้า /scanner ก่อนเปิด Admin');
+}
+
+async function api(path, options = {}) {
+  const session = await getOrganizerSession();
+  const response = await fetch(`/api/admin${path}`, {
+    ...options,
+    headers: { ...options.headers, Authorization: `Bearer ${session.sessionToken}` },
+  });
   const result = await response.json();
-  if (!response.ok || !result.success) throw new Error(result.message || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+  if (!response.ok || !result.success) {
+    const error = new Error(result.message || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+    error.status = response.status;
+    throw error;
+  }
   return result.data;
 }
 
 export default function AdminPage() {
+  const navigate = useNavigate();
+  const [organizer, setOrganizer] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('soundwave_organizer') || 'null'); }
+    catch { localStorage.removeItem('soundwave_organizer'); return null; }
+  });
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginMode, setLoginMode] = useState('login');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'create'
   const [stats, setStats] = useState(null);
   const [concerts, setConcerts] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [bookingFilter, setBookingFilter] = useState('all');
+  const [kpiDetail, setKpiDetail] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [posterPreview, setPosterPreview] = useState('');
   const [posterUrlInput, setPosterUrlInput] = useState(''); // direct URL input
@@ -97,6 +132,7 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const [expandedConcerts, setExpandedConcerts] = useState({});
   // Per-zone custom category text input state: { [zoneIndex]: string }
   const [customCatInputs, setCustomCatInputs] = useState({});
@@ -110,6 +146,7 @@ export default function AdminPage() {
   const [blockSeatInput, setBlockSeatInput] = useState('');
   const [blockNameInput, setBlockNameInput] = useState('');
   const [capacityEditInput, setCapacityEditInput] = useState('');
+  const [zonePriceEditInput, setZonePriceEditInput] = useState('');
   const [seatActionLoading, setSeatActionLoading] = useState(false);
   const [seatActionError, setSeatActionError] = useState('');
 
@@ -117,14 +154,17 @@ export default function AdminPage() {
     setExpandedConcerts((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const askConfirm = (title, message, onConfirm) => setConfirmDialog({ title, message, onConfirm });
+
   // ── Seat Management Functions ────────────────────────────────────────────────
   const openZoneSeats = async (zoneId, zoneName) => {
     setZoneSeatsLoading(true);
     setSeatActionError('');
     try {
-      const data = await api(/zones//seats);
+      const data = await api(`/zones/${zoneId}/seats`);
       setZoneSeatsModal({ zoneId, zoneName, data });
       setCapacityEditInput(String(data.zone?.totalCapacity || ''));
+      setZonePriceEditInput(String(data.zone?.price ?? ''));
       setBlockSeatInput('');
       setBlockNameInput('');
       setEditingTicket(null);
@@ -138,7 +178,7 @@ export default function AdminPage() {
   const refreshZoneSeats = async () => {
     if (!zoneSeatsModal) return;
     try {
-      const data = await api(/zones//seats);
+      const data = await api(`/zones/${zoneSeatsModal.zoneId}/seats`);
       setZoneSeatsModal((prev) => ({ ...prev, data }));
     } catch (err) {
       setSeatActionError(err.message);
@@ -150,7 +190,7 @@ export default function AdminPage() {
     setSeatActionLoading(true);
     setSeatActionError('');
     try {
-      await api(/zones//seats/block, {
+      await api(`/zones/${zoneSeatsModal.zoneId}/seats/block`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ seatNumber: blockSeatInput.trim(), attendeeName: blockNameInput.trim() || 'ล็อกโดยแอดมิน' }),
@@ -166,11 +206,11 @@ export default function AdminPage() {
   };
 
   const handleCancelTicket = async (ticketId) => {
-    if (!window.confirm('ยืนยันยกเลิกตั๋วและคืนที่นั่งนี้?')) return;
+    if (!window.confirm('ยืนยันบันทึกการคืนเงินและยกเลิกตั๋ว? ระบบนี้บันทึกสถานะคืนเงินเท่านั้น ไม่ได้โอนเงินกลับผ่านธนาคาร')) return;
     setSeatActionLoading(true);
     setSeatActionError('');
     try {
-      await api(/tickets//cancel, { method: 'POST' });
+      await api(`/tickets/${ticketId}/refund`, { method: 'POST' });
       await refreshZoneSeats();
       if (editingTicket?.id === ticketId) setEditingTicket(null);
     } catch (err) {
@@ -185,7 +225,7 @@ export default function AdminPage() {
     setSeatActionLoading(true);
     setSeatActionError('');
     try {
-      await api(/tickets//edit, {
+      await api(`/tickets/${editingTicket.id}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ seatNumber: editSeatInput.trim(), attendeeName: editNameInput.trim() }),
@@ -206,10 +246,10 @@ export default function AdminPage() {
     setSeatActionLoading(true);
     setSeatActionError('');
     try {
-      await api(/zones//capacity, {
+      await api(`/zones/${zoneSeatsModal.zoneId}/capacity`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ totalCapacity: cap }),
+        body: JSON.stringify({ totalCapacity: cap, price: Number(zonePriceEditInput) }),
       });
       await refreshZoneSeats();
       await loadDashboard();
@@ -223,11 +263,17 @@ export default function AdminPage() {
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      const [summary, eventList] = await Promise.all([api('/stats'), api('/concerts')]);
+      const [summary, eventList, bookingList] = await Promise.all([api('/stats'), api('/concerts'), api('/bookings')]);
       setStats(summary);
       setConcerts(eventList);
+      setBookings(bookingList);
       setError('');
     } catch (err) {
+      if (err.status === 401) {
+        localStorage.removeItem('soundwave_organizer');
+        setOrganizer(null);
+        setLoginError('เซสชันหมดอายุ กรุณาเข้าสู่ระบบเจ้าของงานอีกครั้ง');
+      }
       setError(err.message);
     } finally {
       setLoading(false);
@@ -235,8 +281,9 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+    if (organizer?.sessionToken) loadDashboard();
+    else setLoading(false);
+  }, [loadDashboard, organizer]);
 
   const updateField = (field, value) => setForm((current) => ({ ...current, [field]: value }));
   const updateZone = (index, field, value) =>
@@ -404,6 +451,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           ...form,
           slug,
+          scheduleJson: JSON.stringify(form.schedule.filter((item) => item.time && item.artist.trim())),
           zones: form.zones.map((zone) => ({
             ...zone,
             price: Number(zone.price),
@@ -432,6 +480,84 @@ export default function AdminPage() {
     () => concerts.reduce((sum, c) => sum + (c.totalAvailable || 0), 0),
     [concerts]
   );
+  const filteredBookings = useMemo(() => bookings.filter((booking) => {
+    if (bookingFilter === 'paid') return ['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(booking.status);
+    if (bookingFilter === 'checked-in') return booking.tickets?.some((ticket) => ticket.status === 'USED');
+    return true;
+  }), [bookings, bookingFilter]);
+
+  const showBookingDetails = (filter) => {
+    setBookingFilter(filter);
+    setKpiDetail(filter === 'checked-in' ? 'checked-in' : 'sales');
+  };
+
+  const handleOrganizerLogin = async (event) => {
+    event.preventDefault();
+    if (!loginUsername.trim() || !loginPassword) { setLoginError('กรุณากรอกชื่อผู้ใช้และรหัสผ่านให้ครบถ้วน'); return; }
+    setLoginLoading(true);
+    setLoginError('');
+    try {
+      const response = await fetch(`/api/organizer/${loginMode === 'forgot' ? 'forgot-password' : 'login'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'เข้าสู่ระบบไม่สำเร็จ');
+      if (loginMode === 'forgot') { setLoginMode('login'); setLoginPassword(''); setLoginError(result.message); return; }
+      const session = { ...result.organizer, sessionToken: result.token, expiresAt: result.expiresAt };
+      localStorage.setItem('soundwave_organizer', JSON.stringify(session));
+      setOrganizer(session);
+      setLoginPassword('');
+      setError('');
+    } catch (err) {
+      setLoginError(err.message);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleOrganizerLogout = async () => {
+    try {
+      if (organizer?.sessionToken) {
+        await fetch('/api/organizer/logout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${organizer.sessionToken}` },
+        });
+      }
+    } catch {
+      // Clear the local session even if the backend is temporarily unavailable.
+    } finally {
+      localStorage.removeItem('soundwave_organizer');
+      setOrganizer(null);
+      setStats(null);
+      setConcerts([]);
+      setBookings([]);
+    }
+  };
+
+  if (!organizer?.sessionToken) {
+    return (
+      <div className="min-h-screen bg-[#07070c] px-4 py-12 text-white sm:px-6">
+        <section className="mx-auto max-w-md rounded-3xl border border-white/15 bg-[#101018] p-6 shadow-2xl sm:p-8">
+          <div className="mb-6 text-center">
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-200"><Lock size={20} /></span>
+            <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-200">Organizer Portal</p>
+            <h1 className="mt-1 text-2xl font-black">เข้าสู่ระบบเจ้าของงาน</h1>
+            <p className="mt-2 text-xs text-gray-400">บัญชีเจ้าของงานแยกจากบัญชีพนักงานสแกนบัตร</p>
+          </div>
+          {loginError && <div role="alert" className="mb-4 rounded-xl border border-rose-400/30 bg-rose-400/10 p-3"><p className="text-xs font-bold text-rose-100">เข้าสู่ระบบไม่สำเร็จ</p><p className="mt-1 text-xs leading-5 text-rose-200">{loginError}</p></div>}
+          <form noValidate onSubmit={handleOrganizerLogin} className="space-y-4">
+            <label className="block space-y-1.5"><span className="text-xs text-gray-300">Username เจ้าของงาน</span><input required autoComplete="username" value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} className={inputClass} /></label>
+            <label className="block space-y-1.5"><span className="text-xs text-gray-300">{loginMode === 'forgot' ? 'รหัสผ่านใหม่' : 'Password'}</span><span className="relative block"><input required minLength={loginMode === 'forgot' ? 8 : undefined} type={showLoginPassword ? 'text' : 'password'} autoComplete={loginMode === 'forgot' ? 'new-password' : 'current-password'} value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} className={`${inputClass} pr-11`} /><button type="button" onClick={() => setShowLoginPassword((value) => !value)} aria-label={showLoginPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-200">{showLoginPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
+            <button disabled={loginLoading} className="w-full rounded-xl bg-cyan-300 px-4 py-3 text-sm font-black text-black hover:bg-cyan-200 disabled:opacity-50">{loginLoading ? 'กำลังดำเนินการ…' : loginMode === 'forgot' ? 'ตั้งรหัสผ่านใหม่' : 'เข้าสู่ระบบแดชบอร์ด'}</button>
+          </form>
+          <button type="button" onClick={() => { setLoginMode(loginMode === 'forgot' ? 'login' : 'forgot'); setLoginError(''); }} className="mt-4 w-full text-center text-xs font-bold text-cyan-200 hover:text-white">{loginMode === 'forgot' ? 'กลับเข้าสู่ระบบ' : 'ลืมรหัสผ่านเจ้าของงาน?'}</button>
+          <Link to="/" className="mt-5 block text-center text-xs text-gray-400 hover:text-white">กลับหน้าร้าน</Link>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#07070c] px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -484,6 +610,13 @@ export default function AdminPage() {
             >
               กลับหน้าร้าน
             </Link>
+            <button
+              type="button"
+              onClick={handleOrganizerLogout}
+              className="rounded-xl border border-rose-400/20 px-3.5 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-400/10"
+            >
+              ออกจากระบบ ({organizer.name})
+            </button>
           </div>
         </header>
 
@@ -508,14 +641,16 @@ export default function AdminPage() {
             subTag={`เหลือ ${totalSystemAvailable.toLocaleString()} ใบ`}
             icon={Ticket}
             color="text-cyan-300"
+            onClick={() => navigate('/admin/insights/sales')}
           />
           <StatCard
             label="รายได้รวมทั้งหมด"
             value={loading ? '—' : money(stats?.revenue)}
-            detail={`${stats?.paidBookings || 0} รายการชำระเงินสำเร็จ`}
-            subTag="PromptPay / ธนาคาร"
+            detail={`ราคาเฉลี่ยต่อใบ ${money(stats?.averageTicketPrice || (stats?.totalTickets ? stats.revenue / stats.totalTickets : 0))}`}
+            subTag={`${stats?.paidBookings || 0} รายการชำระแล้ว`}
             icon={CircleDollarSign}
             color="text-emerald-300"
+            onClick={() => navigate('/admin/insights/revenue')}
           />
           <StatCard
             label="สแกนเข้างานแล้ว (Check-in)"
@@ -524,6 +659,7 @@ export default function AdminPage() {
             subTag={`${stats?.totalTickets ? Math.round(((stats?.checkedIn || 0) / stats.totalTickets) * 100) : 0}% เข้างาน`}
             icon={Users}
             color="text-purple-300"
+            onClick={() => navigate('/admin/insights/check-in')}
           />
           <StatCard
             label="คอนเสิร์ตในระบบ"
@@ -532,6 +668,7 @@ export default function AdminPage() {
             subTag="กำลังเปิดจำหน่าย"
             icon={CalendarDays}
             color="text-pink-300"
+            onClick={() => navigate('/admin/insights/concerts')}
           />
         </section>
 
@@ -557,7 +694,25 @@ export default function AdminPage() {
             </div>
 
             {/* Concerts Detail Cards */}
-            <div className="space-y-6">
+            <div id="concert-reports" className="space-y-6">
+              <section className="rounded-3xl border border-cyan-300/15 bg-[#101018] p-5 sm:p-6">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div><h3 className="text-sm font-black text-white">คอนเสิร์ตและไลน์อัปจริงในไทย · 2026</h3><p className="mt-1 text-[11px] text-gray-400">ข้อมูลอ้างอิงจากประกาศผู้จัด ไม่ใช่งานที่ SoundWave Pass เปิดขาย</p></div>
+                  <span className="rounded-full border border-amber-300/20 bg-amber-300/5 px-2.5 py-1 text-[10px] text-amber-200">ตรวจสอบ 22 ต.ค. 2026</span>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <article className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <h4 className="font-bold text-cyan-200">Tomorrowland Thailand</h4><p className="mt-1 text-xs text-gray-300">11–13 ธ.ค. · Wisdom Valley, ชลบุรี</p>
+                    <p className="mt-2 text-xs leading-5 text-gray-400">ไลน์อัปที่ประกาศแล้ว เช่น Alan Walker, Martin Garrix, Vini Vici, John Newman และ Aly & Fila</p>
+                    <a href="https://thailand.tomorrowland.com/en/line-up/" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-cyan-200 hover:text-white">ดูไลน์อัปทางการ <ExternalLink size={12} /></a>
+                  </article>
+                  <article className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <h4 className="font-bold text-pink-200">EDC Thailand</h4><p className="mt-1 text-xs text-gray-300">18–20 ธ.ค. · Rhythm Park, ภูเก็ต</p>
+                    <p className="mt-2 text-xs leading-5 text-gray-400">ไลน์อัปที่ประกาศแล้ว เช่น Martin Garrix, DJ Snake, Charlotte de Witte, Above & Beyond และ Tiësto</p>
+                    <a href="https://thailand.edc.com/en/lineup/" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-pink-200 hover:text-white">ดูไลน์อัปทางการ <ExternalLink size={12} /></a>
+                  </article>
+                </div>
+              </section>
               {concerts.map((c) => {
                 const sold = c.totalTicketsSold || 0;
                 const capacity = c.totalCapacity || 1;
@@ -803,6 +958,11 @@ export default function AdminPage() {
                                   <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-300">
                                     {money(zoneRevenue)}
                                   </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <button type="button" onClick={() => openZoneSeats(z.id, z.name)} className="rounded-lg border border-cyan-300/25 px-2.5 py-1.5 text-[10px] font-bold text-cyan-200 hover:bg-cyan-300/10">
+                                      แก้ไขที่นั่ง
+                                    </button>
+                                  </td>
                                 </tr>
                               );
                             })}
@@ -831,6 +991,75 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+
+            <section id="recent-bookings" className="rounded-3xl border border-white/10 bg-[#101018] p-5 sm:p-6 scroll-mt-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-lg font-black text-white">รายการจองล่าสุด</h2>
+                  <p className="mt-1 text-xs text-gray-400">แสดงรายการล่าสุดไม่เกิน 50 รายการ พร้อมสถานะชำระเงินและการส่งตั๋ว LINE</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select value={bookingFilter} onChange={(event) => setBookingFilter(event.target.value)} className="rounded-lg border border-white/10 bg-[#09090f] px-2.5 py-1.5 text-[11px] text-gray-200">
+                    <option value="all">ทุกสถานะ</option>
+                    <option value="paid">ชำระแล้ว / คืนเงินบางส่วน</option>
+                    <option value="checked-in">สแกนเข้างานแล้ว</option>
+                  </select>
+                  <span className="rounded-lg border border-white/10 px-2.5 py-1 text-[11px] text-gray-300">{filteredBookings.length} / {bookings.length} รายการ</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto rounded-2xl border border-white/10">
+                <table className="w-full min-w-[850px] text-left text-xs">
+                  <thead className="border-b border-white/10 bg-white/[0.04] text-[10px] font-bold uppercase text-gray-400">
+                    <tr>
+                      <th className="px-3 py-2.5">รหัสจอง / วันเวลา</th>
+                      <th className="px-3 py-2.5">ผู้จอง</th>
+                      <th className="px-3 py-2.5">คอนเสิร์ต / โซน</th>
+                      <th className="px-3 py-2.5 text-center">จำนวนตั๋ว</th>
+                      <th className="px-3 py-2.5 text-right">ยอดรวม</th>
+                      <th className="px-3 py-2.5 text-center">ชำระเงิน</th>
+                      <th className="px-3 py-2.5 text-center">ส่ง LINE</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredBookings.map((booking) => {
+                      const activeTicketCount = booking.tickets?.filter((ticket) => ['VALID', 'USED'].includes(ticket.status)).length;
+                      const quantity = activeTicketCount ?? booking.items?.reduce((sum, item) => sum + item.quantity, 0) ?? booking._count?.tickets ?? 0;
+                      const concertNames = [...new Set((booking.items || []).map((item) => item.zone?.concert?.name).filter(Boolean))];
+                      const zoneNames = [...new Set((booking.items || []).map((item) => item.zone?.name).filter(Boolean))];
+                      const deliveryLabel = booking.lineDeliveryStatus === 'SENT' ? 'ส่งแล้ว' : booking.lineDeliveryStatus === 'FAILED' ? 'ส่งไม่สำเร็จ' : booking.lineDeliveryStatus === 'NOT_LINKED' ? 'ยังไม่เชื่อม' : booking.customerLineId ? 'รอส่ง' : 'ไม่มี LINE';
+                      return (
+                        <tr key={booking.id} className="align-top hover:bg-white/[0.02]">
+                          <td className="px-3 py-3">
+                            <div className="font-mono font-bold text-cyan-200">{booking.bookingCode}</div>
+                            <div className="mt-1 text-[10px] text-gray-500">{dateLabel(booking.createdAt)}</div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="font-semibold text-white">{booking.customerName}</div>
+                            <div className="mt-1 text-[10px] text-gray-400">{booking.customerPhone}</div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="text-gray-200">{concertNames.join(', ') || '—'}</div>
+                            <div className="mt-1 text-[10px] text-gray-500">{zoneNames.join(', ') || 'ไม่ระบุโซน'}</div>
+                          </td>
+                          <td className="px-3 py-3 text-center font-mono text-white">{quantity}</td>
+                          <td className="px-3 py-3 text-right font-mono font-bold text-emerald-300">{money(booking.totalAmount - (booking.refundedAmount || 0))}</td>
+                          <td className="px-3 py-3 text-center">
+                            <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${['PAID', 'PARTIALLY_REFUNDED'].includes(booking.status) ? 'bg-emerald-400/10 text-emerald-300' : booking.status === 'PENDING' ? 'bg-amber-400/10 text-amber-300' : 'bg-white/5 text-gray-400'}`}>{booking.status}</span>
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            <span className={`text-[10px] font-semibold ${booking.lineDeliveryStatus === 'SENT' ? 'text-emerald-300' : booking.lineDeliveryStatus === 'FAILED' ? 'text-rose-300' : 'text-gray-400'}`}>{deliveryLabel}</span>
+                            {booking.lineDeliveryError && <p className="mt-1 max-w-36 text-[10px] text-rose-300">{booking.lineDeliveryError}</p>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {!loading && filteredBookings.length === 0 && (
+                      <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-500">ยังไม่มีรายการจอง</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
         )}
 
@@ -907,6 +1136,56 @@ export default function AdminPage() {
                     />
                   </div>
 
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-cyan-300">ตารางเวลาแสดง</h3>
+                        <p className="mt-1 text-[11px] text-gray-400">เพิ่มเวลา ศิลปิน และเวที เพื่อแสดงกำหนดการในหน้ารายละเอียดงาน</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => updateField('schedule', [...form.schedule, { time: '', stage: 'Main Stage', artist: '' }])}
+                        className="shrink-0 rounded-lg border border-cyan-300/30 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-300/10"
+                      >
+                        + เพิ่มช่วงเวลา
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {form.schedule.map((item, index) => (
+                        <div key={index} className="grid gap-2 sm:grid-cols-[120px_1fr_1fr_auto]">
+                          <input
+                            type="time"
+                            value={item.time}
+                            onChange={(event) => updateField('schedule', form.schedule.map((row, i) => i === index ? { ...row, time: event.target.value } : row))}
+                            className={inputClass}
+                            aria-label={`เวลาแสดง ${index + 1}`}
+                          />
+                          <input
+                            value={item.artist}
+                            onChange={(event) => updateField('schedule', form.schedule.map((row, i) => i === index ? { ...row, artist: event.target.value } : row))}
+                            className={inputClass}
+                            placeholder="ชื่อศิลปิน"
+                          />
+                          <input
+                            value={item.stage}
+                            onChange={(event) => updateField('schedule', form.schedule.map((row, i) => i === index ? { ...row, stage: event.target.value } : row))}
+                            className={inputClass}
+                            placeholder="เวที เช่น Main Stage"
+                          />
+                          <button
+                            type="button"
+                            disabled={form.schedule.length === 1}
+                            onClick={() => updateField('schedule', form.schedule.filter((_, i) => i !== index))}
+                            className="rounded-lg border border-white/10 px-3 text-gray-400 hover:text-rose-300 disabled:opacity-30"
+                            aria-label={`ลบช่วงเวลา ${index + 1}`}
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Location & Map with full space */}
                   <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-3">
                     <h3 className="text-sm font-bold text-cyan-300 flex items-center gap-2">
@@ -951,11 +1230,10 @@ export default function AdminPage() {
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
-                              setPosterPreview('');
-                              updateField('bannerUrl', '');
-                              setPosterUrlInput('');
+                              askConfirm('ลบรูปโปสเตอร์', 'รูปโปสเตอร์จะถูกนำออกเมื่อกดบันทึก คุณต้องการดำเนินการต่อหรือไม่?', () => { setPosterPreview(''); updateField('bannerUrl', ''); setPosterUrlInput(''); });
                             }}
-                            className="absolute -top-2 -right-2 rounded-full bg-rose-500 p-0.5 text-white hover:bg-rose-400"
+                            title="ลบรูปโปสเตอร์"
+                            className="absolute -top-2 -right-2 rounded-full bg-rose-500 p-1 text-white shadow-lg hover:bg-rose-400"
                             aria-label="ลบรูปโปสเตอร์"
                           >
                             <X size={12} />
@@ -1171,6 +1449,75 @@ export default function AdminPage() {
         )}
       </div>
 
+      {kpiDetail && (
+        <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <section role="dialog" aria-modal="true" className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#111119] shadow-2xl">
+            <header className="flex items-start justify-between border-b border-white/10 p-5 sm:p-6">
+              <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Dashboard detail</p><h2 className="mt-1 text-xl font-black text-white">{kpiDetail === 'concerts' ? 'รายละเอียดคอนเสิร์ตในระบบ' : kpiDetail === 'checked-in' ? 'รายการผู้เข้างานแล้ว' : 'รายละเอียดตั๋วและยอดขาย'}</h2><p className="mt-1 text-xs text-gray-400">ข้อมูลล่าสุดจากระบบจองตั๋ว</p></div>
+              <button type="button" onClick={() => setKpiDetail(null)} aria-label="ปิด" className="rounded-lg p-2 text-gray-400 hover:bg-white/10 hover:text-white"><X size={18} /></button>
+            </header>
+            <div className="overflow-y-auto p-5 sm:p-6">
+              {kpiDetail === 'concerts' && <div className="grid gap-4 sm:grid-cols-2">{concerts.map((concert) => <article key={concert.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><h3 className="font-bold text-white">{concert.name}</h3><p className="mt-1 text-[11px] text-gray-400">{dateLabel(concert.eventDate)} · {concert.location || concert.venue || 'ไม่ระบุสถานที่'}</p><div className="mt-4 grid grid-cols-3 gap-2 text-center"><div><p className="text-lg font-black text-cyan-200">{concert.totalTicketsSold || 0}</p><p className="text-[10px] text-gray-500">ขายแล้ว</p></div><div><p className="text-lg font-black text-emerald-200">{concert.totalAvailable || 0}</p><p className="text-[10px] text-gray-500">คงเหลือ</p></div><div><p className="text-lg font-black text-purple-200">{concert.checkedIn || 0}</p><p className="text-[10px] text-gray-500">เช็กอิน</p></div></div></article>)}</div>}
+              {kpiDetail !== 'concerts' && <div className="space-y-3">{(kpiDetail === 'checked-in' ? bookings.filter((booking) => booking.tickets?.some((ticket) => ticket.status === 'USED')) : bookings.filter((booking) => ['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(booking.status))).map((booking) => <article key={booking.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-mono font-bold text-cyan-200">{booking.bookingCode}</p><p className="mt-1 text-xs text-white">{booking.customerName}</p></div><div className="text-right"><p className="font-mono font-bold text-emerald-200">{money(booking.totalAmount - (booking.refundedAmount || 0))}</p><p className="text-[10px] text-gray-400">{booking.tickets?.filter((ticket) => ['VALID', 'USED'].includes(ticket.status)).length || 0} ใบ · {booking.status}</p></div></div>{kpiDetail === 'checked-in' && <div className="mt-3 flex flex-wrap gap-2">{booking.tickets.filter((ticket) => ticket.status === 'USED').map((ticket) => <span key={ticket.id} className="rounded-lg bg-purple-400/10 px-2.5 py-1 text-[11px] text-purple-200">{ticket.ticketCode} · {ticket.attendeeName}</span>)}</div>}</article>)}{(kpiDetail === 'checked-in' ? bookings.filter((booking) => booking.tickets?.some((ticket) => ticket.status === 'USED')) : bookings.filter((booking) => ['PAID', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(booking.status))).length === 0 && <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-sm text-gray-500">ยังไม่มีข้อมูลรายการ</div>}</div>}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {zoneSeatsModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <section role="dialog" aria-modal="true" aria-labelledby="zone-seats-title" className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#111119] shadow-2xl">
+            <header className="flex items-start justify-between border-b border-white/10 p-5">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Inventory & tickets</p>
+                <h2 id="zone-seats-title" className="mt-1 text-xl font-black text-white">จัดการที่นั่ง · {zoneSeatsModal.zoneName}</h2>
+                <p className="mt-1 text-xs text-gray-400">{zoneSeatsModal.data.zone?.concert?.name}</p>
+              </div>
+              <button type="button" onClick={() => setZoneSeatsModal(null)} aria-label="ปิด" className="rounded-lg p-2 text-gray-400 hover:bg-white/10 hover:text-white"><X size={18} /></button>
+            </header>
+            <div className="space-y-5 overflow-y-auto p-5">
+              {seatActionError && <p role="alert" className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-200">{seatActionError}</p>}
+              <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto]">
+                <label className="text-xs text-gray-300">ความจุทั้งหมด
+                  <input type="number" min="1" value={capacityEditInput} onChange={(event) => setCapacityEditInput(event.target.value)} className={`${inputClass} mt-1`} />
+                </label>
+                <label className="text-xs text-gray-300">ราคาต่อใบ (บาท)
+                  <input type="number" min="0" value={zonePriceEditInput} onChange={(event) => setZonePriceEditInput(event.target.value)} className={`${inputClass} mt-1`} />
+                </label>
+                <button type="button" disabled={seatActionLoading} onClick={handleUpdateCapacity} className="self-end rounded-xl bg-cyan-300 px-4 py-2.5 text-xs font-black text-black disabled:opacity-50">บันทึกความจุ / ราคา</button>
+              </div>
+              <p className="text-[11px] text-gray-500">ขายหรือสำรองแล้ว {Math.max(0, (zoneSeatsModal.data.zone?.totalCapacity || 0) - (zoneSeatsModal.data.zone?.available || 0))} ใบ · คงเหลือ {zoneSeatsModal.data.zone?.available ?? 0} ใบ · ไม่สามารถตั้งความจุต่ำกว่าที่ถูกใช้แล้ว</p>
+              <form onSubmit={(event) => { event.preventDefault(); handleBlockSeat(); }} className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:grid-cols-[1fr_1fr_auto]">
+                <input required value={blockSeatInput} onChange={(event) => setBlockSeatInput(event.target.value)} className={inputClass} placeholder="เลขที่นั่ง เช่น A-12" />
+                <input value={blockNameInput} onChange={(event) => setBlockNameInput(event.target.value)} className={inputClass} placeholder="ชื่อผู้ถือ / เหตุผลสำรอง" />
+                <button type="submit" disabled={seatActionLoading} className="rounded-xl border border-cyan-300/30 px-4 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-300/10 disabled:opacity-50">สำรองที่นั่ง</button>
+              </form>
+              {zoneSeatsModal.data.activePending?.length > 0 && <p className="text-xs text-amber-200">มี {zoneSeatsModal.data.activePending.length} รายการจองที่กำลังรอชำระเงิน ระบบกันจำนวนที่นั่งไว้ชั่วคราว</p>}
+              <div className="overflow-x-auto rounded-2xl border border-white/10">
+                <table className="w-full min-w-[760px] text-left text-xs">
+                  <thead className="bg-white/[0.04] text-[10px] uppercase text-gray-400"><tr><th className="p-3">รหัสตั๋ว</th><th className="p-3">ผู้ถือ</th><th className="p-3">ที่นั่ง</th><th className="p-3">สถานะ</th><th className="p-3 text-right">จัดการ</th></tr></thead>
+                  <tbody className="divide-y divide-white/5">
+                    {(zoneSeatsModal.data.tickets || []).map((ticket) => (
+                      <tr key={ticket.id} className="text-gray-200">
+                        <td className="p-3 font-mono text-cyan-200">{ticket.ticketCode}<div className="mt-1 text-[10px] text-gray-500">{ticket.booking?.bookingCode}</div></td>
+                        <td className="p-3">{editingTicket?.id === ticket.id ? <input value={editNameInput} onChange={(event) => setEditNameInput(event.target.value)} className={inputClass} /> : ticket.attendeeName}</td>
+                        <td className="p-3">{editingTicket?.id === ticket.id ? <input value={editSeatInput} onChange={(event) => setEditSeatInput(event.target.value)} className={`${inputClass} max-w-28`} placeholder="ไม่ระบุ" /> : (ticket.seatNumber || 'ไม่ระบุ')}</td>
+                        <td className="p-3"><span className={`rounded-full px-2 py-1 text-[10px] font-bold ${ticket.status === 'USED' ? 'bg-purple-400/10 text-purple-200' : ticket.status === 'VALID' ? 'bg-emerald-400/10 text-emerald-200' : ticket.status === 'RESERVED' ? 'bg-amber-400/10 text-amber-200' : 'bg-white/5 text-gray-400'}`}>{ticket.status === 'RESERVED' ? 'สำรอง' : ticket.status}</span></td>
+                        <td className="p-3 text-right">
+                          {editingTicket?.id === ticket.id ? <div className="flex justify-end gap-2"><button type="button" disabled={seatActionLoading} onClick={handleEditTicket} className="text-emerald-300">บันทึก</button><button type="button" onClick={() => setEditingTicket(null)} className="text-gray-400">ยกเลิก</button></div> : ticket.status === 'VALID' || ticket.status === 'RESERVED' ? <div className="flex justify-end gap-3"><button type="button" onClick={() => { setEditingTicket(ticket); setEditNameInput(ticket.attendeeName); setEditSeatInput(ticket.seatNumber || ''); }} className="text-cyan-200">แก้ข้อมูล</button>{ticket.status === 'VALID' ? <button type="button" disabled={seatActionLoading} onClick={() => handleCancelTicket(ticket.id)} className="text-rose-300">คืนเงิน / ยกเลิก</button> : <button type="button" disabled={seatActionLoading} onClick={async () => { if (!window.confirm('ยืนยันปลดที่นั่งสำรองนี้?')) return; setSeatActionLoading(true); setSeatActionError(''); try { await api(`/tickets/${ticket.id}/release-reservation`, { method: 'POST' }); await refreshZoneSeats(); await loadDashboard(); } catch (err) { setSeatActionError(err.message); } finally { setSeatActionLoading(false); } }} className="text-amber-200">ปลดสำรอง</button>}</div> : <span className="text-gray-600">—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                    {!zoneSeatsLoading && !(zoneSeatsModal.data.tickets || []).length && <tr><td colSpan={5} className="p-8 text-center text-gray-500">ยังไม่มีตั๋วในโซนนี้</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] text-gray-500">การคืนเงินในหน้าทดลองนี้เป็นการบันทึกสถานะและคืนโควตาบัตรในระบบเท่านั้น ไม่ได้โอนเงินคืนผ่านธนาคาร/PromptPay</p>
+            </div>
+          </section>
+        </div>
+      )}
+
       {/* Artist Editor Modal */}
       {artistEditor && (
         <ArtistEditorModal
@@ -1184,11 +1531,9 @@ export default function AdminPage() {
             }))
           }
           onRemove={(index) =>
-            setArtistEditor((current) => ({
-              ...current,
-              artists: current.artists.filter((_, artistIndex) => artistIndex !== index),
-            }))
+            askConfirm('ลบศิลปินออกจากงาน', `ต้องการลบ ${artistEditor.artists[index]?.name || 'ศิลปินคนนี้'} ออกจากรายชื่อใช่หรือไม่?`, () => setArtistEditor((current) => ({ ...current, artists: current.artists.filter((_, artistIndex) => artistIndex !== index) })))
           }
+          onDeleteImage={(index) => askConfirm('ลบรูปศิลปิน', `ต้องการลบรูปของ ${artistEditor.artists[index]?.name || 'ศิลปินคนนี้'} ใช่หรือไม่?`, () => { updateArtist(index, 'image', ''); updateArtist(index, 'imageUrl', ''); })}
           onUpdate={updateArtist}
           onSave={saveArtists}
           saving={saving}
@@ -1207,6 +1552,16 @@ export default function AdminPage() {
           }}
           onApply={uploadCroppedImage}
         />
+      )}
+      {confirmDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <section role="alertdialog" aria-modal="true" className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#151521] p-6 shadow-2xl">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-rose-400/10 text-rose-300"><Trash2 size={22} /></div>
+            <h2 className="mt-4 text-center text-lg font-black text-white">{confirmDialog.title}</h2>
+            <p className="mt-2 text-center text-sm leading-6 text-gray-400">{confirmDialog.message}</p>
+            <div className="mt-6 grid grid-cols-2 gap-3"><button type="button" onClick={() => setConfirmDialog(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-gray-300 hover:bg-white/5">ยกเลิก</button><button type="button" onClick={() => { const action = confirmDialog.onConfirm; setConfirmDialog(null); action(); }} className="rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-black text-white hover:bg-rose-400">ยืนยันการลบ</button></div>
+          </section>
+        </div>
       )}
     </div>
   );
@@ -1227,9 +1582,9 @@ function Field({ label, required, children }) {
   );
 }
 
-function StatCard({ label, value, detail, subTag, icon: Icon, color = 'text-cyan-300' }) {
+function StatCard({ label, value, detail, subTag, icon: Icon, color = 'text-cyan-300', onClick }) {
   return (
-    <article className="rounded-2xl border border-white/10 bg-[#101018] p-5 shadow-lg">
+    <button type="button" onClick={onClick} className="w-full rounded-2xl border border-white/10 bg-[#101018] p-5 text-left shadow-lg transition hover:border-white/20 hover:bg-[#14141e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
       <div className="flex items-start justify-between">
         <p className="text-xs font-semibold text-gray-400">{label}</p>
         <div className={`p-2 rounded-xl bg-white/5 ${color}`}>
@@ -1241,11 +1596,12 @@ function StatCard({ label, value, detail, subTag, icon: Icon, color = 'text-cyan
         <span>{detail}</span>
         {subTag && <span className="font-semibold text-cyan-200">{subTag}</span>}
       </div>
-    </article>
+      {onClick && <p className="mt-2 text-[10px] text-gray-500">לחץเพื่อดูรายละเอียด</p>}
+    </button>
   );
 }
 
-function ArtistEditorModal({ editor, error, onClose, onAdd, onRemove, onUpdate, onSave, saving, uploading, onPhoto }) {
+function ArtistEditorModal({ editor, error, onClose, onAdd, onRemove, onDeleteImage, onUpdate, onSave, saving, uploading, onPhoto }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <section
@@ -1284,6 +1640,7 @@ function ArtistEditorModal({ editor, error, onClose, onAdd, onRemove, onUpdate, 
                       <Mic2 size={21} />
                     </span>
                   )}
+                  {artist.image && <button type="button" onClick={() => onDeleteImage(index)} aria-label="ลบรูปศิลปิน" title="ลบรูปศิลปิน" className="absolute right-1 top-1 rounded-full bg-rose-500/90 p-1 text-white shadow-lg hover:bg-rose-400"><X size={11} /></button>}
                 </div>
                 <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
                   <input
@@ -1349,7 +1706,8 @@ function ArtistEditorModal({ editor, error, onClose, onAdd, onRemove, onUpdate, 
                     type="button"
                     onClick={() => onRemove(index)}
                     aria-label="ลบศิลปิน"
-                    className="rounded-lg border border-white/10 px-2.5 py-2 text-gray-500 hover:text-rose-300"
+                    title="ลบศิลปิน"
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-rose-400/20 bg-rose-400/5 p-0 text-gray-500 hover:border-rose-400/50 hover:bg-rose-400/10 hover:text-rose-300"
                   >
                     <Trash2 size={14} />
                   </button>

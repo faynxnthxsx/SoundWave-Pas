@@ -15,6 +15,7 @@ import SouvenirPrintPage from './pages/tickets/SouvenirPrintPage';
 // Gate Staff Scanner Page (Nam)
 import GateScannerPage from './pages/scanner/GateScannerPage';
 import AdminPage from './pages/admin/AdminPage';
+import AdminInsightPage from './pages/admin/AdminInsightPage';
 import ConcertDetailPage from './pages/booking/ConcertDetailPage';
 import TeamPortalPage from './pages/TeamPortalPage';
 
@@ -41,6 +42,7 @@ export default function App() {
             {/* Gate Scanner (น้ำ) */}
             <Route path="/scanner" element={<GateScannerPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/insights/:type" element={<AdminInsightPage />} />
             <Route path="/team" element={<TeamPortalPage />} />
           </Routes>
         </main>

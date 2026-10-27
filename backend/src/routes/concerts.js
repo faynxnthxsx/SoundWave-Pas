@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
     res.json({ success: true, data: formatted });
   } catch (error) {
     console.error('Error fetching concerts:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
 
@@ -43,7 +43,7 @@ router.get('/:idOrSlug', async (req, res) => {
     });
 
     if (!concert) {
-      return res.status(404).json({ success: false, message: 'Concert not found' });
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลคอนเสิร์ต' });
     }
 
     res.json({
@@ -56,7 +56,7 @@ router.get('/:idOrSlug', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching concert detail:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
 

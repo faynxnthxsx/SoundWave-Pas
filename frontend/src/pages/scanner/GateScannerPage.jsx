@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Camera, CheckCircle2, XCircle, AlertTriangle, RefreshCw, ShieldCheck, UserCheck, LogOut, Lock, KeyRound, User } from 'lucide-react';
+import { Camera, CheckCircle2, XCircle, AlertTriangle, RefreshCw, ShieldCheck, UserCheck, LogOut, Lock, KeyRound, User, Eye, EyeOff } from 'lucide-react';
 
 export default function GateScannerPage() {
   // Staff Authentication State
   const [staff, setStaff] = useState(() => {
     try {
       const saved = localStorage.getItem('soundwave_staff');
-      return saved ? JSON.parse(saved) : null;
+      const session = saved ? JSON.parse(saved) : null;
+      return session?.sessionToken ? session : null;
     } catch {
       return null;
     }
@@ -17,6 +18,8 @@ export default function GateScannerPage() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Scanner State
   const [scanResult, setScanResult] = useState(null);
@@ -25,6 +28,8 @@ export default function GateScannerPage() {
   const [cameraError, setCameraError] = useState('');
   const [manualCode, setManualCode] = useState('');
   const scannerRef = useRef(null);
+  const scanHandledRef = useRef(false);
+  const autoStartCameraRef = useRef(false);
 
   // Handle Staff Login
   const handleLogin = async (e) => {
@@ -48,8 +53,9 @@ export default function GateScannerPage() {
       if (!res.ok || !data.success) {
         setLoginError(data.message || 'Username หรือ Password ไม่ถูกต้อง');
       } else {
-        setStaff(data.staff);
-        localStorage.setItem('soundwave_staff', JSON.stringify(data.staff));
+        const session = { ...data.staff, sessionToken: data.token, expiresAt: data.expiresAt };
+        setStaff(session);
+        localStorage.setItem('soundwave_staff', JSON.stringify(session));
         setUsername('');
         setPassword('');
       }
@@ -59,6 +65,15 @@ export default function GateScannerPage() {
     } finally {
       setLoginLoading(false);
     }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault(); setLoginLoading(true); setLoginError('');
+    try {
+      const res = await fetch('/api/scanner/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username.trim(), newPassword: password }) });
+      const data = await res.json(); if (!res.ok || !data.success) throw new Error(data.message || 'ตั้งรหัสผ่านไม่สำเร็จ');
+      setForgotMode(false); setPassword(''); setLoginError(data.message);
+    } catch (err) { setLoginError(err.message); } finally { setLoginLoading(false); }
   };
 
   // Quick fill test account
@@ -71,6 +86,12 @@ export default function GateScannerPage() {
   // Handle Staff Logout
   const handleLogout = () => {
     stopCamera();
+    if (staff?.sessionToken) {
+      fetch('/api/scanner/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${staff.sessionToken}` },
+      }).catch(() => {});
+    }
     localStorage.removeItem('soundwave_staff');
     setStaff(null);
     setScanResult(null);
@@ -119,7 +140,7 @@ export default function GateScannerPage() {
     try {
       const res = await fetch('/api/scanner/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staff?.sessionToken || ''}` },
         body: JSON.stringify({ 
           ticketCode, 
           scannedBy: staff ? staff.name : 'เจ้าหน้าที่ไม่ระบุตัวตน' 
@@ -149,40 +170,65 @@ export default function GateScannerPage() {
 
   // Start Camera
   const startCamera = async () => {
+    if (scannerRef.current) return;
     setCameraError('');
+    scanHandledRef.current = false;
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    const onDecoded = (decodedText) => {
+      if (scanHandledRef.current) return;
+      scanHandledRef.current = true;
+      void stopCamera();
+      void handleVerifyTicket(decodedText);
+    };
     try {
-      const html5QrCode = new Html5Qrcode('reader');
+      let html5QrCode = new Html5Qrcode('reader');
       scannerRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-        },
-        (decodedText) => {
-          handleVerifyTicket(decodedText);
-          stopCamera();
-        },
-        () => {}
-      );
+      try {
+        await html5QrCode.start({ facingMode: 'environment' }, config, onDecoded, () => {});
+      } catch (initialError) {
+        // Laptops and desktops may not expose a camera with the "environment" facing mode.
+        try { html5QrCode.clear(); } catch (clearError) { /* Ignore failed-start cleanup. */ }
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras.length) throw initialError;
+        const preferredCamera = cameras.find((camera) => /back|rear|environment/i.test(camera.label)) || cameras[0];
+        html5QrCode = new Html5Qrcode('reader');
+        scannerRef.current = html5QrCode;
+        await html5QrCode.start(preferredCamera.id, config, onDecoded, () => {});
+      }
       setCameraActive(true);
     } catch (err) {
       console.error('Camera error:', err);
+      scannerRef.current = null;
       setCameraError('ไม่สามารถเปิดกล้องได้ (กรุณาอนุญาตการเข้าถึงกล้อง หรือทดสอบด้วยการกรอกรหัสตั๋วด้านล่าง)');
       setCameraActive(false);
+      const reason = err?.name === 'NotAllowedError'
+        ? 'เบราว์เซอร์ยังไม่ได้รับอนุญาตให้ใช้กล้อง ให้กดไอคอนข้างแถบที่อยู่แล้วอนุญาต Camera'
+        : err?.name === 'NotFoundError'
+        ? 'ไม่พบกล้องที่เชื่อมต่อกับเครื่อง'
+        : err?.name === 'NotReadableError'
+        ? 'กล้องกำลังถูกใช้งานโดยโปรแกรมอื่น ให้ปิดโปรแกรมนั้นแล้วลองใหม่'
+        : err?.name === 'OverconstrainedError'
+        ? 'กล้องไม่รองรับโหมดที่เลือก กรุณาลองเลือกกล้องอื่น'
+        : 'เปิดกล้องไม่สำเร็จ ตรวจสิทธิ์กล้องหรือปิดแอปอื่นที่กำลังใช้กล้อง';
+      const detail = typeof err === 'string' ? err : (err?.message || String(err));
+      const cause = err?.cause
+        ? ` | ต้นเหตุแรก: ${typeof err.cause === 'string' ? err.cause : (err.cause.message || String(err.cause))}`
+        : '';
+      setCameraError(`${reason} (${err?.name || 'CameraError'}: ${detail}${cause})`);
     }
   };
 
   // Stop Camera
   const stopCamera = async () => {
-    if (scannerRef.current && cameraActive) {
+    const scanner = scannerRef.current;
+    if (scanner) {
+      scannerRef.current = null;
       try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
+        await scanner.stop();
       } catch (e) {
-        console.error(e);
+        // The scanner may already have stopped after a decode or route change.
       }
+      try { scanner.clear(); } catch (e) { /* The reader may already be cleared. */ }
       setCameraActive(false);
     }
   };
@@ -193,10 +239,18 @@ export default function GateScannerPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (scanResult !== null || !autoStartCameraRef.current) return undefined;
+    autoStartCameraRef.current = false;
+    const frameId = window.requestAnimationFrame(() => startCamera());
+    return () => window.cancelAnimationFrame(frameId);
+  }, [scanResult]);
+
   const resetScan = () => {
     setScanResult(null);
     setManualCode('');
-    startCamera();
+    scanHandledRef.current = false;
+    autoStartCameraRef.current = true;
   };
 
   // ==========================================
@@ -228,7 +282,7 @@ export default function GateScannerPage() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form noValidate onSubmit={forgotMode ? handleForgotPassword : handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
                 ชื่อผู้ใช้งาน (Username)
@@ -252,12 +306,13 @@ export default function GateScannerPage() {
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="กรอกรหัสผ่าน"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#181829] border border-[#2e2e4a] rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#00f0ff] transition-colors"
+                  className="w-full bg-[#181829] border border-[#2e2e4a] rounded-xl pl-10 pr-11 py-2.5 text-white text-sm focus:outline-none focus:border-[#00f0ff] transition-colors"
                 />
+                <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-200">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
               </div>
             </div>
 
@@ -266,9 +321,10 @@ export default function GateScannerPage() {
               disabled={loginLoading}
               className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-[#00f0ff] to-[#00a8ff] text-black font-extrabold text-sm uppercase tracking-wider hover:opacity-95 transition-opacity disabled:opacity-50 cursor-pointer shadow-[0_0_20px_rgba(0,240,255,0.25)]"
             >
-              {loginLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบตรวจตั๋ว'}
+              {loginLoading ? 'กำลังดำเนินการ...' : forgotMode ? 'ตั้งรหัสผ่านใหม่' : 'เข้าสู่ระบบตรวจตั๋ว'}
             </button>
           </form>
+          <button type="button" onClick={() => { setForgotMode(!forgotMode); setLoginError(''); }} className="mt-4 w-full text-xs font-bold text-cyan-200 hover:text-white">{forgotMode ? 'กลับเข้าสู่ระบบ' : 'ลืมรหัสผ่านพนักงาน?'}</button>
 
           {/* Quick Click Demo Logins */}
           <div className="mt-8 pt-6 border-t border-[#222238] text-center">

@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import StadiumZoneMap from './StadiumZoneMap';
+import AuthModal from '../../components/AuthModal';
 
 // Cinema Theater Rows & Columns
 const CINEMA_ROWS = ['A', 'B', 'C', 'D', 'E'];
@@ -50,6 +51,7 @@ export default function ZoneSelectPage() {
   const [lineConfig, setLineConfig] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [authOpen, setAuthOpen] = useState(false);
 
   // Real-time Cinema Occupied Seats from Backend
   const [occupiedSeats, setOccupiedSeats] = useState([]);
@@ -79,7 +81,10 @@ export default function ZoneSelectPage() {
       setLineLoading(true);
       fetch('/api/auth/line/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('soundwave_session') ? { Authorization: `Bearer ${localStorage.getItem('soundwave_session')}`, 'x-soundwave-session': localStorage.getItem('soundwave_session') } : {})
+        },
         body: JSON.stringify({ code }),
       })
         .then((res) => res.json())
@@ -331,6 +336,13 @@ export default function ZoneSelectPage() {
     event.preventDefault();
     if (!selectedZone) return;
 
+    if (!localStorage.getItem('soundwave_session')) {
+      setErrorMsg('กรุณาเข้าสู่ระบบก่อนซื้อบัตร ระบบจะเก็บโซนและที่นั่งที่คุณเลือกไว้ให้');
+      sessionStorage.setItem(bookingDraftKey, JSON.stringify({ concertId, zoneId: selectedZone.id, quantity, customerName, customerPhone }));
+      setAuthOpen(true);
+      return;
+    }
+
     if (selectedSeats.length === 0) {
       setErrorMsg('กรุณาเลือกที่นั่งบนผังอย่างน้อย 1 ที่นั่ง');
       return;
@@ -352,7 +364,10 @@ export default function ZoneSelectPage() {
     try {
       const response = await fetch('/api/bookings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('soundwave_session') ? { Authorization: `Bearer ${localStorage.getItem('soundwave_session')}`, 'x-soundwave-session': localStorage.getItem('soundwave_session') } : {})
+        },
         body: JSON.stringify({
           concertId: concert.id,
           zoneId: selectedZone.id,
@@ -843,6 +858,7 @@ export default function ZoneSelectPage() {
           </aside>
         </div>
       </div>
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onAuthenticated={({ user, token }) => { localStorage.setItem('soundwave_session', token); localStorage.setItem('soundwave_user', JSON.stringify(user)); setCustomerName(user.username || ''); setCustomerLineId(user.lineUserId || ''); setAuthOpen(false); }} />}
     </div>
   );
 }

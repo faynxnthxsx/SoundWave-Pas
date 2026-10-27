@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
+    "db:ensure-organizer": "node prisma/ensure-local-organizer.js",
     "db:studio": "prisma studio"
   },
   "dependencies": {

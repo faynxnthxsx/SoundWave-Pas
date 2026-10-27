@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { sendTicketToLineUser, sendTicketsToLineUser } = require('../services/lineService');
+const { requireCustomer } = require('../middleware/customerAuth');
 
 async function deliverTicketsToLine(booking, tickets) {
   if (!booking.customerLineId) {
@@ -29,23 +30,23 @@ async function deliverTicketsToLine(booking, tickets) {
 router.get('/zones/:zoneId/occupied-seats', async (req, res) => {
   try {
     const zoneId = parseInt(req.params.zoneId, 10);
-    if (isNaN(zoneId)) return res.status(400).json({ success: false, message: 'Invalid zoneId' });
+    if (isNaN(zoneId)) return res.status(400).json({ success: false, message: 'รหัสโซนไม่ถูกต้อง' });
 
-    // 1. Seats already issued in valid or used tickets
+    // 1. Seats already issued in valid, used, or admin reserved tickets
     const tickets = await prisma.ticket.findMany({
       where: {
         zoneId,
-        status: { in: ['VALID', 'USED'] },
+        status: { in: ['VALID', 'USED', 'RESERVED'] },
         seatNumber: { not: null }
       },
       select: { seatNumber: true }
     });
     const ticketSeats = tickets.map((t) => t.seatNumber).filter(Boolean);
 
-    // 2. Seats locked in active pending bookings (within 10-minute hold window)
+    // 2. Seats locked in active pending or reserved bookings (within hold window or reserved by admin)
     const activeBookings = await prisma.booking.findMany({
       where: {
-        status: 'PENDING',
+        status: { in: ['PENDING', 'RESERVED'] },
         expiresAt: { gt: new Date() },
         items: { some: { zoneId } }
       },
@@ -71,12 +72,12 @@ router.get('/zones/:zoneId/occupied-seats', async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting occupied seats:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
 
-// POST /api/bookings - Create new reservation with 10-minute hold & unique seat validation
-router.post('/', async (req, res) => {
+// POST /api/bookings - Create new reservation with 10-minute hold & unique seat validation (Requires Customer Login)
+router.post('/', requireCustomer, async (req, res) => {
   try {
     const { concertId, zoneId, quantity, customerName, customerPhone, customerLineId, selectedSeats } = req.body;
 
@@ -119,11 +120,11 @@ router.post('/', async (req, res) => {
         });
       }
 
-      // Check conflict with already issued tickets in this zone
+      // Check conflict with already issued or reserved tickets in this zone
       const conflictTicket = await prisma.ticket.findFirst({
         where: {
           zoneId: zone.id,
-          status: { in: ['VALID', 'USED'] },
+          status: { in: ['VALID', 'USED', 'RESERVED'] },
           seatNumber: { in: seatsToReserve }
         }
       });
@@ -135,10 +136,10 @@ router.post('/', async (req, res) => {
         });
       }
 
-      // Check conflict with other users' active pending bookings (within 10-minute hold window)
+      // Check conflict with other users' active pending or reserved bookings
       const activePending = await prisma.booking.findMany({
         where: {
-          status: 'PENDING',
+          status: { in: ['PENDING', 'RESERVED'] },
           expiresAt: { gt: new Date() },
           items: { some: { zoneId: zone.id } }
         },
@@ -185,7 +186,7 @@ router.post('/', async (req, res) => {
           bookingCode,
           customerName,
           customerPhone,
-          customerLineId: customerLineId || null,
+          customerLineId: customerLineId || req.customer?.lineUserId || null,
           selectedSeats: seatsToReserve.length > 0 ? JSON.stringify(seatsToReserve) : null,
           totalAmount,
           expiresAt,
@@ -226,7 +227,7 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating booking:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
 
@@ -290,11 +291,11 @@ router.get('/:bookingCode', async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting booking:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
 
-// POST /api/bookings/:bookingCode/pay - Mock Payment Confirmation
+// POST /api/bookings/:bookingCode/pay - Mock Payment Confirmation (Atomic status transition PENDING -> PAID)
 router.post('/:bookingCode/pay', async (req, res) => {
   try {
     const { bookingCode } = req.params;
@@ -318,11 +319,26 @@ router.post('/:bookingCode/pay', async (req, res) => {
     }
 
     if (booking.status === 'PAID') {
-      return res.json({ success: true, message: 'การจองนี้ชำระเงินเรียบร้อยแล้ว', data: { bookingCode: booking.bookingCode, tickets: booking.tickets, lineDelivery: { status: booking.lineDeliveryStatus || 'UNKNOWN', error: booking.lineDeliveryError } } });
+      return res.json({
+        success: true,
+        message: 'การจองนี้ชำระเงินเรียบร้อยแล้ว',
+        data: {
+          bookingCode: booking.bookingCode,
+          tickets: booking.tickets,
+          lineDelivery: {
+            status: booking.lineDeliveryStatus || 'UNKNOWN',
+            error: booking.lineDeliveryError
+          }
+        }
+      });
     }
 
     if (booking.status === 'EXPIRED' || new Date() > new Date(booking.expiresAt)) {
       return res.status(400).json({ success: false, message: 'หมดเวลาชำระเงินแล้ว รายการนี้ถูกยกเลิก' });
+    }
+
+    if (booking.status !== 'PENDING') {
+      return res.status(400).json({ success: false, message: `ไม่สามารถชำระเงินได้เนื่องจากสถานะปัจจุบันคือ ${booking.status}` });
     }
 
     // Retrieve reserved seats from booking record or fallback to request body
@@ -336,50 +352,93 @@ router.post('/:bookingCode/pay', async (req, res) => {
       bookingSeats = req.body.selectedSeats;
     }
 
-    // Generate Tickets with unique seat numbers
+    // Generate Tickets with unique seat numbers atomically
     let seatIndex = 0;
-    const createdTickets = await prisma.$transaction(async (tx) => {
-      await tx.booking.update({
-        where: { id: booking.id },
-        data: {
-          status: 'PAID',
-          paidAt: new Date()
+    let createdTickets;
+    try {
+      createdTickets = await prisma.$transaction(async (tx) => {
+        // Atomic status transition from PENDING -> PAID
+        const updateResult = await tx.booking.updateMany({
+          where: {
+            id: booking.id,
+            status: 'PENDING',
+            expiresAt: { gt: new Date() }
+          },
+          data: {
+            status: 'PAID',
+            paidAt: new Date()
+          }
+        });
+
+        if (updateResult.count !== 1) {
+          throw new Error('ALREADY_PAID_OR_EXPIRED');
         }
+
+        // Double check no tickets exist for this booking yet
+        const existingCount = await tx.ticket.count({
+          where: { bookingId: booking.id }
+        });
+        if (existingCount > 0) {
+          throw new Error('TICKETS_ALREADY_ISSUED');
+        }
+
+        const ticketsList = [];
+        for (const item of booking.items) {
+          for (let i = 0; i < item.quantity; i++) {
+            const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const catCode = (item.zone.category || 'TKT')
+              .replace(/[^a-zA-Z0-9]/g, '')
+              .slice(0, 4)
+              .toUpperCase() || 'PASS';
+            const ticketCode = `SWP-${catCode}-${randomSuffix}-${Date.now().toString().slice(-4)}`;
+
+            const isSeatCategory = /seat|chair|นั่ง|vip/i.test(item.zone.category || '');
+            const fallbackSeat = isSeatCategory
+              ? `ROW-A-${String(seatIndex + 1).padStart(2, '0')}`
+              : `SPOT-${String(seatIndex + 1).padStart(2, '0')}`;
+            
+            const seat = bookingSeats[seatIndex] || fallbackSeat;
+            seatIndex++;
+
+            const ticket = await tx.ticket.create({
+              data: {
+                ticketCode,
+                bookingId: booking.id,
+                zoneId: item.zoneId,
+                attendeeName: booking.customerName,
+                seatNumber: seat,
+                status: 'VALID'
+              }
+            });
+            ticketsList.push(ticket);
+          }
+        }
+        return ticketsList;
       });
-
-      const ticketsList = [];
-      for (const item of booking.items) {
-        for (let i = 0; i < item.quantity; i++) {
-          const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-          const catCode = (item.zone.category || 'TKT')
-            .replace(/[^a-zA-Z0-9]/g, '')
-            .slice(0, 4)
-            .toUpperCase() || 'PASS';
-          const ticketCode = `SWP-${catCode}-${randomSuffix}-${Date.now().toString().slice(-4)}`;
-
-          const isSeatCategory = /seat|chair|นั่ง|vip/i.test(item.zone.category || '');
-          const fallbackSeat = isSeatCategory
-            ? `ROW-A-${String(seatIndex + 1).padStart(2, '0')}`
-            : `SPOT-${String(seatIndex + 1).padStart(2, '0')}`;
-          
-          const seat = bookingSeats[seatIndex] || fallbackSeat;
-          seatIndex++;
-
-          const ticket = await tx.ticket.create({
+    } catch (txError) {
+      if (txError.message === 'ALREADY_PAID_OR_EXPIRED' || txError.message === 'TICKETS_ALREADY_ISSUED') {
+        const latestBooking = await prisma.booking.findUnique({
+          where: { id: booking.id },
+          include: { tickets: true }
+        });
+        if (latestBooking && latestBooking.status === 'PAID') {
+          return res.json({
+            success: true,
+            message: 'การจองนี้ชำระเงินเรียบร้อยแล้ว',
             data: {
-              ticketCode,
-              bookingId: booking.id,
-              zoneId: item.zoneId,
-              attendeeName: booking.customerName,
-              seatNumber: seat,
-              status: 'VALID'
+              bookingCode: latestBooking.bookingCode,
+              tickets: latestBooking.tickets,
+              lineDelivery: {
+                status: latestBooking.lineDeliveryStatus || 'UNKNOWN',
+                error: latestBooking.lineDeliveryError
+              }
             }
           });
-          ticketsList.push(ticket);
         }
+        return res.status(400).json({ success: false, message: 'หมดเวลาชำระเงินแล้ว หรือรายการนี้ถูกดำเนินการไปแล้ว' });
       }
-      return ticketsList;
-    });
+      throw txError;
+    }
 
     const lineDelivery = await deliverTicketsToLine(booking, createdTickets);
 
@@ -394,7 +453,7 @@ router.post('/:bookingCode/pay', async (req, res) => {
     });
   } catch (error) {
     console.error('Error confirming payment:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
 

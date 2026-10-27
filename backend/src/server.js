@@ -8,6 +8,7 @@ const bookingsRouter = require('./routes/bookings');
 const ticketsRouter = require('./routes/tickets');
 const scannerRouter = require('./routes/scanner');
 const authRouter = require('./routes/auth');
+const organizerRouter = require('./routes/organizer');
 const adminRouter = require('./routes/admin');
 const locationsRouter = require('./routes/locations');
 
@@ -17,7 +18,7 @@ const PORT = process.env.PORT || 5000;
 // Middlewares
 app.use(cors());
 app.use(express.json({ limit: '7mb' }));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(process.env.UPLOAD_DIR || path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/concerts', concertsRouter);
@@ -25,6 +26,7 @@ app.use('/api/bookings', bookingsRouter);
 app.use('/api/tickets', ticketsRouter);
 app.use('/api/scanner', scannerRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/organizer', organizerRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/locations', locationsRouter);
 
@@ -82,7 +84,7 @@ app.get(['/api', '/api/health'], (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ success: false, message: 'Server Internal Error' });
+  res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
 });
 
 app.listen(PORT, () => {

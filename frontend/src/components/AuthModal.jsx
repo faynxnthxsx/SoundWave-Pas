@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthModal({ onClose, onAuthenticated }) {
   const [mode, setMode] = useState('login');
@@ -8,21 +8,24 @@ export default function AuthModal({ onClose, onAuthenticated }) {
   const [lineUserId, setLineUserId] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (event) => {
     event.preventDefault();
+    if (!username.trim() || !password) { setError('กรุณากรอกชื่อผู้ใช้และรหัสผ่านให้ครบถ้วน'); return; }
     setBusy(true);
     setError('');
     try {
-      const response = await fetch(`/api/auth/${mode === 'register' ? 'register' : 'login'}`, {
+      const endpoint = mode === 'register' ? 'register' : mode === 'forgot' ? 'forgot-password' : 'login';
+      const response = await fetch(`/api/auth/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password, lineUserId }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message || 'เข้าสู่ระบบไม่สำเร็จ');
-      onAuthenticated({ user: data.user, token: data.token, expiresAt: data.expiresAt });
-      onClose();
+      if (mode === 'forgot') { setMode('login'); setPassword(''); setError(data.message); return; }
+      onAuthenticated({ user: data.user, token: data.token, expiresAt: data.expiresAt }); onClose();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -36,21 +39,21 @@ export default function AuthModal({ onClose, onAuthenticated }) {
         <header className="mb-6 flex items-start justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">SoundWave Pass</p>
-            <h2 id="auth-title" className="mt-1 text-2xl font-black">{mode === 'register' ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</h2>
-            <p className="mt-1 text-xs text-gray-400">{mode === 'register' ? 'สร้างบัญชีเพื่อเก็บข้อมูลผู้ใช้ของคุณ' : 'ล็อกอินเพื่อเข้าสู่บัญชีของคุณ'}</p>
+            <h2 id="auth-title" className="mt-1 text-2xl font-black">{mode === 'register' ? 'สมัครสมาชิก' : mode === 'forgot' ? 'ลืมรหัสผ่าน' : 'เข้าสู่ระบบ'}</h2>
+            <p className="mt-1 text-xs text-gray-400">{mode === 'register' ? 'สร้างบัญชีเพื่อเก็บข้อมูลผู้ใช้ของคุณ' : mode === 'forgot' ? 'ยืนยันชื่อผู้ใช้และ LINE ID เพื่อเปลี่ยนรหัสผ่าน' : 'ล็อกอินเพื่อเข้าสู่บัญชีของคุณ'}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="ปิด" className="rounded-lg p-2 text-gray-400 hover:bg-white/10 hover:text-white"><X size={18} /></button>
         </header>
 
-        <form onSubmit={submit} className="space-y-4">
+        <form noValidate onSubmit={submit} className="space-y-4">
           <label className="block space-y-1.5"><span className="text-xs text-gray-300">Username</span><input autoComplete="username" required minLength={3} maxLength={24} value={username} onChange={(event) => setUsername(event.target.value)} className={fieldClass} placeholder="ชื่อผู้ใช้" /></label>
-          <label className="block space-y-1.5"><span className="text-xs text-gray-300">Password</span><input autoComplete={mode === 'register' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} type="password" value={password} onChange={(event) => setPassword(event.target.value)} className={fieldClass} placeholder="อย่างน้อย 8 ตัวอักษร" /></label>
-          {mode === 'register' && <label className="block space-y-1.5"><span className="text-xs text-gray-300">LINE User ID <span className="text-gray-500">(ไม่บังคับ)</span></span><input maxLength={64} value={lineUserId} onChange={(event) => setLineUserId(event.target.value)} className={fieldClass} placeholder="U…" /></label>}
-          {error && <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-xs text-rose-200">{error}</p>}
-          <button disabled={busy} className="w-full rounded-xl bg-cyan-300 px-4 py-3 text-sm font-black text-black hover:bg-cyan-200 disabled:opacity-50">{busy ? 'กำลังดำเนินการ…' : mode === 'register' ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</button>
+          {(mode === 'register' || mode === 'forgot') && <label className="block space-y-1.5"><span className="text-xs text-gray-300">LINE User ID <span className="text-gray-500">(ถ้าผูกไว้กับบัญชี)</span></span><input maxLength={64} value={lineUserId} onChange={(event) => setLineUserId(event.target.value)} className={fieldClass} placeholder="U…" /></label>}
+          <label className="block space-y-1.5"><span className="text-xs text-gray-300">{mode === 'forgot' ? 'รหัสผ่านใหม่' : 'Password'}</span><span className="relative block"><input autoComplete={mode === 'register' || mode === 'forgot' ? 'new-password' : 'current-password'} required minLength={8} maxLength={128} type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} className={`${fieldClass} pr-11`} placeholder="อย่างน้อย 8 ตัวอักษร" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-200">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
+          {error && <div role="alert" className="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-left"><p className="text-xs font-bold text-rose-100">เข้าสู่ระบบไม่สำเร็จ</p><p className="mt-1 text-xs leading-5 text-rose-200">{error}</p></div>}
+          <button disabled={busy} className="w-full rounded-xl bg-cyan-300 px-4 py-3 text-sm font-black text-black hover:bg-cyan-200 disabled:opacity-50">{busy ? 'กำลังดำเนินการ…' : mode === 'register' ? 'สมัครสมาชิก' : mode === 'forgot' ? 'ตั้งรหัสผ่านใหม่' : 'เข้าสู่ระบบ'}</button>
         </form>
         <p className="mt-5 text-center text-xs text-gray-400">
-          {mode === 'register' ? 'มีบัญชีแล้ว?' : 'ยังไม่มีบัญชี?'}{' '}
+          {mode === 'login' && <><button type="button" onClick={() => { setMode('forgot'); setError(''); }} className="font-bold text-cyan-200 hover:text-white">ลืมรหัสผ่าน?</button><span className="mx-2">·</span></>}
           <button type="button" onClick={() => { setMode(mode === 'register' ? 'login' : 'register'); setError(''); }} className="font-bold text-cyan-200 hover:text-white">{mode === 'register' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</button>
         </p>
       </section>

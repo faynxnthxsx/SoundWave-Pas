@@ -60,13 +60,30 @@ router.post('/login', async (req, res) => {
     const password = String(req.body?.password || '');
     const customer = await prisma.customer.findUnique({ where: { username } });
     if (!customer || !(await verifyPassword(password, customer.passwordHash))) {
-      return res.status(401).json({ success: false, message: 'Username หรือ Password ไม่ถูกต้อง' });
+      return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หากลืมรหัสผ่าน ให้กด “ลืมรหัสผ่าน?” ด้านล่าง' });
     }
     const session = await startSession(customer.id);
     res.json({ success: true, user: publicUser(customer), ...session });
   } catch (error) {
     console.error('Customer login error:', error);
     res.status(500).json({ success: false, message: 'เข้าสู่ระบบไม่สำเร็จ' });
+  }
+});
+
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const username = String(req.body?.username || '').trim();
+    const lineUserId = String(req.body?.lineUserId || '').trim();
+    const newPassword = String(req.body?.newPassword || '');
+    if (newPassword.length < 8 || newPassword.length > 128) return res.status(400).json({ success: false, message: 'รหัสผ่านใหม่ต้องยาว 8–128 ตัวอักษร' });
+    const customer = await prisma.customer.findUnique({ where: { username } });
+    if (!customer || (customer.lineUserId && customer.lineUserId !== lineUserId)) return res.status(400).json({ success: false, message: 'ข้อมูลยืนยันตัวตนไม่ตรงกับบัญชี' });
+    await prisma.customer.update({ where: { id: customer.id }, data: { passwordHash: await hashPassword(newPassword) } });
+    await prisma.authSession.deleteMany({ where: { customerId: customer.id } });
+    res.json({ success: true, message: 'ตั้งรหัสผ่านใหม่สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง' });
+  } catch (error) {
+    console.error('Customer password reset error:', error);
+    res.status(500).json({ success: false, message: 'ไม่สามารถตั้งรหัสผ่านใหม่ได้' });
   }
 });
 
@@ -124,7 +141,7 @@ router.post('/line/verify', async (req, res) => {
   try {
     const { code } = req.body;
     if (!code) {
-      return res.status(400).json({ success: false, message: 'Missing auth code' });
+      return res.status(400).json({ success: false, message: 'ไม่พบรหัสยืนยันตัวตน (Missing auth code)' });
     }
 
     const channelId = process.env.LINE_LOGIN_CHANNEL_ID || '2012117630';
@@ -154,7 +171,7 @@ router.post('/line/verify', async (req, res) => {
       console.error('LINE token error:', tokenData);
       return res.status(400).json({ 
         success: false, 
-        message: tokenData.error_description || tokenData.error || 'Failed to exchange token with LINE' 
+        message: tokenData.error_description || tokenData.error || 'แลกเปลี่ยนโทเคนกับ LINE ไม่สำเร็จ' 
       });
     }
 
@@ -165,7 +182,7 @@ router.post('/line/verify', async (req, res) => {
 
     const profile = await profileRes.json();
     if (!profileRes.ok) {
-      return res.status(400).json({ success: false, message: 'Failed to fetch LINE profile' });
+      return res.status(400).json({ success: false, message: 'ดึงข้อมูลโปรไฟล์ LINE ไม่สำเร็จ' });
     }
 
     let friendFlag = null;
@@ -198,7 +215,7 @@ router.post('/line/verify', async (req, res) => {
     });
   } catch (error) {
     console.error('Error during LINE Login exchange:', error);
-    res.status(500).json({ success: false, message: 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
 

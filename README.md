@@ -220,3 +220,10 @@ flowchart TD
     M1 --> M2 --> M3 --> M4
 ```
 
+## Project handoff documents
+
+- [Customer, organizer, and staff user guide](docs/USER_GUIDE.md)
+- [Team Beta Bug Bash worksheet](docs/BUG_BASH.md)
+- [10-minute demo runbook](docs/DEMO_RUNBOOK.md)
+- [Vercel and Render deployment notes](docs/DEPLOYMENT.md)
+

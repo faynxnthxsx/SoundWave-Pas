@@ -1,11 +1,28 @@
 const { PrismaClient } = require('@prisma/client');
+const crypto = require('crypto');
+const { promisify } = require('util');
 const prisma = new PrismaClient();
+const scrypt = promisify(crypto.scrypt);
+
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = await scrypt(password, salt, 64);
+  return `${salt}:${hash.toString('hex')}`;
+}
 
 async function main() {
+  const localSeedPassword = process.env.NODE_ENV === 'production' ? '' : '1234';
+  const supervisorPassword = process.env.SEED_SUPERVISOR_PASSWORD || localSeedPassword;
+  const gatePassword = process.env.SEED_GATE_PASSWORD || localSeedPassword;
+  const organizerPassword = process.env.SEED_ORGANIZER_PASSWORD || localSeedPassword;
+  if (!supervisorPassword || !gatePassword || !organizerPassword) {
+    throw new Error('Set SEED_ORGANIZER_PASSWORD, SEED_SUPERVISOR_PASSWORD, and SEED_GATE_PASSWORD before seeding in production.');
+  }
   console.log('🌱 กำลังรีเซ็ตและเติมข้อมูลจำลอง (Seeding Database)...');
 
   // ล้างข้อมูลเก่าทั้งหมดตามลำดับความสัมพันธ์
   await prisma.staff.deleteMany();
+  await prisma.organizer.deleteMany();
   await prisma.ticket.deleteMany();
   await prisma.bookingItem.deleteMany();
   await prisma.booking.deleteMany();
@@ -272,23 +289,34 @@ async function main() {
     data: [
       {
         username: "faye",
-        password: "1234",
+        password: null,
+        passwordHash: await hashPassword(supervisorPassword),
         name: "เฟย์ (หัวหน้าทีมสตาฟฟ์)",
         role: "SUPERVISOR"
       },
       {
         username: "nam",
-        password: "1234",
+        password: null,
+        passwordHash: await hashPassword(gatePassword),
         name: "น้ำ (เจ้าหน้าที่สแกนประตู)",
         role: "GATE_STAFF"
       },
       {
         username: "staff01",
-        password: "1234",
+        password: null,
+        passwordHash: await hashPassword(gatePassword),
         name: "เจ้าหน้าที่ประตู 1 (Alpha Gate)",
         role: "GATE_STAFF"
       }
     ]
+  });
+
+  await prisma.organizer.create({
+    data: {
+      username: 'owner',
+      passwordHash: await hashPassword(organizerPassword),
+      name: 'SoundWave Event Organizer',
+    },
   });
 
   console.log('----------------------------------------------------');
@@ -299,9 +327,6 @@ async function main() {
   console.log('4. ตั๋วโซน Camping Pass:       SWP-CMP-NATURE-004');
   console.log('5. รหัสจองรอนับถอยหลัง 10 นาที: SW-2026-LOCK10');
   console.log('6. บัญชีพนักงานสตาฟฟ์:');
-  console.log('   - faye / 1234 (เฟย์ - หัวหน้าทีมสตาฟฟ์)');
-  console.log('   - nam / 1234  (น้ำ - เจ้าหน้าที่สแกนประตู)');
-  console.log('   - staff01 / 1234 (เจ้าหน้าที่ประตู 1)');
   console.log('----------------------------------------------------');
 }
 

@@ -54,7 +54,7 @@ router.get('/:ticketCode', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching ticket:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
 
