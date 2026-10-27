@@ -1,206 +1,170 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Curated live feed of real major concerts & music festivals in Thailand (2025 - 2026)
+// Verified upcoming Thailand events checked on 27 October 2026.
+// Dates are stored at noon UTC so the Thai calendar date remains stable in the UI.
+// Listings link to the official ticket seller or event organizer. No guessed lineup,
+// prices, ticket quotas, or booking inventory are added to SoundWave Pass.
+const TTM = 'https://event.thaiticketmajor.com/live/';
 const REAL_THAILAND_CONCERTS = [
   {
-    externalId: 'tml-th-2026',
-    name: 'Tomorrowland Thailand 2026',
-    slug: 'tomorrowland-thailand-2026',
-    description: 'เทศกาลดนตรีอิเล็กทรอนิกส์ระดับโลกครั้งแรกในเอเชียตะวันออกเฉียงใต้ ณ Wisdom Valley ชลบุรี พบกับดีเจและโปรดิวเซอร์ระดับโลก แสง สี เสียง และเวทีอลังการระดับตำนาน 3 วันเต็ม',
-    eventDate: '2026-12-11T16:00:00.000Z',
-    location: 'Wisdom Valley, เขาไม้แก้ว พัทยา, ชลบุรี',
-    venue: 'Wisdom Valley Pattaya Amphitheatre',
-    latitude: 12.9155,
-    longitude: 100.9928,
-    bannerUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200&auto=format&fit=crop&q=80',
-    lineup: [
-      { stage: 'Main Stage', bands: [{ name: 'Martin Garrix', genre: 'EDM', time: '22:30' }, { name: 'Alan Walker', genre: 'Electro House', time: '21:00' }, { name: 'David Guetta', genre: 'Dance/Pop', time: '20:00' }] },
-      { stage: 'Freedom Stage', bands: [{ name: 'Charlotte de Witte', genre: 'Techno', time: '23:00' }, { name: 'Tale of Us', genre: 'Melodic Techno', time: '21:30' }] },
-      { stage: 'Atmosphere Stage', bands: [{ name: 'Vini Vici', genre: 'Psytrance', time: '22:00' }, { name: 'Aly & Fila', genre: 'Trance', time: '20:30' }] },
-    ],
-    schedule: [
-      { time: '16:00', stage: 'Main Stage', artist: 'Gates Open & Opening DJ' },
-      { time: '20:00', stage: 'Main Stage', artist: 'David Guetta' },
-      { time: '21:00', stage: 'Main Stage', artist: 'Alan Walker' },
-      { time: '22:30', stage: 'Main Stage', artist: 'Martin Garrix (Closing Set)' },
-    ],
-    zones: [
-      { name: 'Full Madness Pass (Standing VIP)', category: 'VIP', price: 9900, capacity: 500, colorCode: '#a855f7' },
-      { name: 'General Admission (GA Pit)', category: 'STANDING', price: 5500, capacity: 1500, colorCode: '#00f0ff' },
-      { name: 'DreamVille Camping Zone', category: 'CAMPING', price: 3500, capacity: 400, colorCode: '#10b981' },
-    ],
+    externalId: 'yo-sea-bangkok-2026', name: 'Yo-Sea Asia Tour 2026 - Minimum Band Set live in Bangkok',
+    slug: 'yo-sea-asia-tour-2026-bangkok', eventDate: '2026-10-30T05:00:00.000Z',
+    venue: 'Volume Livehouse, The Street Ratchada', location: 'กรุงเทพมหานคร', sourceUrl: TTM,
+    description: 'คอนเสิร์ตในกรุงเทพฯ วันที่ 30 ตุลาคม 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
   },
   {
-    externalId: 'summer-sonic-bkk-2026',
-    name: 'Summer Sonic Bangkok 2026',
-    slug: 'summer-sonic-bangkok-2026',
-    description: 'เทศกาลดนตรีระดับตำนานจากญี่ปุ่นกลับมาเยือนกรุงเทพมหานครอีกครั้ง พร้อมทัพศิลปินร็อก ป๊อป และอินดี้แถวหน้าจากทั่วทุกมุมโลก',
-    eventDate: '2026-08-22T13:00:00.000Z',
-    location: 'Impact Challenger Hall 1-3, เมืองทองธานี, นนทบุรี',
-    venue: 'Impact Challenger Hall',
-    latitude: 13.9118,
-    longitude: 100.5501,
-    bannerUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200&auto=format&fit=crop&q=80',
-    lineup: [
-      { stage: 'Sonic Stage', bands: [{ name: 'OneRepublic', genre: 'Pop Rock', time: '21:00' }, { name: 'YOASOBI', genre: 'J-Pop', time: '19:30' }] },
-      { stage: 'Mountain Stage', bands: [{ name: 'Bodyslam', genre: 'Thai Rock', time: '20:30' }, { name: 'Tilly Birds', genre: 'Alternative Rock', time: '18:00' }] },
-    ],
-    schedule: [
-      { time: '13:00', stage: 'Sonic Stage', artist: 'Doors Open' },
-      { time: '18:00', stage: 'Mountain Stage', artist: 'Tilly Birds' },
-      { time: '19:30', stage: 'Sonic Stage', artist: 'YOASOBI' },
-      { time: '21:00', stage: 'Sonic Stage', artist: 'OneRepublic' },
-    ],
-    zones: [
-      { name: 'VIP Standing Front Stage', category: 'VIP', price: 6500, capacity: 400, colorCode: '#ec4899' },
-      { name: 'Regular Standing GA', category: 'STANDING', price: 4200, capacity: 1200, colorCode: '#06b6d4' },
-      { name: 'Grandstand Tier A (Seated)', category: 'SEATED', price: 4800, capacity: 60, colorCode: '#8b5cf6' },
-      { name: 'Grandstand Tier B (Seated)', category: 'SEATED', price: 3500, capacity: 60, colorCode: '#3b82f6' },
-    ],
+    externalId: 'bigbang-bangkok-2026', name: 'BIGBANG 2026-2027 WORLD TOUR < XX : COSMOS > IN BANGKOK',
+    slug: 'bigbang-world-tour-cosmos-bangkok-2026', eventDate: '2026-11-07T05:00:00.000Z',
+    venue: 'ราชมังคลากีฬาสถาน', location: 'กรุงเทพมหานคร', sourceUrl: TTM,
+    description: 'คอนเสิร์ตวันที่ 7–8 พฤศจิกายน 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
   },
   {
-    externalId: 'edc-thailand-2026',
-    name: 'EDC Thailand 2026 (Electric Daisy Carnival)',
-    slug: 'edc-thailand-2026',
-    description: 'Under the Electric Sky! เทศกาลดนตรีระดับโลกครั้งแรกที่ภูเก็ต สัมผัสประสบการณ์เวที kineticFIELD, circuitGROUNDS และงานศิลป์สุดตระการตาริมชายหาด',
-    eventDate: '2026-12-18T17:00:00.000Z',
-    location: 'Rhythm Park, หาดบางเทา, ภูเก็ต',
-    venue: 'Rhythm Park Phuket',
-    latitude: 7.9942,
-    longitude: 98.2988,
-    bannerUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&auto=format&fit=crop&q=80',
-    lineup: [
-      { stage: 'kineticFIELD', bands: [{ name: 'Tiësto', genre: 'EDM', time: '23:30' }, { name: 'DJ Snake', genre: 'Bass House', time: '22:00' }, { name: 'Above & Beyond', genre: 'Trance', time: '20:30' }] },
-      { stage: 'circuitGROUNDS', bands: [{ name: 'Subtronics', genre: 'Dubstep', time: '22:45' }, { name: 'Zeds Dead', genre: 'Bass', time: '21:00' }] },
-    ],
-    schedule: [
-      { time: '17:00', stage: 'kineticFIELD', artist: 'Opening Ceremony' },
-      { time: '20:30', stage: 'kineticFIELD', artist: 'Above & Beyond' },
-      { time: '22:00', stage: 'kineticFIELD', artist: 'DJ Snake' },
-      { time: '23:30', stage: 'kineticFIELD', artist: 'Tiësto' },
-    ],
-    zones: [
-      { name: 'VIP Elevated Viewing Deck', category: 'VIP', price: 8500, capacity: 300, colorCode: '#f59e0b' },
-      { name: 'GA 3-Day Festival Pass', category: 'STANDING', price: 4900, capacity: 2000, colorCode: '#10b981' },
-      { name: 'Sunset Beach Camping', category: 'CAMPING', price: 2900, capacity: 350, colorCode: '#06b6d4' },
-    ],
+    externalId: 'babymonster-bangkok-2026', name: "2026'27 BABYMONSTER WORLD TOUR [CHOOM] IN BANGKOK",
+    slug: 'babymonster-world-tour-choom-bangkok-2026', eventDate: '2026-11-07T05:00:00.000Z',
+    venue: 'อิมแพ็ค อารีน่า เมืองทองธานี', location: 'นนทบุรี', sourceUrl: TTM,
+    description: 'คอนเสิร์ตวันที่ 7–8 พฤศจิกายน 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
   },
   {
-    externalId: 'coldplay-live-bkk-2026',
-    name: 'Coldplay: Music of the Spheres World Tour Bangkok',
-    slug: 'coldplay-live-bkk-2026',
-    description: 'การกลับมาอีกครั้งของสุดยอดวงดนตรีระดับโลก Coldplay ณ ราชมังคลากีฬาสถาน พร้อมสายรัดข้อมือ LED เรืองแสง พลุไฟ และความยั่งยืนทางสิ่งแวดล้อม',
-    eventDate: '2026-11-14T19:00:00.000Z',
-    location: 'ราชมังคลากีฬาสถาน, หัวหมาก, กรุงเทพมหานคร',
-    venue: 'Rajamangala National Stadium',
-    latitude: 13.7553,
-    longitude: 100.6222,
-    bannerUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=1200&auto=format&fit=crop&q=80',
-    lineup: [
-      { stage: 'Main Stage', bands: [{ name: 'Coldplay', genre: 'Alternative Rock / Pop', time: '20:30' }, { name: 'Valentina Ploy (Opening)', genre: 'Indie Pop', time: '19:15' }] },
-    ],
-    schedule: [
-      { time: '17:00', stage: 'Main Stage', artist: 'Stadium Gates Open' },
-      { time: '19:15', stage: 'Main Stage', artist: 'Valentina Ploy (Special Guest)' },
-      { time: '20:30', stage: 'Main Stage', artist: 'Coldplay Live' },
-    ],
-    zones: [
-      { name: 'Standing Arena Pit (Floor)', category: 'STANDING', price: 5800, capacity: 1500, colorCode: '#38bdf8' },
-      { name: 'Lower Tier A (Reserved Seat)', category: 'SEATED', price: 6500, capacity: 60, colorCode: '#f43f5e' },
-      { name: 'Lower Tier B (Reserved Seat)', category: 'SEATED', price: 4800, capacity: 60, colorCode: '#a855f7' },
-      { name: 'Upper Tier C (Reserved Seat)', category: 'SEATED', price: 2800, capacity: 60, colorCode: '#10b981' },
-    ],
+    externalId: 'lany-bangkok-2026', name: 'LANY : soft world tour Bangkok',
+    slug: 'lany-soft-world-tour-bangkok-2026', eventDate: '2026-11-10T05:00:00.000Z',
+    venue: 'ยูโอบี ไลฟ์, เอ็มสเฟียร์', location: 'กรุงเทพมหานคร', sourceUrl: TTM,
+    description: 'คอนเสิร์ตวันที่ 10 พฤศจิกายน 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
   },
   {
-    externalId: 'bmmf-15-2026',
-    name: 'Big Mountain Music Festival 15 (BMMF15)',
-    slug: 'bmmf-15-2026',
-    description: 'มัน ใหญ่ มาก! เทศกาลดนตรีที่ใหญ่ที่สุดในประเทศไทย 9 เวที 200 กว่าศิลปิน รวมทุกแนวดนตรี ร็อก ป๊อป อินดี้ แร็ป ลูกทุ่ง ท่ามกลางธรรมชาติเขาใหญ่',
-    eventDate: '2026-12-05T14:00:00.000Z',
-    location: 'The Ocean เขาใหญ่, อำเภอปากช่อง, นครราชสีมา',
-    venue: 'The Ocean Khao Yai Festival Ground',
-    latitude: 14.6133,
-    longitude: 101.4089,
-    bannerUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1200&auto=format&fit=crop&q=80',
-    lineup: [
-      { stage: 'Mountain Stage', bands: [{ name: 'Cocktail', genre: 'Pop Rock', time: '22:00' }, { name: 'TaitosmitH', genre: 'Modern Phleng Phuea Chiwit', time: '20:30' }] },
-      { stage: 'Cow Stage', bands: [{ name: 'Polycat', genre: 'Synth Pop', time: '21:30' }, { name: 'Safeplanet', genre: 'Indie Pop', time: '19:45' }] },
-      { stage: 'Black Stage', bands: [{ name: 'Retrospect', genre: 'Heavy Metal', time: '23:00' }] },
-    ],
-    schedule: [
-      { time: '14:00', stage: 'Festival Gate', artist: 'Gates Open' },
-      { time: '19:45', stage: 'Cow Stage', artist: 'Safeplanet' },
-      { time: '20:30', stage: 'Mountain Stage', artist: 'TaitosmitH' },
-      { time: '22:00', stage: 'Mountain Stage', artist: 'Cocktail' },
-    ],
-    zones: [
-      { name: 'บัตรเข้างาน 2 วัน (Regular Pass)', category: 'STANDING', price: 2500, capacity: 3000, colorCode: '#00f0ff' },
-      { name: 'บัตร VIP Pass (เข้าห้องน้ำติดแอร์ + จุดชมวิวพิเศษ)', category: 'VIP', price: 4500, capacity: 500, colorCode: '#fbbf24' },
-      { name: 'โซนกางเต็นท์แคมป์ปิ้ง (Camp Area)', category: 'CAMPING', price: 1200, capacity: 600, colorCode: '#10b981' },
-    ],
+    externalId: 'wave-to-earth-bangkok-2026', name: 'wave to earth - the pieces tour',
+    slug: 'wave-to-earth-the-pieces-tour-bangkok-2026', eventDate: '2026-11-12T05:00:00.000Z',
+    venue: 'ยูโอบี ไลฟ์, เอ็มสเฟียร์', location: 'กรุงเทพมหานคร', sourceUrl: TTM,
+    description: 'คอนเสิร์ตวันที่ 12 พฤศจิกายน 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
+  },
+  {
+    externalId: 'big-ass-bangkok-2026', name: 'ไทยประกันชีวิต presents BIG ASS คอนเสิร์ตใหญ่ ก่อนตาย',
+    slug: 'big-ass-big-concert-bangkok-2026', eventDate: '2026-11-13T05:00:00.000Z',
+    venue: 'อิมแพ็ค อารีน่า เมืองทองธานี', location: 'นนทบุรี',
+    sourceUrl: 'https://www.thaiticketmajor.com/concert/big-ass-big-concert.html',
+    description: 'รอบการแสดง 13–17 พฤศจิกายน 2569 ตามประกาศ ThaiTicketMajor',
+  },
+  {
+    externalId: 'kpop-masterz-bangkok-2026', name: '2026 K-POP MASTERZ SPECIAL LIVE IN BANGKOK BAMBAM × JAY B × MARK',
+    slug: 'kpop-masterz-bambam-jayb-mark-bangkok-2026', eventDate: '2026-11-14T05:00:00.000Z',
+    venue: 'ธันเดอร์โดม สเตเดียม', location: 'นนทบุรี', sourceUrl: TTM,
+    description: 'งานแสดงวันที่ 14–15 พฤศจิกายน 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
+  },
+  {
+    externalId: 'qwer-bangkok-2026', name: 'QWER 2nd TOUR < ROCKATION : ROCKET LAUNCH!! > IN BANGKOK',
+    slug: 'qwer-rockation-bangkok-2026', eventDate: '2026-11-14T05:00:00.000Z',
+    venue: 'MCC HALL, เดอะมอลล์ไลฟ์สโตร์ งามวงศ์วาน', location: 'นนทบุรี', sourceUrl: TTM,
+    description: 'คอนเสิร์ตวันที่ 14 พฤศจิกายน 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
+  },
+  {
+    externalId: 'lucy-bangkok-2026', name: '2026 LUCY 9TH CONCERT < ISLAND > ENCORE IN BANGKOK',
+    slug: 'lucy-9th-concert-island-encore-bangkok-2026', eventDate: '2026-11-28T05:00:00.000Z',
+    venue: 'แจ้งวัฒนะ ฮอลล์, เซ็นทรัลแจ้งวัฒนะ ชั้น 5.5', location: 'นนทบุรี',
+    sourceUrl: 'https://www.thaiticketmajor.com/concert/2026-9th-concert-island-encore-in-bangkok.html',
+    description: 'คอนเสิร์ตวันเสาร์ที่ 28 พฤศจิกายน 2569 เวลา 18:00 น. ตามประกาศ ThaiTicketMajor',
+  },
+  {
+    externalId: 'bts-bangkok-2026', name: "BTS WORLD TOUR 'ARIRANG' IN BANGKOK",
+    slug: 'bts-world-tour-arirang-bangkok-2026', eventDate: '2026-12-03T05:00:00.000Z',
+    venue: 'ราชมังคลากีฬาสถาน', location: 'กรุงเทพมหานคร',
+    sourceUrl: 'https://www.thaiticketmajor.com/concert/bts-world-tour-arirang-in-bangkok.html',
+    description: 'รอบการแสดง 3, 5 และ 6 ธันวาคม 2569 ตามประกาศ ThaiTicketMajor',
+  },
+  {
+    externalId: 'wonderfruit-2026', name: 'Wonderfruit 2026',
+    slug: 'wonderfruit-2026', eventDate: '2026-12-03T05:00:00.000Z',
+    venue: 'The Fields, Siam Country Club', location: 'ชลบุรี', sourceUrl: 'https://wonderfruit.co/',
+    description: 'เทศกาลดนตรีและศิลปะวันที่ 3–7 ธันวาคม 2569 ตามเว็บไซต์ผู้จัด',
+  },
+  {
+    externalId: 'william-est-bangkok-2026', name: 'WILLIAM EST REIGN TOGETHER CONCERT',
+    slug: 'william-est-reign-together-bangkok-2026', eventDate: '2026-12-05T05:00:00.000Z',
+    venue: 'อิมแพ็ค อารีน่า เมืองทองธานี', location: 'นนทบุรี', sourceUrl: TTM,
+    description: 'รอบการแสดงวันที่ 5–7 ธันวาคม 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
+  },
+  {
+    externalId: 'tomorrowland-thailand-2026', name: 'Tomorrowland Thailand 2026',
+    slug: 'tomorrowland-thailand-2026', eventDate: '2026-12-11T05:00:00.000Z',
+    venue: 'Wisdom Valley', location: 'เขาไม้แก้ว อำเภอบางละมุง จังหวัดชลบุรี',
+    sourceUrl: 'https://thailand.tomorrowland.com/en/welcome/',
+    description: 'เทศกาล 11–13 ธันวาคม 2569 ที่ Wisdom Valley; เว็บไซต์ผู้จัดระบุว่าบัตรจำหน่ายหมดแล้ว',
+  },
+  {
+    externalId: 'bmv-2026', name: 'PEPSI presents BIG MOUNTAIN VILLAGE 2026',
+    slug: 'big-mountain-village-2026', eventDate: '2026-12-12T05:00:00.000Z',
+    venue: 'Farm Chokchai 3', location: 'ปากช่อง จังหวัดนครราชสีมา', sourceUrl: TTM,
+    description: 'เทศกาลดนตรีวันที่ 12–13 ธันวาคม 2569; รายละเอียดอ้างอิงจากรายการงานและผู้จัด GMM Show',
+  },
+  {
+    externalId: 'jasper-bangkok-2026', name: 'JASP.ER TEMPTATION CONCERT',
+    slug: 'jasper-temptation-concert-bangkok-2026', eventDate: '2026-12-18T05:00:00.000Z',
+    venue: 'อิมแพ็ค อารีน่า เมืองทองธานี', location: 'นนทบุรี', sourceUrl: TTM,
+    description: 'รอบการแสดง 18–20 ธันวาคม 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
+  },
+  {
+    externalId: 'edc-thailand-2026', name: 'EDC Thailand 2026',
+    slug: 'edc-thailand-2026', eventDate: '2026-12-18T05:00:00.000Z',
+    venue: 'Rhythm Park', location: 'ภูเก็ต', sourceUrl: 'https://thailand.edc.com/',
+    description: 'เทศกาล 18–20 ธันวาคม 2569 ที่ Rhythm Park ตามเว็บไซต์ผู้จัด',
+  },
+  {
+    externalId: 'tomohisa-yamashita-bangkok-2026', name: 'DREAMING TOMOHISA YAMASHITA TOUR 2026 LIVE in BANGKOK',
+    slug: 'tomohisa-yamashita-tour-bangkok-2026', eventDate: '2026-12-19T05:00:00.000Z',
+    venue: 'ยูเนี่ยน ฮอลล์, ศูนย์การค้ายูเนี่ยน มอลล์', location: 'กรุงเทพมหานคร',
+    sourceUrl: 'https://www.thaiticketmajor.com/concert/dreaming-tomohisa-yamashita-tour-2026-live-in-bangkok.html',
+    description: 'คอนเสิร์ตวันที่ 19 ธันวาคม 2569 มีรอบ 14:00 และ 19:00 น. ตามประกาศ ThaiTicketMajor',
+  },
+  {
+    externalId: 'fujii-kaze-bangkok-2026', name: 'FUJII KAZE PREMA WORLD TOUR',
+    slug: 'fujii-kaze-prema-world-tour-bangkok-2026', eventDate: '2026-12-26T05:00:00.000Z',
+    venue: 'สนามกีฬาแห่งชาติ ศุภชลาศัย', location: 'กรุงเทพมหานคร', sourceUrl: TTM,
+    description: 'คอนเสิร์ตวันที่ 26 ธันวาคม 2569 ตามรายการงานแสดงของ ThaiTicketMajor',
   },
 ];
 
 async function getDiscoveredConcerts() {
-  const existingSlugs = await prisma.concert.findMany({ select: { slug: true } });
-  const existingSet = new Set(existingSlugs.map((c) => c.slug));
-
-  const items = REAL_THAILAND_CONCERTS.map((c) => ({
-    ...c,
-    isImported: existingSet.has(c.slug),
+  const existing = await prisma.concert.findMany({ select: { slug: true } });
+  const existingSlugs = new Set(existing.map(({ slug }) => slug));
+  const items = REAL_THAILAND_CONCERTS.map((concert) => ({
+    ...concert,
+    lineup: [],
+    schedule: [],
+    bannerUrl: '',
+    zones: [],
+    isImported: existingSlugs.has(concert.slug),
   }));
-
-  const pendingCount = items.filter((c) => !c.isImported).length;
-  return { items, pendingCount, total: items.length };
+  return {
+    items,
+    pendingCount: items.filter((concert) => !concert.isImported).length,
+    total: items.length,
+    checkedAt: new Date().toISOString(),
+    sourceNote: 'รายการคัดจากประกาศผู้จัดและ ThaiTicketMajor; ตรวจสอบวันและสถานะบัตรที่ลิงก์ต้นทางก่อนซื้อ',
+  };
 }
 
 async function importDiscoveredConcert(externalId) {
-  const target = REAL_THAILAND_CONCERTS.find((c) => c.externalId === externalId);
+  const target = REAL_THAILAND_CONCERTS.find((concert) => concert.externalId === externalId);
   if (!target) throw new Error('ไม่พบคอนเสิร์ตที่ต้องการนำเข้า');
 
   const existing = await prisma.concert.findUnique({ where: { slug: target.slug } });
   if (existing) throw new Error(`คอนเสิร์ต "${target.name}" มีอยู่ในระบบแล้ว`);
 
-  const created = await prisma.$transaction(async (tx) => {
-    const newConcert = await tx.concert.create({
-      data: {
-        name: target.name,
-        slug: target.slug,
-        description: target.description,
-        eventDate: new Date(target.eventDate),
-        location: target.location,
-        venue: target.venue,
-        latitude: target.latitude,
-        longitude: target.longitude,
-        bannerUrl: target.bannerUrl,
-        lineupJson: JSON.stringify(target.lineup),
-        scheduleJson: JSON.stringify(target.schedule),
-        status: 'ON_SALE', // Ready for sales right away!
-      },
-    });
-
-    await tx.zone.createMany({
-      data: target.zones.map((z) => ({
-        concertId: newConcert.id,
-        name: z.name,
-        category: z.category,
-        description: `${z.name} - ${target.venue}`,
-        price: z.price,
-        totalCapacity: z.capacity,
-        available: z.capacity,
-        colorCode: z.colorCode,
-        isActive: true,
-      })),
-    });
-
-    return newConcert;
+  // Import as an event listing only. Do not invent ticket prices or activate
+  // ticket sales for inventory that is sold by the original event organizer.
+  return prisma.concert.create({
+    data: {
+      name: target.name,
+      slug: target.slug,
+      description: `${target.description}\n\nข้อมูลบัตรและการซื้อ: ${target.sourceUrl}`,
+      eventDate: new Date(target.eventDate),
+      location: target.location,
+      venue: target.venue,
+      bannerUrl: '',
+      lineupJson: '[]',
+      scheduleJson: '[]',
+      status: 'UPCOMING',
+    },
   });
-
-  return created;
 }
 
-module.exports = {
-  getDiscoveredConcerts,
-  importDiscoveredConcert,
-};
+module.exports = { getDiscoveredConcerts, importDiscoveredConcert };
