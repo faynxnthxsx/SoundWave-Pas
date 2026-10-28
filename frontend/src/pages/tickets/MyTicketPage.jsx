@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Calendar, MapPin, Printer, CheckCircle2, XCircle, ArrowLeft, ShieldCheck, Sparkles, User, Armchair } from 'lucide-react';
 
 export default function MyTicketPage() {
   const { ticketCode } = useParams();
+  const navigate = useNavigate();
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
 
   useEffect(() => {
     fetch(`/api/tickets/${ticketCode}`)
@@ -50,9 +59,13 @@ export default function MyTicketPage() {
       
       {/* Top Navigation */}
       <div className="flex items-center justify-between mb-4">
-        <Link to="/" className="text-xs text-gray-400 hover:text-white flex items-center gap-1">
-          <ArrowLeft className="w-3.5 h-3.5" /> กลับหน้าแรก
-        </Link>
+        <button
+          type="button"
+          onClick={handleBack}
+          className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 rounded-lg hover:bg-white/5 px-2 py-1 -ml-2 transition-all cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> ย้อนกลับ
+        </button>
         <Link
           to={`/tickets/${ticket.ticketCode}/print`}
           className="px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center gap-1.5 hover:bg-gray-200 transition-colors shadow-sm"

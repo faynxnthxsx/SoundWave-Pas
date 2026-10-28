@@ -489,7 +489,7 @@ router.post('/zones/:zoneId/seats/block', async (req, res) => {
           status: 'RESERVED',
           totalAmount: 0,
           expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-          paidAt: new Date(),
+          // NOTE: paidAt is intentionally NOT set — admin block is NOT a real payment
           items: {
             create: {
               zoneId,

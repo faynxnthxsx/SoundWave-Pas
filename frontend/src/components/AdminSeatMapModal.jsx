@@ -132,18 +132,18 @@ export default function AdminSeatMapModal({
   // Helper: Format seat number as "A-01"
   const formatSeatCode = (row, col) => `${row}-${String(col).padStart(2, '0')}`;
 
-  // ── Handle Single Seat Click (1-Click Action) ─────────────────────────────
-  const handleSeatClick = async (seatCode) => {
+  // ── Handle Single Seat Click (Open Detail & Action Drawer) ───────────────
+  const handleSeatClick = (seatCode) => {
     const seatInfo = seatMap.get(seatCode);
 
     if (!seatInfo) {
-      // 🟢 AVAILABLE -> Quick Lock / Reserve
-      await reserveSingleSeat(seatCode);
-    } else if (seatInfo.status === 'RESERVED') {
-      // 🟧 RESERVED -> Quick Release
-      await releaseSingleSeat(seatInfo);
+      // 🟢 AVAILABLE -> Show Detail Drawer to Lock / Reserve with custom name
+      setSelectedSeatDetail({
+        seatCode,
+        status: 'AVAILABLE',
+      });
     } else {
-      // 🟪 SOLD or 🟡 PENDING -> Show Detail Drawer / Card
+      // 🟧 RESERVED, 🟪 SOLD or 🟡 PENDING -> Show Detail Drawer with full info & actions
       setSelectedSeatDetail(seatInfo);
     }
   };
@@ -783,18 +783,24 @@ export default function AdminSeatMapModal({
                             ? 'bg-purple-400/15 text-purple-200 border border-purple-400/30'
                             : selectedSeatDetail.status === 'RESERVED'
                             ? 'bg-orange-400/15 text-orange-200 border border-orange-400/30'
+                            : selectedSeatDetail.status === 'AVAILABLE'
+                            ? 'bg-emerald-400/15 text-emerald-200 border border-emerald-400/30'
                             : 'bg-amber-400/15 text-amber-200 border border-amber-400/30'
                         }`}
                       >
                         {selectedSeatDetail.status === 'SOLD'
                           ? 'ขายแล้ว (ออกตั๋วสำเร็จ)'
                           : selectedSeatDetail.status === 'RESERVED'
-                          ? 'ที่นั่งสำรอง (Admin Reserved)'
+                          ? 'ที่นั่งสำรอง (ล็อกโดยแอดมิน)'
+                          : selectedSeatDetail.status === 'AVAILABLE'
+                          ? 'ที่นั่งว่าง (พร้อมเปิดขาย)'
                           : 'กำลังรอชำระเงิน (Hold 10 นาที)'}
                       </span>
                     </div>
                     <h3 className="mt-1 text-base font-black text-white">
-                      ข้อมูลผู้ถือตั๋ว: {selectedSeatDetail.attendeeName || '—'}
+                      {selectedSeatDetail.status === 'AVAILABLE'
+                        ? `ที่นั่ง ${selectedSeatDetail.seatCode} ว่างสำหรับจำหน่าย (ราคา ฿${zone.price?.toLocaleString() || 0})`
+                        : `ข้อมูลผู้ถือตั๋ว: ${selectedSeatDetail.attendeeName || '—'}`}
                     </h3>
                   </div>
                 </div>
@@ -808,8 +814,41 @@ export default function AdminSeatMapModal({
                 </button>
               </div>
 
-              {/* Detail Items */}
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-4 text-xs">
+              {/* Detail Items or Lock Form */}
+              {selectedSeatDetail.status === 'AVAILABLE' ? (
+                <div className="mt-4 rounded-xl border border-white/5 bg-black/30 p-4">
+                  <span className="text-xs text-gray-300 font-semibold block mb-2">
+                    ต้องการล็อกสำรองที่นั่ง {selectedSeatDetail.seatCode} หรือไม่?
+                  </span>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={quickReserveName}
+                        onChange={(e) => setQuickReserveName(e.target.value)}
+                        placeholder="ระบุชื่อผู้ขอสำรอง (เช่น VIP Sponsor, บัตรศิลปิน, หรือ Admin)"
+                        className="w-full rounded-xl border border-white/10 bg-[#0c0d14] px-3.5 py-2.5 text-xs text-white placeholder:text-gray-500 outline-none focus:border-orange-400 transition-all"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={actionLoading}
+                      onClick={async () => {
+                        await reserveSingleSeat(selectedSeatDetail.seatCode);
+                        setSelectedSeatDetail(null);
+                      }}
+                      className="flex items-center justify-center gap-1.5 rounded-xl bg-orange-400 px-4 py-2.5 text-xs font-bold text-black hover:bg-orange-300 transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                    >
+                      <Lock size={13} />
+                      <span>{actionLoading ? 'กำลังล็อก…' : `ยืนยันล็อกที่นั่ง ${selectedSeatDetail.seatCode}`}</span>
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[10px] text-gray-500">
+                    * เมื่อล็อกแล้ว ลูกค้าในหน้าร้านจะไม่สามารถคลิกเลือกที่นั่งนี้ได้
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-4 text-xs">
                 <div className="rounded-xl border border-white/5 bg-black/30 p-3">
                   <span className="text-[10px] text-gray-400 block mb-1">รหัสตั๋ว (Ticket Code):</span>
                   <span className="font-mono font-bold text-cyan-200">
@@ -842,6 +881,7 @@ export default function AdminSeatMapModal({
                   </span>
                 </div>
               </div>
+              )}
 
               {/* Action Buttons for this seat */}
               <div className="mt-4 flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-white/10">

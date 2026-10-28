@@ -43,11 +43,15 @@ import {
   Play,
   Pause,
   StopCircle,
+  Radar,
 } from 'lucide-react';
 import CropImageModal from '../../components/CropImageModal';
 import LocationPicker from '../../components/LocationPicker';
 import ConcertDateTimePicker from '../../components/ConcertDateTimePicker';
 import AdminSeatMapModal from '../../components/AdminSeatMapModal';
+import ConcertDiscoveryModal from '../../components/ConcertDiscoveryModal';
+import EditConcertModal from '../../components/EditConcertModal';
+import BookingTicketsModal from '../../components/BookingTicketsModal';
 import { useToast } from '../../components/Toast';
 
 // ── Preset ticket categories ──────────────────────────────────────────────────
@@ -169,6 +173,16 @@ export default function AdminPage() {
   const [zoneSeatsModal, setZoneSeatsModal] = useState(null); // { zone, tickets, activePending }
   const [lineResendingId, setLineResendingId] = useState(null);
 
+  // Discovery Radar Modal state
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
+  const [discoveryPendingCount, setDiscoveryPendingCount] = useState(0);
+
+  // Edit Concert Modal state
+  const [editConcertModal, setEditConcertModal] = useState(null);
+
+  // Booking Individual Tickets Modal state
+  const [viewBookingTickets, setViewBookingTickets] = useState(null);
+
   const toggleExpand = (id) => {
     setExpandedConcerts((prev) => ({ ...prev, [id]: !prev[id] }));
   };
@@ -179,14 +193,18 @@ export default function AdminPage() {
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      const [summary, eventList, bookingList] = await Promise.all([
+      const [summary, eventList, bookingList, discoveryData] = await Promise.all([
         api('/stats'),
         api('/concerts'),
         api('/bookings'),
+        api('/discovery').catch(() => null),
       ]);
       setStats(summary);
       setConcerts(eventList);
       setBookings(bookingList);
+      if (discoveryData?.pendingCount !== undefined) {
+        setDiscoveryPendingCount(discoveryData.pendingCount);
+      }
     } catch (err) {
       if (err.status === 401) {
         localStorage.removeItem('soundwave_organizer');
@@ -808,6 +826,22 @@ export default function AdminPage() {
               </button>
             </nav>
 
+            {/* Event Discovery Radar Button */}
+            <button
+              type="button"
+              onClick={() => setDiscoveryOpen(true)}
+              title="Event Discovery Radar: ตรวจจับคอนเสิร์ตจริงในไทย พร้อมนำเข้าใน 1 คลิก"
+              className="relative flex items-center gap-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3.5 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20 hover:border-cyan-400/50 transition-all shadow-lg shadow-cyan-400/10 cursor-pointer"
+            >
+              <Radar size={14} className="text-cyan-300" />
+              <span>เรดาร์คอนเสิร์ต 🔔</span>
+              {discoveryPendingCount > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white animate-pulse">
+                  {discoveryPendingCount}
+                </span>
+              )}
+            </button>
+
             <Link
               to="/"
               className="rounded-xl border border-white/10 px-3.5 py-2 text-xs font-semibold text-gray-300 hover:bg-white/5"
@@ -1110,6 +1144,17 @@ export default function AdminPage() {
 
                       {/* Header Quick Actions */}
                       <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto shrink-0">
+                        {/* Edit Concert Button */}
+                        <button
+                          type="button"
+                          onClick={() => setEditConcertModal(c)}
+                          title="แก้ไขชื่อ วันแสดง สถานที่ รูปภาพ และรายละเอียดคอนเสิร์ต"
+                          className="flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-gray-200 hover:bg-white/20 hover:text-white transition-all cursor-pointer"
+                        >
+                          <PenLine size={13} className="text-cyan-300" />
+                          <span>แก้ไขข้อมูล</span>
+                        </button>
+
                         {/* Copy Store Link Button */}
                         <button
                           type="button"
@@ -1371,23 +1416,37 @@ export default function AdminPage() {
                         </td>
 
                         <td className="px-4 py-3.5 text-center">
-                          <div className="font-mono font-bold text-white">{booking.tickets?.length || 0} ใบ</div>
-                          {booking.tickets?.length > 0 && (
-                            <div className="mt-1 flex flex-wrap justify-center gap-1">
-                              {booking.tickets.map((t) => (
-                                <span
-                                  key={t.id}
-                                  className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${
-                                    t.status === 'USED'
-                                      ? 'bg-purple-400/20 text-purple-300'
-                                      : 'bg-white/5 text-gray-300'
-                                  }`}
-                                >
-                                  {t.seatNumber || t.ticketCode.slice(-4)}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => booking.tickets?.length > 0 && setViewBookingTickets(booking)}
+                            disabled={!booking.tickets?.length}
+                            title={booking.tickets?.length > 0 ? "คลิกเพื่อขยายดูตั๋วทุกใบพร้อม QR Code และที่นั่งแยกรายคน" : "ไม่มีข้อมูลตั๋ว"}
+                            className="group inline-flex flex-col items-center hover:opacity-80 transition-all cursor-pointer disabled:cursor-default"
+                          >
+                            <span className="font-mono font-bold text-cyan-200 group-hover:underline flex items-center gap-1">
+                              <span>{booking.tickets?.length || 0} ใบ</span>
+                              {booking.tickets?.length > 0 && <span className="text-[10px] text-cyan-400">🔍</span>}
+                            </span>
+                            {booking.tickets?.length > 0 && (
+                              <div className="mt-1 flex flex-wrap justify-center gap-1 max-w-[130px]">
+                                {booking.tickets.slice(0, 3).map((t) => (
+                                  <span
+                                    key={t.id}
+                                    className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${
+                                      t.status === 'USED'
+                                        ? 'bg-purple-400/20 text-purple-300'
+                                        : 'bg-white/5 text-gray-300'
+                                    }`}
+                                  >
+                                    {t.seatNumber || t.ticketCode.slice(-4)}
+                                  </span>
+                                ))}
+                                {booking.tickets.length > 3 && (
+                                  <span className="text-[9px] text-gray-400">+{booking.tickets.length - 3}</span>
+                                )}
+                              </div>
+                            )}
+                          </button>
                         </td>
 
                         <td className="px-4 py-3.5 text-right font-mono font-bold text-emerald-300">
@@ -1435,7 +1494,20 @@ export default function AdminPage() {
                         </td>
 
                         <td className="px-4 py-3.5 text-right">
-                          <div className="flex justify-end items-center gap-2">
+                          <div className="flex justify-end items-center gap-1.5">
+                            {/* View individual tickets with QR codes */}
+                            {booking.tickets?.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setViewBookingTickets(booking)}
+                                title="เปิดดูตั๋วรายใบพร้อม QR Code และที่นั่งแยกรายคน"
+                                className="flex items-center gap-1 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200 hover:bg-cyan-400/20 transition-all cursor-pointer"
+                              >
+                                <Ticket size={11} />
+                                <span>ดูตั๋ว ({booking.tickets.length})</span>
+                              </button>
+                            )}
+
                             {/* Re-send to LINE 1-Click Button */}
                             {isPaid && booking.customerLineId && (
                               <button
@@ -1861,6 +1933,38 @@ export default function AdminPage() {
           onClose={() => setZoneSeatsModal(null)}
           api={api}
           onRefresh={refreshZoneSeats}
+        />
+      )}
+
+      {/* ── Event Discovery Radar Modal ── */}
+      {discoveryOpen && (
+        <ConcertDiscoveryModal
+          onClose={() => setDiscoveryOpen(false)}
+          api={api}
+          onImportSuccess={async () => {
+            await loadDashboard();
+          }}
+        />
+      )}
+
+      {/* ── Edit Concert Modal ── */}
+      {editConcertModal && (
+        <EditConcertModal
+          concert={editConcertModal}
+          onClose={() => setEditConcertModal(null)}
+          api={api}
+          onSaveSuccess={async () => {
+            setEditConcertModal(null);
+            await loadDashboard();
+          }}
+        />
+      )}
+
+      {/* ── Individual Tickets Breakdown Modal ── */}
+      {viewBookingTickets && (
+        <BookingTicketsModal
+          booking={viewBookingTickets}
+          onClose={() => setViewBookingTickets(null)}
         />
       )}
 

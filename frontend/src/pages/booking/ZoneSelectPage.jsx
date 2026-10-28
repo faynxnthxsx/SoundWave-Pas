@@ -43,7 +43,7 @@ export default function ZoneSelectPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [selectedZone, setSelectedZone] = useState(null);
-  const [quantity, setQuantity] = useState(() => Math.max(1, Number(bookingDraft?.quantity) || 1));
+  const [quantity, setQuantity] = useState(() => Math.max(0, Number(bookingDraft?.quantity) || 0));
   const [customerName, setCustomerName] = useState(() => bookingDraft?.customerName || '');
   const [customerPhone, setCustomerPhone] = useState(() => bookingDraft?.customerPhone || '');
   const [customerLineId, setCustomerLineId] = useState('');
@@ -202,10 +202,14 @@ export default function ZoneSelectPage() {
       setOccupiedSeats(taken);
 
       if (isInitial) {
-        const initialCount = Math.max(1, Math.min(quantity, 6));
-        const initial = getFirstAvailableSeats(initialCount, taken);
-        setSelectedSeats(initial);
-        setQuantity(initial.length || 1);
+        if (bookingDraft?.selectedSeats?.length) {
+          const validDraftSeats = bookingDraft.selectedSeats.filter((s) => !taken.includes(s));
+          setSelectedSeats(validDraftSeats);
+          setQuantity(validDraftSeats.length);
+        } else {
+          setSelectedSeats([]);
+          setQuantity(0);
+        }
       } else {
         // Check if any currently selected seat was taken by someone else
         setSelectedSeats((prev) => {
@@ -221,7 +225,7 @@ export default function ZoneSelectPage() {
     } finally {
       if (isInitial) setLoadingSeats(false);
     }
-  }, [selectedZone?.id, quantity, getFirstAvailableSeats]);
+  }, [selectedZone?.id, bookingDraft?.selectedSeats]);
 
   // Fetch Occupied Seats on Zone change & Auto-poll every 18 seconds
   useEffect(() => {
@@ -250,6 +254,8 @@ export default function ZoneSelectPage() {
     }
     if (zone.available <= 0) return;
     setSelectedZone(zone);
+    setSelectedSeats([]);
+    setQuantity(0);
     setErrorMsg('');
   };
 
@@ -263,17 +269,18 @@ export default function ZoneSelectPage() {
     setErrorMsg('');
 
     if (selectedSeats.includes(seatCode)) {
-      // Unselect this seat
-      if (selectedSeats.length > 1) {
-        const next = selectedSeats.filter((s) => s !== seatCode);
-        setSelectedSeats(next);
-        setQuantity(next.length);
-      } else {
-        // Keep at least 1 seat selected
-        setErrorMsg('กรุณาเลือกที่นั่งอย่างน้อย 1 ที่');
-      }
+      // Unselect this seat freely
+      const next = selectedSeats.filter((s) => s !== seatCode);
+      setSelectedSeats(next);
+      setQuantity(next.length);
     } else {
-      // Select new seat
+      // If exactly 1 seat is currently selected, clicking another seat switches directly to the new seat
+      if (selectedSeats.length === 1) {
+        setSelectedSeats([seatCode]);
+        setQuantity(1);
+        return;
+      }
+
       if (selectedSeats.length >= 6) {
         setErrorMsg('สามารถเลือกที่นั่งได้สูงสุด 6 ที่นั่งต่อครั้ง');
         return;
@@ -286,7 +293,7 @@ export default function ZoneSelectPage() {
 
   // Plus / Minus Quantity Buttons Handler
   const handleQuantityChange = (newQty) => {
-    const clamped = Math.max(1, Math.min(newQty, 6, selectedZone?.available || 6));
+    const clamped = Math.max(0, Math.min(newQty, 6, selectedZone?.available || 6));
     if (clamped === selectedSeats.length) return;
 
     if (clamped > selectedSeats.length) {
@@ -716,7 +723,7 @@ export default function ZoneSelectPage() {
                       type="button"
                       aria-label="ลดจำนวนบัตร"
                       onClick={() => handleQuantityChange(selectedSeats.length - 1)}
-                      disabled={selectedSeats.length <= 1}
+                      disabled={selectedSeats.length <= 0}
                       className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 disabled:opacity-30 cursor-pointer"
                     >
                       <Minus size={15} />
@@ -899,6 +906,8 @@ export default function ZoneSelectPage() {
                   <span>คอนเสิร์ตปิดการจำหน่ายแล้ว</span>
                 ) : selectedZone.isActive === false ? (
                   <span>โซนนี้พักการจำหน่ายชั่วคราว</span>
+                ) : selectedSeats.length === 0 ? (
+                  <span>กรุณาคลิกเลือกที่นั่งบนผัง</span>
                 ) : (
                   <>
                     <span>ยืนยันที่นั่ง ({selectedSeats.join(', ')}) และไปชำระเงิน</span>
