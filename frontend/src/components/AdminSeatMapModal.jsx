@@ -66,6 +66,7 @@ export default function AdminSeatMapModal({
 
     // 1. Valid, Used or Reserved Tickets
     tickets.forEach((ticket) => {
+      if (ticket.status === 'CANCELLED' || ticket.status === 'REFUNDED') return;
       if (ticket.seatNumber) {
         const cleanCode = ticket.seatNumber.trim().toUpperCase();
         map.set(cleanCode, {
@@ -826,6 +827,7 @@ export default function AdminSeatMapModal({
                         type="text"
                         value={quickReserveName}
                         onChange={(e) => setQuickReserveName(e.target.value)}
+                        onKeyDown={async (e) => { if (e.key === 'Enter' && !actionLoading) { e.preventDefault(); await reserveSingleSeat(selectedSeatDetail.seatCode); setSelectedSeatDetail(null); } }}
                         placeholder="ระบุชื่อผู้ขอสำรอง (เช่น VIP Sponsor, บัตรศิลปิน, หรือ Admin)"
                         className="w-full rounded-xl border border-white/10 bg-[#0c0d14] px-3.5 py-2.5 text-xs text-white placeholder:text-gray-500 outline-none focus:border-orange-400 transition-all"
                       />

@@ -274,12 +274,7 @@ export default function ZoneSelectPage() {
       setSelectedSeats(next);
       setQuantity(next.length);
     } else {
-      // If exactly 1 seat is currently selected, clicking another seat switches directly to the new seat
-      if (selectedSeats.length === 1) {
-        setSelectedSeats([seatCode]);
-        setQuantity(1);
-        return;
-      }
+      // Select up to 6 seats
 
       if (selectedSeats.length >= 6) {
         setErrorMsg('สามารถเลือกที่นั่งได้สูงสุด 6 ที่นั่งต่อครั้ง');
@@ -841,6 +836,7 @@ export default function ZoneSelectPage() {
                     required
                     value={customerName}
                     onChange={(event) => setCustomerName(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); handleSubmit(event); } }}
                     className={inputClass}
                     placeholder="เช่น สมชาย สุขสันต์"
                   />
@@ -869,6 +865,7 @@ export default function ZoneSelectPage() {
                       const onlyNums = event.target.value.replace(/\D/g, '');
                       setCustomerPhone(onlyNums);
                     }}
+                    onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); handleSubmit(event); } }}
                     className={`${inputClass} ${cleanPhone.length === 10 ? 'border-emerald-400/50' : ''}`}
                     placeholder="0812345678"
                   />
@@ -891,7 +888,7 @@ export default function ZoneSelectPage() {
                   selectedSeats.length === 0 ||
                   concert.status === 'PAUSED' ||
                   concert.status === 'CLOSED' ||
-                  selectedZone.isActive === false
+                  selectedZone?.isActive === false
                 }
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-200 px-4 py-3.5 text-sm font-black text-[#071016] transition hover:bg-white disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400 shadow-lg shadow-cyan-400/20 cursor-pointer"
               >
@@ -904,7 +901,9 @@ export default function ZoneSelectPage() {
                   <span>คอนเสิร์ตพักการจำหน่ายชั่วคราว</span>
                 ) : concert.status === 'CLOSED' ? (
                   <span>คอนเสิร์ตปิดการจำหน่ายแล้ว</span>
-                ) : selectedZone.isActive === false ? (
+                ) : !selectedZone ? (
+                  <span>คอนเสิร์ตนี้ยังไม่มีโซนบัตรเปิดจำหน่าย</span>
+                ) : selectedZone?.isActive === false ? (
                   <span>โซนนี้พักการจำหน่ายชั่วคราว</span>
                 ) : selectedSeats.length === 0 ? (
                   <span>กรุณาคลิกเลือกที่นั่งบนผัง</span>

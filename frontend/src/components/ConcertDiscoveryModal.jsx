@@ -169,7 +169,12 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                             {/* Banner + Header */}
                             <div className="flex gap-4">
                               <div className="h-24 w-20 rounded-2xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
-                                <img src={c.bannerUrl} alt={c.name} className="h-full w-full object-cover" />
+                                <img
+    src={c.bannerUrl || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&auto=format&fit=crop&q=80'}
+    alt={c.name}
+    className="h-full w-full object-cover"
+    onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&auto=format&fit=crop&q=80'; }}
+  />
                               </div>
 
                               <div className="min-w-0 flex-1">

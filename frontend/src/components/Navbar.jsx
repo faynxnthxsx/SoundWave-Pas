@@ -136,14 +136,16 @@ export default function Navbar() {
             </Link>
 
             {/* Purchase History Button */}
-            <button
-              type="button"
-              onClick={openHistoryModal}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/5 border border-white/10 flex items-center gap-1.5 cursor-pointer transition-colors"
-            >
-              <Ticket className="w-3.5 h-3.5 text-cyan-400" />
-              <span>ประวัติการซื้อบัตร</span>
-            </button>
+            {authUser && (
+              <button
+                type="button"
+                onClick={openHistoryModal}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/5 border border-white/10 flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <Ticket className="w-3.5 h-3.5 text-cyan-400" />
+                <span>ประวัติการซื้อบัตร</span>
+              </button>
+            )}
 
             {authUser ? (
               <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1.5">

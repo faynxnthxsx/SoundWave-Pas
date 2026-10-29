@@ -109,12 +109,18 @@ router.post('/verify', requireStaff, async (req, res) => {
       return res.status(400).json({ success: false, valid: false, message: 'กรุณาระบุรหัสตั๋ว' });
     }
 
-    // Clean up ticket code (if user scanned a full URL like http://localhost:5173/tickets/SWP-XXX)
-    if (ticketCode.includes('/')) {
-      const parts = ticketCode.trim().split('/');
+    // Clean up ticket code (supports direct code, URLs like /tickets/SWP-XXX, or QR generator URLs with data=SWP-XXX)
+    if (ticketCode.includes('/tickets/')) {
+      const match = ticketCode.match(/\/tickets\/([A-Za-z0-9_-]+)/);
+      if (match && match[1]) ticketCode = match[1];
+    } else if (ticketCode.includes('data=')) {
+      const match = ticketCode.match(/data=([A-Za-z0-9_%-]+)/);
+      if (match && match[1]) ticketCode = decodeURIComponent(match[1]);
+    } else if (ticketCode.includes('/')) {
+      const parts = ticketCode.trim().split('/').filter(Boolean);
       ticketCode = parts[parts.length - 1];
     }
-    ticketCode = ticketCode.trim();
+    ticketCode = ticketCode.split('?')[0].split('#')[0].trim();
 
     const ticket = await prisma.ticket.findUnique({
       where: { ticketCode },
