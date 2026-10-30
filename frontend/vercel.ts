@@ -1,8 +1,4 @@
-const backendUrl = process.env.RENDER_API_URL?.replace(/\/+$/, '');
-
-if (!backendUrl) {
-  throw new Error('Set RENDER_API_URL in the Vercel project environment before deploying.');
-}
+const backendUrl = (process.env.RENDER_API_URL || 'https://soundwave-pass-api.onrender.com').replace(/\/+$/, '');
 
 export default {
   framework: 'vite',
