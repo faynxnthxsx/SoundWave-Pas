@@ -22,11 +22,14 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
   const [data, setData] = useState({ items: [], pendingCount: 0, total: 0 });
   const [importingId, setImportingId] = useState(null);
 
-  const fetchDiscovery = async () => {
+  const fetchDiscovery = async (forceRefresh = false) => {
     setLoading(true);
     try {
-      const res = await api('/discovery');
+      const res = await api(forceRefresh ? '/discovery?refresh=1' : '/discovery');
       setData(res || { items: [], pendingCount: 0, total: 0 });
+      if (forceRefresh && res) {
+        toast.success(`สแกนเรดาร์สดสำเร็จ! พบงานใหม่พร้อมนำเข้า ${res.pendingCount || 0} งาน`);
+      }
     } catch (err) {
       toast.error(err.message || 'ตรวจหาคอนเสิร์ตไม่สำเร็จ');
     } finally {
@@ -97,12 +100,12 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
             <button
               type="button"
               disabled={loading}
-              onClick={fetchDiscovery}
-              title="สแกนหาคอนเสิร์ตใหม่"
-              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-white/10 transition-all"
+              onClick={() => fetchDiscovery(true)}
+              title="สแกนหาคอนเสิร์ตใหม่จากเว็บสด"
+              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
             >
               <RotateCcw size={13} className={loading ? 'animate-spin' : ''} />
-              <span>สแกนเรดาร์</span>
+              <span>สแกนเรดาร์สด</span>
             </button>
 
             <button
@@ -178,10 +181,25 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex flex-wrap items-center gap-1.5">
                                   <span className="inline-flex items-center gap-1 rounded-md bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold text-rose-300 border border-rose-500/40 animate-pulse">
                                     <Sparkles size={11} /> งานใหม่พร้อมนำเข้า
                                   </span>
+                                  {c.isLiveScraped && (
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-500/40">
+                                      🔴 ดึงสดจาก ThaiTicketMajor
+                                    </span>
+                                  )}
+                                  {c.sourceUrl && (
+                                    <a
+                                      href={c.sourceUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-0.5 text-[10px] text-cyan-300 hover:underline"
+                                    >
+                                      <ExternalLink size={10} /> ต้นทาง
+                                    </a>
+                                  )}
                                 </div>
 
                                 <h3 className="mt-1 text-sm sm:text-base font-black text-white leading-tight">

@@ -1038,7 +1038,7 @@ router.get('/export/attendees', async (req, res) => {
 // Discovery radar: lists real concerts in Thailand with unimported badge
 router.get('/discovery', async (req, res) => {
   try {
-    const data = await getDiscoveredConcerts();
+    const data = await getDiscoveredConcerts({ forceRefresh: req.query.refresh === '1' });
     res.json({ success: true, data });
   } catch (err) {
     console.error('Admin discovery error:', err);

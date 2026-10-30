@@ -244,28 +244,227 @@ const REAL_THAILAND_CONCERTS = [
   },
 ];
 
-async function getDiscoveredConcerts() {
-  const existing = await prisma.concert.findMany({ select: { slug: true } });
+// ─── Live ThaiTicketMajor Scraper & Cache ────────────────────────────────────
+const TTM_CONCERT_URL = 'https://www.thaiticketmajor.com/concert/';
+let liveCache = { items: [], fetchedAt: 0 };
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+const THAI_MONTHS = {
+  'มกราคม': 0, 'ม.ค.': 0,
+  'กุมภาพันธ์': 1, 'ก.พ.': 1,
+  'มีนาคม': 2, 'มี.ค.': 2,
+  'เมษายน': 3, 'เม.ย.': 3,
+  'พฤษภาคม': 4, 'พ.ค.': 4,
+  'มิถุนายน': 5, 'มิ.ย.': 5,
+  'กรกฎาคม': 6, 'ก.ค.': 6,
+  'สิงหาคม': 7, 'ส.ค.': 7,
+  'กันยายน': 8, 'ก.ย.': 8,
+  'ตุลาคม': 9, 'ต.ค.': 9,
+  'พฤศจิกายน': 10, 'พ.ย.': 10,
+  'ธันวาคม': 11, 'ธ.ค.': 11,
+};
+
+function decodeHtml(str = '') {
+  return String(str)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseThaiEventDate(dateText = '') {
+  const clean = decodeHtml(dateText);
+  let monthIdx = null;
+  for (const [mName, idx] of Object.entries(THAI_MONTHS)) {
+    if (clean.includes(mName)) {
+      monthIdx = idx;
+      break;
+    }
+  }
+  const yearMatch = clean.match(/\b(25\d{2}|20\d{2})\b/);
+  let year = yearMatch ? Number(yearMatch[1]) : new Date().getFullYear();
+  if (year > 2400) year -= 543;
+
+  const dayMatch = clean.match(/\b([1-9]|[12]\d|3[01])\b/);
+  const day = dayMatch ? Number(dayMatch[1]) : 15;
+
+  if (monthIdx !== null) {
+    const d = new Date(Date.UTC(year, monthIdx, day, 12, 0, 0));
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return new Date(Date.now() + 14 * 86400000).toISOString();
+}
+
+async function fetchLiveThaiTicketMajorConcerts(forceRefresh = false) {
+  if (!forceRefresh && liveCache.items.length > 0 && Date.now() - liveCache.fetchedAt < CACHE_TTL_MS) {
+    return liveCache.items;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 7000);
+    const res = await fetch(TTM_CONCERT_URL, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'th-TH,th;q=0.9,en;q=0.8',
+      },
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const html = await res.text();
+    const cardBlocks = html.split(/<div class="event-item">/i).slice(1);
+    const liveItems = [];
+    const seenSlugs = new Set();
+
+    for (const rawBlock of cardBlocks) {
+      const block = rawBlock.split(/<\/div>\s*<\/div>\s*(?:<!--|<div class="col-)/i)[0] || rawBlock.slice(0, 2500);
+      const hrefMatch = block.match(/href=["'](?:https?:\/\/www\.thaiticketmajor\.com)?\/concert\/([^"'/?#]+)\.html["']/i);
+      if (!hrefMatch) continue;
+
+      const rawSlug = hrefMatch[1].trim().toLowerCase();
+      if (!rawSlug || seenSlugs.has(rawSlug)) continue;
+      seenSlugs.add(rawSlug);
+
+      const titleMatch =
+        block.match(/<a[^>]+class=["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\/a>/i) ||
+        block.match(/\btitle=["']([^"']+)["']/i) ||
+        block.match(/\balt=["']([^"']+)["']/i);
+      const name = decodeHtml(titleMatch ? titleMatch[1] : rawSlug);
+      if (!name || name.length < 3) continue;
+
+      const imgDataSrc = block.match(/\bdata-src=["']([^"']+)["']/i)?.[1];
+      const imgSrc = block.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
+      let rawImg = imgDataSrc || (imgSrc && !imgSrc.includes('blank.gif') ? imgSrc : null);
+      if (rawImg && rawImg.startsWith('/')) {
+        rawImg = `https://www.thaiticketmajor.com${rawImg}`;
+      }
+
+      const dateMatch = block.match(/<span[^>]+class=["'][^"']*datetime[^"']*["'][^>]*>([\s\S]*?)<\/span>\s*<\/span>/i)
+        || block.match(/<span[^>]+class=["'][^"']*datetime[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+      const dateLabel = decodeHtml(dateMatch ? dateMatch[1] : '');
+
+      const venueMatch = block.match(/class=["'][^"']*venue[^"']*["'][^>]*>([\s\S]*?)<\/(?:span|a)>/i);
+      const venue = decodeHtml(venueMatch ? venueMatch[1] : '') || 'กรุงเทพมหานคร';
+
+      const sourceUrl = `https://www.thaiticketmajor.com/concert/${rawSlug}.html`;
+      const eventDate = parseThaiEventDate(dateLabel);
+
+      liveItems.push({
+        externalId: `ttm-${rawSlug}`.slice(0, 120),
+        slug: rawSlug.slice(0, 120),
+        name,
+        bannerUrl: rawImg || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200&auto=format&fit=crop&q=80',
+        eventDate,
+        venue,
+        location: venue.includes('นนทบุรี') || venue.includes('อิมแพ็ค') || venue.includes('ธันเดอร์โดม') ? 'นนทบุรี' : 'กรุงเทพมหานคร',
+        sourceUrl,
+        isLiveScraped: true,
+        description: `${name}${dateLabel ? ` · รอบการแสดง: ${dateLabel}` : ''}${venue ? ` · สถานที่: ${venue}` : ''} (ดึงข้อมูลสดอัตโนมัติจาก ThaiTicketMajor)`,
+        lineup: [
+          {
+            stage: venue || 'Main Stage',
+            bands: [{ name: name.split(/[:\-–|]/)[0].trim().slice(0, 60) || name, genre: 'Live Concert', time: '19:00' }],
+          },
+        ],
+        schedule: [
+          { time: '17:00', stage: 'Main Gate', artist: 'เปิดประตูเข้าฮอลล์ (Doors Open)' },
+          { time: '19:00', stage: venue || 'Main Stage', artist: name },
+        ],
+        zones: [
+          { name: 'Standing / GA Zone', category: 'STANDING', price: 2500, capacity: 800, colorCode: '#00f0ff' },
+          { name: 'VIP Seated Zone', category: 'VIP', price: 4500, capacity: 250, colorCode: '#ff007f' },
+          { name: 'Standard Seated', category: 'SEATED', price: 1800, capacity: 400, colorCode: '#a855f7' },
+        ],
+      });
+    }
+
+    if (liveItems.length > 0) {
+      liveCache = { items: liveItems, fetchedAt: Date.now() };
+    }
+    return liveItems;
+  } catch (err) {
+    console.warn('⚠️ [ConcertDiscovery] Live TTM fetch fallback:', err.message);
+    return liveCache.items || [];
+  }
+}
+
+async function buildCombinedConcertCatalog(forceRefresh = false) {
+  const liveConcerts = await fetchLiveThaiTicketMajorConcerts(forceRefresh);
+  const merged = [];
+  const seenSlugs = new Set();
+  const seenNames = new Set();
+
+  const normalizeKey = (s = '') => String(s).toLowerCase().replace(/[^a-z0-9ก-๙]/g, '');
+
+  // Put live scraped concerts from ThaiTicketMajor first so new real-world announcements appear at the top
+  for (const c of liveConcerts) {
+    const nameKey = normalizeKey(c.name);
+    if (seenSlugs.has(c.slug) || seenNames.has(nameKey)) continue;
+    seenSlugs.add(c.slug);
+    seenNames.add(nameKey);
+    merged.push(c);
+  }
+
+  // Include curated Thailand concerts & festivals that aren't already in the live feed
+  for (const c of REAL_THAILAND_CONCERTS) {
+    const nameKey = normalizeKey(c.name);
+    if (seenSlugs.has(c.slug) || seenNames.has(nameKey)) continue;
+    seenSlugs.add(c.slug);
+    seenNames.add(nameKey);
+    merged.push({ ...c, isLiveScraped: false });
+  }
+
+  return { merged, liveCount: liveConcerts.length };
+}
+
+async function getDiscoveredConcerts(options = {}) {
+  const [{ merged, liveCount }, existing] = await Promise.all([
+    buildCombinedConcertCatalog(Boolean(options.forceRefresh)),
+    prisma.concert.findMany({ select: { slug: true, name: true } }),
+  ]);
+
+  const normalizeKey = (s = '') => String(s).toLowerCase().replace(/[^a-z0-9ก-๙]/g, '');
   const existingSlugs = new Set(existing.map(({ slug }) => slug));
-  const items = REAL_THAILAND_CONCERTS.map((concert) => ({
+  const existingNames = new Set(existing.map(({ name }) => normalizeKey(name)));
+
+  const items = merged.map((concert) => ({
     ...concert,
-    lineup: concert.lineup || [],
+    lineup: concert.lineup || [
+      {
+        stage: concert.venue || 'Main Stage',
+        bands: [{ name: concert.name.split(/[:\-–|]/)[0].trim().slice(0, 60) || concert.name, genre: 'Live Concert', time: '19:00' }],
+      },
+    ],
     schedule: concert.schedule || [],
     bannerUrl: concert.bannerUrl || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200&auto=format&fit=crop&q=80',
-    zones: concert.zones || [],
-    isImported: existingSlugs.has(concert.slug),
+    zones: concert.zones && concert.zones.length > 0 ? concert.zones : [
+      { name: 'Standing Zone (บัตรยืนทั่วไป)', category: 'STANDING', price: 1800, capacity: 1000, colorCode: '#00f0ff' },
+      { name: 'VIP Seated (บัตรนั่ง VIP)', category: 'SEATED', price: 3500, capacity: 200, colorCode: '#ff007f' },
+    ],
+    isImported: existingSlugs.has(concert.slug) || existingNames.has(normalizeKey(concert.name)),
   }));
   return {
     items,
     pendingCount: items.filter((concert) => !concert.isImported).length,
+    liveCount,
     total: items.length,
     checkedAt: new Date().toISOString(),
-    sourceNote: 'รายการคัดจากประกาศผู้จัดและ ThaiTicketMajor; ตรวจสอบวันและสถานะบัตรที่ลิงก์ต้นทางก่อนซื้อ',
+    sourceNote: liveCount > 0
+      ? `ดึงข้อมูลสดจาก ThaiTicketMajor สำเร็จ (${liveCount} งานสด + รายการเทศกาลในไทย)`
+      : 'รายการคัดจากประกาศผู้จัดและ ThaiTicketMajor; ตรวจสอบวันและสถานะบัตรที่ลิงก์ต้นทางก่อนซื้อ',
   };
 }
 
 async function importDiscoveredConcert(externalId) {
-  const target = REAL_THAILAND_CONCERTS.find((concert) => concert.externalId === externalId);
+  const { merged } = await buildCombinedConcertCatalog(false);
+  const target = merged.find((concert) => concert.externalId === externalId);
   if (!target) throw new Error('ไม่พบคอนเสิร์ตที่ต้องการนำเข้า');
 
   const existing = await prisma.concert.findUnique({ where: { slug: target.slug } });
