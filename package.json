@@ -1,8 +1,10 @@
 {
   "name": "soundwave-pass",
   "version": "1.0.0",
+  "type": "module",
   "description": "SoundWave Pass — Full-stack Concert & Music Festival Ticketing System (Team Alpha)",
   "scripts": {
+    "build": "npm --prefix frontend ci && npm --prefix frontend run build && node -e \"import('fs').then(fs => fs.cpSync('frontend/dist', 'dist', { recursive: true }))\"",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "db:studio": "npm --prefix backend run db:studio",
