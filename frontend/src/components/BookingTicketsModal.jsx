@@ -1,8 +1,10 @@
 import React from 'react';
 import { X, Ticket, Printer, ExternalLink, User, Armchair, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function BookingTicketsModal({ booking, onClose }) {
+  const { lang, t } = useLanguage();
   if (!booking) return null;
 
   const tickets = booking.tickets || [];
@@ -25,10 +27,10 @@ export default function BookingTicketsModal({ booking, onClose }) {
                 Booking Attendee Breakdown
               </span>
               <h2 id="booking-tickets-title" className="text-xl font-black text-white mt-0.5">
-                รายการตั๋วทั้งหมดในคำสั่งซื้อ #{booking.bookingCode}
+                {t(`รายการตั๋วทั้งหมดในคำสั่งซื้อ #${booking.bookingCode}`, `All Tickets in Booking #${booking.bookingCode}`)}
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                ผู้จอง: <strong className="text-white">{booking.customerName}</strong> ({booking.customerPhone}) · {tickets.length} ใบ
+                {t('ผู้จอง:', 'Customer:')} <strong className="text-white">{booking.customerName}</strong> ({booking.customerPhone}) · {tickets.length} {t('ใบ', 'tickets')}
               </p>
             </div>
           </div>
@@ -36,7 +38,7 @@ export default function BookingTicketsModal({ booking, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="ปิด"
+            aria-label={t('ปิด', 'Close')}
             className="rounded-xl border border-white/10 p-2 text-gray-400 hover:text-white hover:bg-white/5"
           >
             <X size={18} />
@@ -44,19 +46,19 @@ export default function BookingTicketsModal({ booking, onClose }) {
         </header>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-3">
-          {tickets.map((t, idx) => {
-            const isUsed = t.status === 'USED';
-            const isValid = t.status === 'VALID';
+          {tickets.map((tk, idx) => {
+            const isUsed = tk.status === 'USED';
+            const isValid = tk.status === 'VALID';
 
             return (
               <article
-                key={t.id || idx}
+                key={tk.id || idx}
                 className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-cyan-400/30 transition-all"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-black text-cyan-200">
-                      {t.ticketCode}
+                      {tk.ticketCode}
                     </span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
@@ -67,45 +69,55 @@ export default function BookingTicketsModal({ booking, onClose }) {
                           : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                       }`}
                     >
-                      {isUsed ? 'สแกนเข้างานแล้ว' : isValid ? 'บัตรพร้อมใช้งาน' : 'ยกเลิก / คืนเงิน'}
+                      {isUsed
+                        ? t('สแกนเข้างานแล้ว', 'Checked In')
+                        : isValid
+                        ? t('บัตรพร้อมใช้งาน', 'Valid Ticket')
+                        : t('ยกเลิก / คืนเงิน', 'Cancelled / Refunded')}
                     </span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-300">
                     <span className="flex items-center gap-1">
                       <User size={13} className="text-gray-400" />
-                      <span>{t.attendeeName}</span>
+                      <span>{tk.attendeeName}</span>
                     </span>
                     <span className="flex items-center gap-1 font-mono text-cyan-300">
                       <Armchair size={13} />
-                      <span>ที่นั่ง: {t.seatNumber || 'บัตรยืน (GA)'}</span>
+                      <span>
+                        {t('ที่นั่ง:', 'Seat:')} {tk.seatNumber || t('บัตรยืน (GA)', 'General Admission (Standing)')}
+                      </span>
                     </span>
                   </div>
 
-                  {t.usedAt && (
+                  {tk.usedAt && (
                     <p className="text-[10px] text-purple-300 flex items-center gap-1">
                       <Clock size={11} />
-                      <span>สแกนเมื่อ: {new Date(t.usedAt).toLocaleString('th-TH')} {t.scannedBy && `(สตาฟฟ์: ${t.scannedBy})`}</span>
+                      <span>
+                        {t('สแกนเมื่อ:', 'Scanned at:')}{' '}
+                        {new Date(tk.usedAt).toLocaleString(lang === 'en' ? 'en-GB' : 'th-TH')}{' '}
+                        {tk.scannedBy && `(${t('สตาฟฟ์:', 'Staff:')} ${tk.scannedBy})`}
+                      </span>
                     </p>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                   <Link
-                    to={`/tickets/${t.ticketCode}`}
+                    to={`/tickets/${tk.ticketCode}`}
                     target="_blank"
                     className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/10"
                   >
                     <ExternalLink size={12} />
-                    <span>ดูตั๋ว</span>
+                    <span>{t('ดูตั๋ว', 'View Ticket')}</span>
                   </Link>
                   <Link
-                    to={`/tickets/${t.ticketCode}/print`}
+                    to={`/tickets/${tk.ticketCode}/print`}
                     target="_blank"
                     className="flex items-center gap-1 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20"
                   >
                     <Printer size={12} />
-                    <span>พิมพ์ตั๋ว</span>
+                    <span>{t('พิมพ์ตั๋ว', 'Print Ticket')}</span>
                   </Link>
                 </div>
               </article>
@@ -114,7 +126,7 @@ export default function BookingTicketsModal({ booking, onClose }) {
 
           {tickets.length === 0 && (
             <div className="py-12 text-center text-xs text-gray-500">
-              ไม่พบตั๋วในรายการจองนี้
+              {t('ไม่พบตั๋วในรายการจองนี้', 'No tickets found in this booking')}
             </div>
           )}
         </div>

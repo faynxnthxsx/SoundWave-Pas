@@ -7,20 +7,27 @@ import {
   Check,
   RotateCcw
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const THAI_MONTHS = [
   'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
 ];
+const EN_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 const THAI_DAYS_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const EN_DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const THAI_DAYS_FULL = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+const EN_DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const CLEAN_TIME_PRESETS = [
-  { time: '16:00', label: '16:00', desc: 'เปิดประตู' },
-  { time: '18:00', label: '18:00', desc: 'เริ่มงาน' },
-  { time: '19:30', label: '19:30', desc: 'วงหลัก' },
-  { time: '21:00', label: '21:00', desc: 'เฮดไลเนอร์' },
+  { time: '16:00', label: '16:00', desc: 'เปิดประตู', descEn: 'Gates Open' },
+  { time: '18:00', label: '18:00', desc: 'เริ่มงาน', descEn: 'Show Starts' },
+  { time: '19:30', label: '19:30', desc: 'วงหลัก', descEn: 'Main Act' },
+  { time: '21:00', label: '21:00', desc: 'เฮดไลเนอร์', descEn: 'Headliner' },
 ];
 
 const CLEAN_MINUTES = [0, 15, 30, 45];
@@ -30,6 +37,7 @@ const formatDateStr = (date) =>
   `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 
 export default function ConcertDateTimePicker({ value, onChange }) {
+  const { lang, t } = useLanguage();
   // Parse incoming value: 'YYYY-MM-DDTHH:mm'
   const parsed = useMemo(() => {
     if (!value || typeof value !== 'string') return null;
@@ -170,6 +178,14 @@ export default function ConcertDateTimePicker({ value, onChange }) {
     if (!selectedDateStr) return null;
     const [y, m, d] = selectedDateStr.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
+    if (lang === 'en') {
+      const dayName = EN_DAYS_FULL[dateObj.getDay()] || '';
+      const monthName = EN_MONTHS[m - 1] || '';
+      return {
+        fullDateText: `${dayName}, ${d} ${monthName} ${y}`,
+        timeText: `${selectedTimeStr}`,
+      };
+    }
     const dayName = THAI_DAYS_FULL[dateObj.getDay()] || '';
     const monthName = THAI_MONTHS[m - 1] || '';
     const buddhistYear = y + 543;
@@ -178,7 +194,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
       fullDateText: `${dayName}ที่ ${d} ${monthName} ${buddhistYear}`,
       timeText: `${selectedTimeStr} น.`,
     };
-  }, [selectedDateStr, selectedTimeStr]);
+  }, [selectedDateStr, selectedTimeStr, lang]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d0e15] shadow-xl">
@@ -187,7 +203,9 @@ export default function ConcertDateTimePicker({ value, onChange }) {
         <div className="flex items-center gap-2">
           <CalendarDays size={16} className="text-cyan-300" />
           <span className="text-xs font-bold text-white">
-            {formattedSummary ? `${formattedSummary.fullDateText} · ${selectedTimeStr} น.` : 'เลือกวันและเวลาแสดง'}
+            {formattedSummary
+              ? `${formattedSummary.fullDateText} · ${formattedSummary.timeText}`
+              : t('เลือกวันและเวลาแสดง', 'Select Show Date & Time')}
           </span>
         </div>
 
@@ -203,7 +221,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
             }`}
           >
             <CalendarDays size={13} />
-            <span>วันที่</span>
+            <span>{t('วันที่', 'Date')}</span>
           </button>
           <button
             type="button"
@@ -215,7 +233,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
             }`}
           >
             <Clock size={13} />
-            <span>เวลา ({selectedTimeStr})</span>
+            <span>{t(`เวลา (${selectedTimeStr})`, `Time (${selectedTimeStr})`)}</span>
           </button>
         </div>
       </div>
@@ -231,21 +249,21 @@ export default function ConcertDateTimePicker({ value, onChange }) {
                 onClick={() => handlePresetDate(0)}
                 className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300 hover:border-cyan-300 hover:text-white"
               >
-                วันนี้
+                {t('วันนี้', 'Today')}
               </button>
               <button
                 type="button"
                 onClick={() => handlePresetDate(1)}
                 className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300 hover:border-cyan-300 hover:text-white"
               >
-                พรุ่งนี้
+                {t('พรุ่งนี้', 'Tomorrow')}
               </button>
               <button
                 type="button"
                 onClick={() => handlePresetDate(7)}
                 className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-gray-300 hover:border-cyan-300 hover:text-white"
               >
-                +7 วัน
+                {t('+7 วัน', '+7 Days')}
               </button>
             </div>
             <button
@@ -253,7 +271,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
               onClick={resetToToday}
               className="text-[11px] text-cyan-300 hover:underline flex items-center gap-1"
             >
-              <RotateCcw size={11} /> รีเซ็ต
+              <RotateCcw size={11} /> {t('รีเซ็ต', 'Reset')}
             </button>
           </div>
 
@@ -267,7 +285,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
               <ChevronLeft size={16} />
             </button>
             <span className="text-xs font-bold text-white">
-              {THAI_MONTHS[viewMonth]} {viewYear + 543}
+              {lang === 'en' ? `${EN_MONTHS[viewMonth]} ${viewYear}` : `${THAI_MONTHS[viewMonth]} ${viewYear + 543}`}
             </span>
             <button
               type="button"
@@ -280,7 +298,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
 
           {/* Weekday Row */}
           <div className="mb-1 grid grid-cols-7 text-center">
-            {THAI_DAYS_SHORT.map((d, i) => (
+            {(lang === 'en' ? EN_DAYS_SHORT : THAI_DAYS_SHORT).map((d, i) => (
               <span
                 key={d}
                 className={`text-[10px] font-bold ${
@@ -327,14 +345,14 @@ export default function ConcertDateTimePicker({ value, onChange }) {
 
           <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2">
             <span className="text-[11px] text-gray-400">
-              {selectedDateStr || 'คลิกเลือกวันที่'}
+              {selectedDateStr || t('คลิกเลือกวันที่', 'Click to pick a date')}
             </span>
             <button
               type="button"
               onClick={() => setActiveTab('time')}
               className="text-xs font-bold text-cyan-300 hover:underline flex items-center gap-1"
             >
-              <span>ตั้งเวลาต่อ →</span>
+              <span>{t('ตั้งเวลาต่อ →', 'Set Time →')}</span>
             </button>
           </div>
         </div>
@@ -358,7 +376,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
                 <span className="font-mono text-3xl font-black text-cyan-300">
                   {pad2(selectedHour)}
                 </span>
-                <span className="block text-[9px] text-gray-400 font-semibold uppercase">ชั่วโมง</span>
+                <span className="block text-[9px] text-gray-400 font-semibold uppercase">{t('ชั่วโมง', 'Hour')}</span>
               </div>
               <button
                 type="button"
@@ -384,7 +402,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
                 <span className="font-mono text-3xl font-black text-purple-300">
                   {pad2(selectedMinute)}
                 </span>
-                <span className="block text-[9px] text-gray-400 font-semibold uppercase">นาที</span>
+                <span className="block text-[9px] text-gray-400 font-semibold uppercase">{t('นาที', 'Minute')}</span>
               </div>
               <button
                 type="button"
@@ -399,7 +417,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
           {/* Quick Clean Presets */}
           <div className="mb-4">
             <span className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">
-              เวลากิจกรรมยอดนิยม:
+              {t('เวลากิจกรรมยอดนิยม:', 'Popular Showtimes:')}
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {CLEAN_TIME_PRESETS.map((p) => {
@@ -419,7 +437,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
                     }`}
                   >
                     <span className="block font-mono text-xs font-black">{p.label}</span>
-                    <span className="block text-[10px] text-gray-400 mt-0.5">{p.desc}</span>
+                    <span className="block text-[10px] text-gray-400 mt-0.5">{lang === 'en' ? p.descEn : p.desc}</span>
                   </button>
                 );
               })}
@@ -429,7 +447,7 @@ export default function ConcertDateTimePicker({ value, onChange }) {
           {/* Clean Minute Chips */}
           <div className="mb-2">
             <span className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">
-              เลือกนาที:
+              {t('เลือกนาที:', 'Select Minute:')}
             </span>
             <div className="grid grid-cols-4 gap-2">
               {CLEAN_MINUTES.map((m) => {
@@ -458,10 +476,10 @@ export default function ConcertDateTimePicker({ value, onChange }) {
               onClick={() => setActiveTab('date')}
               className="text-xs font-bold text-gray-400 hover:text-white"
             >
-              ← ย้อนกลับไปวันที่
+              {t('← ย้อนกลับไปวันที่', '← Back to Calendar')}
             </button>
             <span className="flex items-center gap-1 text-xs font-bold text-emerald-400">
-              <Check size={14} /> บันทึกเวลาแล้ว
+              <Check size={14} /> {t('บันทึกเวลาแล้ว', 'Time Saved')}
             </span>
           </div>
         </div>

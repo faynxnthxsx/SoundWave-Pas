@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const ToastContext = createContext({
   showToast: () => {},
@@ -10,6 +11,7 @@ const ToastContext = createContext({
 });
 
 export function ToastProvider({ children }) {
+  const { trData } = useLanguage();
   const [toasts, setToasts] = useState([]);
 
   const removeToast = useCallback((id) => {
@@ -66,7 +68,7 @@ export function ToastProvider({ children }) {
             </div>
 
             <div className="flex-1 text-xs font-semibold leading-relaxed">
-              {t.message}
+              {trData(t.message)}
             </div>
 
             <button

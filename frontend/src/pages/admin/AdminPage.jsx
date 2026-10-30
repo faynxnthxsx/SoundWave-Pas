@@ -43,6 +43,7 @@ import ConcertDiscoveryModal from '../../components/ConcertDiscoveryModal';
 import EditConcertModal from '../../components/EditConcertModal';
 import BookingTicketsModal from '../../components/BookingTicketsModal';
 import { useToast } from '../../components/Toast';
+import { useLanguage } from '../../context/LanguageContext';
 
 // ── Preset ticket categories ──────────────────────────────────────────────────
 const PRESET_CATEGORIES = [
@@ -54,12 +55,6 @@ const PRESET_CATEGORIES = [
   { value: 'EARLY_BIRD', label: 'Early Bird',        emoji: '🐦' },
   { value: 'MEET_GREET', label: 'Meet & Greet',      emoji: '🤝' },
 ];
-
-const categoryLabel = (cat) => {
-  if (!cat) return '—';
-  const preset = PRESET_CATEGORIES.find((p) => p.value === cat);
-  return preset ? `${preset.emoji} ${preset.label}` : cat;
-};
 
 const emptyZone = () => ({ name: '', category: 'STANDING', price: '', capacity: '' });
 const emptyForm = () => ({
@@ -79,14 +74,6 @@ const emptyForm = () => ({
 
 const money = (amount) =>
   new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(amount || 0);
-
-const dateLabel = (date) => {
-  if (!date) return '—';
-  const d = new Date(date);
-  const dateStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-  const timeStr = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-  return `${dateStr} · ${timeStr} น.`;
-};
 
 async function getOrganizerSession() {
   try {
@@ -116,6 +103,26 @@ async function api(path, options = {}) {
 export default function AdminPage() {
   const navigate = useNavigate();
   const toast = useToast();
+  const { lang, t, trData } = useLanguage();
+
+  const dateLabel = useCallback((date) => {
+    if (!date) return '—';
+    const d = new Date(date);
+    if (lang === 'en') {
+      const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      return `${dateStr} · ${timeStr}`;
+    }
+    const dateStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    return `${dateStr} · ${timeStr} น.`;
+  }, [lang]);
+
+  const categoryLabel = useCallback((cat) => {
+    if (!cat) return '—';
+    const preset = PRESET_CATEGORIES.find((p) => p.value === cat);
+    return preset ? `${preset.emoji} ${trData(preset.label)}` : cat;
+  }, [trData]);
 
   const [organizer, setOrganizer] = useState(() => {
     try { return JSON.parse(localStorage.getItem('soundwave_organizer') || 'null'); }
@@ -843,7 +850,7 @@ export default function AdminPage() {
               onClick={handleOrganizerLogout}
               className="rounded-xl border border-rose-400/20 px-3.5 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-400/10"
             >
-              ออก ({organizer.name})
+              {t(`ออก (${organizer.name})`, `Sign Out (${organizer.name})`)}
             </button>
           </div>
         </header>
@@ -970,7 +977,7 @@ export default function AdminPage() {
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-400">ตั๋วที่ขายแล้ว:</span>
                         <span className="font-mono font-bold text-white">
-                          {sold.toLocaleString()} / {capacity.toLocaleString()} ใบ ({percentSold}%)
+                          {sold.toLocaleString()} / {capacity.toLocaleString()} {t('ใบ', 'tickets')} ({percentSold}%)
                         </span>
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
@@ -1120,7 +1127,7 @@ export default function AdminPage() {
                             </span>
                             <span className="flex items-center gap-1">
                               <MapPin size={13} className="text-pink-300" />
-                              {c.venue || c.location}
+                              {trData(c.venue || c.location)}
                             </span>
                           </div>
                         </div>
@@ -1185,7 +1192,7 @@ export default function AdminPage() {
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
                               <Layers size={14} className="text-cyan-300" />
-                              <span>โซนบัตร และผังที่นั่งจำลอง ({c.zones?.length || 0} โซน)</span>
+                              <span>{t(`โซนบัตร และผังที่นั่งจำลอง (${c.zones?.length || 0} โซน)`, `Ticket Zones & Seat Maps (${c.zones?.length || 0} zones)`)}</span>
                             </h4>
                             <span className="text-[11px] text-gray-500">
                               คลิกสวิตช์เพื่อเปิด/ปิดขายโซน หรือคลิก "ผังที่นั่ง Interactive" เพื่อล็อกเก้าอี้
@@ -1236,7 +1243,7 @@ export default function AdminPage() {
                                         </button>
                                       </td>
 
-                                      <td className="py-2.5 px-3 font-bold text-white">{z.name}</td>
+                                      <td className="py-2.5 px-3 font-bold text-white">{trData(z.name)}</td>
                                       <td className="py-2.5 px-3">
                                         <span className="rounded-md bg-white/5 px-2 py-0.5 text-[10px] text-gray-300 border border-white/10">
                                           {categoryLabel(z.category)}
@@ -1246,7 +1253,7 @@ export default function AdminPage() {
                                         {money(z.price)}
                                       </td>
                                       <td className="py-2.5 px-3 text-center font-mono">
-                                        <strong className="text-white">{zoneSold}</strong> / {zoneCap} ใบ
+                                        <strong className="text-white">{zoneSold}</strong> / {zoneCap} {t('ใบ', 'tickets')}
                                       </td>
                                       <td className="py-2.5 px-3 text-center font-mono">
                                         <span className={zoneAvail > 0 ? 'text-emerald-300 font-bold' : 'text-rose-400'}>
@@ -1344,7 +1351,7 @@ export default function AdminPage() {
                   </select>
 
                   <span className="shrink-0 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-mono text-gray-300">
-                    พบ {filteredBookings.length} / {bookings.length}
+                    {t('พบ', 'Found')} {filteredBookings.length} / {bookings.length}
                   </span>
                 </div>
               </div>
@@ -1396,7 +1403,7 @@ export default function AdminPage() {
 
                         <td className="px-4 py-3.5">
                           <div className="text-gray-200">{concertNames.join(', ') || '—'}</div>
-                          <div className="mt-1 text-[10px] text-gray-500">{zoneNames.join(', ') || 'ไม่ระบุโซน'}</div>
+                          <div className="mt-1 text-[10px] text-gray-500">{zoneNames.map(trData).join(', ') || t('ไม่ระบุโซน', 'Unspecified Zone')}</div>
                         </td>
 
                         <td className="px-4 py-3.5 text-center">
@@ -1488,7 +1495,7 @@ export default function AdminPage() {
                                 className="flex items-center gap-1 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200 hover:bg-cyan-400/20 transition-all cursor-pointer"
                               >
                                 <Ticket size={11} />
-                                <span>ดูตั๋ว ({booking.tickets.length})</span>
+                                <span>{t(`ดูตั๋ว (${booking.tickets.length})`, `View Tickets (${booking.tickets.length})`)}</span>
                               </button>
                             )}
 
@@ -1791,7 +1798,7 @@ export default function AdminPage() {
                         <div key={index} className="rounded-xl border border-white/10 bg-[#0c0d14] p-3.5 space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-200">
-                              โซนที่ {index + 1}
+                              {t(`โซนที่ ${index + 1}`, `Zone ${index + 1}`)}
                             </span>
                             {form.zones.length > 1 && (
                               <button
@@ -1840,7 +1847,7 @@ export default function AdminPage() {
                                           : 'border-white/10 bg-white/5 text-gray-300 hover:border-white/25 hover:bg-white/10'
                                       }`}
                                     >
-                                      {preset.emoji} {preset.label}
+                                      {preset.emoji} {trData(preset.label)}
                                     </button>
                                   );
                                 })}
@@ -2067,6 +2074,7 @@ function StatCard({ label, value, detail, subTag, icon: Icon, color = 'text-cyan
 }
 
 function ArtistEditorModal({ editor, onClose, onAdd, onRemove, onDeleteImage, onUpdate, onSave, saving, uploading, onPhoto }) {
+  const { trData } = useLanguage();
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <section
@@ -2079,7 +2087,7 @@ function ArtistEditorModal({ editor, onClose, onAdd, onRemove, onDeleteImage, on
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-pink-300">Artist studio</p>
             <h2 id="artist-modal-title" className="mt-1 text-xl font-black">
-              รายชื่อศิลปิน · {editor.name}
+              {trData('รายชื่อศิลปิน ·')} {editor.name}
             </h2>
             <p className="mt-1 text-xs text-gray-400">เพิ่มชื่อ เวที เวลา แนวเพลง และรูปภาพศิลปิน</p>
           </div>
