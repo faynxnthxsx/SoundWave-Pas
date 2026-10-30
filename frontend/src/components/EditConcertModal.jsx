@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CalendarDays, MapPin, LoaderCircle, Check, ImagePlus } from 'lucide-react';
+import { X, LoaderCircle, Check } from 'lucide-react';
 import { useToast } from './Toast';
 import ConcertDateTimePicker from './ConcertDateTimePicker';
 import LocationPicker from './LocationPicker';

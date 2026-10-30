@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
-  Check,
   CircleDollarSign,
   ImagePlus,
   LoaderCircle,
@@ -13,10 +12,8 @@ import {
   Users,
   Mic2,
   Upload,
-  ArrowRight,
   TrendingUp,
   ExternalLink,
-  ShieldCheck,
   Layers,
   ChevronDown,
   ChevronUp,
@@ -25,21 +22,14 @@ import {
   X,
   PenLine,
   Lock,
-  Unlock,
   Eye,
   EyeOff,
-  Settings2,
   Search,
   Copy,
   Send,
   Download,
-  AlertTriangle,
-  Clock,
   Armchair,
-  CheckCircle2,
   FileSpreadsheet,
-  ToggleLeft,
-  ToggleRight,
   Play,
   Pause,
   StopCircle,
@@ -150,7 +140,6 @@ export default function AdminPage() {
   const [concerts, setConcerts] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [bookingFilter, setBookingFilter] = useState('all');
-  const [kpiDetail, setKpiDetail] = useState(null);
 
   // Universal Quick Search Query
   const [searchQuery, setSearchQuery] = useState('');
@@ -1048,11 +1037,6 @@ export default function AdminPage() {
             {/* Concert Cards with Sales Toggles & Seat Map */}
             <div className="space-y-6">
               {concerts.map((c) => {
-                const sold = c.totalTicketsSold || 0;
-                const capacity = c.totalCapacity || 1;
-                const available = c.totalAvailable ?? (capacity - sold);
-                const percentSold = Math.min(100, Math.round((sold / capacity) * 100));
-                const checkedIn = c.checkedIn || 0;
                 const isExpanded = expandedConcerts[c.id] !== false; // expanded by default
 
                 return (

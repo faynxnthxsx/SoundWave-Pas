@@ -2,13 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   CalendarDays,
   Clock,
-  Clock3,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
-  ChevronDown,
-  Sparkles,
-  Zap,
   Check,
   RotateCcw
 } from 'lucide-react';
@@ -28,7 +23,6 @@ const CLEAN_TIME_PRESETS = [
   { time: '21:00', label: '21:00', desc: 'เฮดไลเนอร์' },
 ];
 
-const POPULAR_HOURS = [15, 16, 17, 18, 19, 20, 21, 22, 23];
 const CLEAN_MINUTES = [0, 15, 30, 45];
 
 const pad2 = (n) => String(n).padStart(2, '0');

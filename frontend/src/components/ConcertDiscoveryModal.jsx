@@ -7,8 +7,6 @@ import {
   CheckCircle2,
   CalendarDays,
   MapPin,
-  Music2,
-  Ticket,
   LoaderCircle,
   ExternalLink,
   RotateCcw,
@@ -28,10 +26,10 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
       const res = await api(forceRefresh ? '/discovery?refresh=1' : '/discovery');
       setData(res || { items: [], pendingCount: 0, total: 0 });
       if (forceRefresh && res) {
-        toast.success(`สแกนเรดาร์สดสำเร็จ! พบงานใหม่พร้อมนำเข้า ${res.pendingCount || 0} งาน`);
+        toast.success(`เธชเนเธเธเน€เธฃเธ”เธฒเธฃเนเธชเธ”เธชเธณเน€เธฃเนเธ! เธเธเธเธฒเธเนเธซเธกเนเธเธฃเนเธญเธกเธเธณเน€เธเนเธฒ ${res.pendingCount || 0} เธเธฒเธ`);
       }
     } catch (err) {
-      toast.error(err.message || 'ตรวจหาคอนเสิร์ตไม่สำเร็จ');
+      toast.error(err.message || 'เธ•เธฃเธงเธเธซเธฒเธเธญเธเน€เธชเธดเธฃเนเธ•เนเธกเนเธชเธณเน€เธฃเนเธ');
     } finally {
       setLoading(false);
     }
@@ -49,7 +47,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ externalId }),
       });
-      toast.success(`นำเข้าคอนเสิร์ต "${concertName}" สำเร็จ พร้อมเปิดขายทันที!`);
+      toast.success(`เธเธณเน€เธเนเธฒเธเธญเธเน€เธชเธดเธฃเนเธ• "${concertName}" เธชเธณเน€เธฃเนเธ เธเธฃเนเธญเธกเน€เธเธดเธ”เธเธฒเธขเธ—เธฑเธเธ—เธต!`);
       // Immediately remove the imported item so it disappears right away
       setData((prev) => ({
         ...prev,
@@ -58,7 +56,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
       }));
       if (onImportSuccess) onImportSuccess(result.data);
     } catch (err) {
-      toast.error(err.message || 'นำเข้าคอนเสิร์ตไม่สำเร็จ');
+      toast.error(err.message || 'เธเธณเน€เธเนเธฒเธเธญเธเน€เธชเธดเธฃเนเธ•เนเธกเนเธชเธณเน€เธฃเนเธ');
     } finally {
       setImportingId(null);
     }
@@ -83,13 +81,13 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                 <span className="rounded-full bg-cyan-400/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-200 border border-cyan-400/40">
                   Radar Auto-Discovery
                 </span>
-                <span className="text-xs text-gray-400">ตรวจจับคอนเสิร์ตและเฟสติวัลจริงในไทย 2026</span>
+                <span className="text-xs text-gray-400">เธ•เธฃเธงเธเธเธฑเธเธเธญเธเน€เธชเธดเธฃเนเธ•เนเธฅเธฐเน€เธเธชเธ•เธดเธงเธฑเธฅเธเธฃเธดเธเนเธเนเธ—เธข 2026</span>
               </div>
               <h2 id="discovery-modal-title" className="mt-0.5 text-xl font-black text-white flex items-center gap-2">
-                <span>ศูนย์ตรวจจับคอนเสิร์ตใหม่ในไทย</span>
+                <span>เธจเธนเธเธขเนเธ•เธฃเธงเธเธเธฑเธเธเธญเธเน€เธชเธดเธฃเนเธ•เนเธซเธกเนเนเธเนเธ—เธข</span>
                 {data.pendingCount > 0 && (
                   <span className="rounded-full bg-rose-500/20 px-2.5 py-0.5 text-xs font-bold text-rose-300 border border-rose-500/40">
-                    ค้นพบ {data.pendingCount} งานใหม่
+                    เธเนเธเธเธ {data.pendingCount} เธเธฒเธเนเธซเธกเน
                   </span>
                 )}
               </h2>
@@ -101,17 +99,17 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
               type="button"
               disabled={loading}
               onClick={() => fetchDiscovery(true)}
-              title="สแกนหาคอนเสิร์ตใหม่จากเว็บสด"
+              title="เธชเนเธเธเธซเธฒเธเธญเธเน€เธชเธดเธฃเนเธ•เนเธซเธกเนเธเธฒเธเน€เธงเนเธเธชเธ”"
               className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
             >
               <RotateCcw size={13} className={loading ? 'animate-spin' : ''} />
-              <span>สแกนเรดาร์สด</span>
+              <span>เธชเนเธเธเน€เธฃเธ”เธฒเธฃเนเธชเธ”</span>
             </button>
 
             <button
               type="button"
               onClick={onClose}
-              aria-label="ปิด"
+              aria-label="เธเธดเธ”"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white"
             >
               <X size={18} />
@@ -124,9 +122,9 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
           <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-xs text-cyan-100 flex items-start gap-3">
             <Zap size={18} className="text-cyan-300 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold">ระบบเรดาร์ซิงก์ข้อมูลงานจริง (Live Concert Feeds)</p>
+              <p className="font-bold">เธฃเธฐเธเธเน€เธฃเธ”เธฒเธฃเนเธเธดเธเธเนเธเนเธญเธกเธนเธฅเธเธฒเธเธเธฃเธดเธ (Live Concert Feeds)</p>
               <p className="mt-0.5 text-gray-300 leading-relaxed text-[11px]">
-                ระบบตรวจพบคอนเสิร์ตจริงที่จัดขึ้นในประเทศไทย คุณสามารถกด <strong>"นำเข้าสู่ระบบใน 1 คลิก"</strong> เพื่อสร้างคอนเสิร์ต โซนที่นั่ง ราคา และไลน์อัปศิลปินจริงเข้าสู่ระบบ SoundWave Pass ได้ทันที
+                เธฃเธฐเธเธเธ•เธฃเธงเธเธเธเธเธญเธเน€เธชเธดเธฃเนเธ•เธเธฃเธดเธเธ—เธตเนเธเธฑเธ”เธเธถเนเธเนเธเธเธฃเธฐเน€เธ—เธจเนเธ—เธข เธเธธเธ“เธชเธฒเธกเธฒเธฃเธ–เธเธ” <strong>"เธเธณเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธ 1 เธเธฅเธดเธ"</strong> เน€เธเธทเนเธญเธชเธฃเนเธฒเธเธเธญเธเน€เธชเธดเธฃเนเธ• เนเธเธเธ—เธตเนเธเธฑเนเธ เธฃเธฒเธเธฒ เนเธฅเธฐเนเธฅเธเนเธญเธฑเธเธจเธดเธฅเธเธดเธเธเธฃเธดเธเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ SoundWave Pass เนเธ”เนเธ—เธฑเธเธ—เธต
               </p>
             </div>
           </div>
@@ -134,7 +132,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
           {loading && (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400 text-xs">
               <LoaderCircle className="animate-spin text-cyan-400 mb-2" size={24} />
-              <span>กำลังสแกนค้นหาคอนเสิร์ตจริงในไทย…</span>
+              <span>เธเธณเธฅเธฑเธเธชเนเธเธเธเนเธเธซเธฒเธเธญเธเน€เธชเธดเธฃเนเธ•เธเธฃเธดเธเนเธเนเธ—เธขโ€ฆ</span>
             </div>
           )}
 
@@ -145,16 +143,16 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                   <div className="h-16 w-16 rounded-full bg-emerald-400/10 border border-emerald-400/30 flex items-center justify-center text-emerald-300 mb-3">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h3 className="text-base font-bold text-white">นำเข้าคอนเสิร์ตจริงทั้งหมดเข้าสู่ระบบแล้ว!</h3>
+                  <h3 className="text-base font-bold text-white">เธเธณเน€เธเนเธฒเธเธญเธเน€เธชเธดเธฃเนเธ•เธเธฃเธดเธเธ—เธฑเนเธเธซเธกเธ”เน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธฅเนเธง!</h3>
                   <p className="mt-1 text-xs text-gray-400 max-w-sm">
-                    คอนเสิร์ตที่ตรวจพบบนเรดาร์ทั้งหมดถูกนำเข้าสู่ระบบ SoundWave Pass เรียบร้อยแล้ว สามารถดูและจัดการได้ที่แท็บ "คอนเสิร์ต & ผังที่นั่ง"
+                    เธเธญเธเน€เธชเธดเธฃเนเธ•เธ—เธตเนเธ•เธฃเธงเธเธเธเธเธเน€เธฃเธ”เธฒเธฃเนเธ—เธฑเนเธเธซเธกเธ”เธ–เธนเธเธเธณเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ SoundWave Pass เน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง เธชเธฒเธกเธฒเธฃเธ–เธ”เธนเนเธฅเธฐเธเธฑเธ”เธเธฒเธฃเนเธ”เนเธ—เธตเนเนเธ—เนเธ "เธเธญเธเน€เธชเธดเธฃเนเธ• & เธเธฑเธเธ—เธตเนเธเธฑเนเธ"
                   </p>
                   <button
                     type="button"
                     onClick={onClose}
                     className="mt-4 rounded-xl bg-cyan-300 px-5 py-2.5 text-xs font-black text-black hover:bg-cyan-200 transition-all cursor-pointer"
                   >
-                    ปิดหน้าต่าง
+                    เธเธดเธ”เธซเธเนเธฒเธ•เนเธฒเธ
                   </button>
                 </div>
               ) : (
@@ -183,11 +181,11 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   <span className="inline-flex items-center gap-1 rounded-md bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold text-rose-300 border border-rose-500/40 animate-pulse">
-                                    <Sparkles size={11} /> งานใหม่พร้อมนำเข้า
+                                    <Sparkles size={11} /> เธเธฒเธเนเธซเธกเนเธเธฃเนเธญเธกเธเธณเน€เธเนเธฒ
                                   </span>
                                   {c.isLiveScraped && (
                                     <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-500/40">
-                                      🔴 ดึงสดจาก ThaiTicketMajor
+                                      ๐”ด เธ”เธถเธเธชเธ”เธเธฒเธ ThaiTicketMajor
                                     </span>
                                   )}
                                   {c.sourceUrl && (
@@ -197,7 +195,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                                       rel="noreferrer"
                                       className="inline-flex items-center gap-0.5 text-[10px] text-cyan-300 hover:underline"
                                     >
-                                      <ExternalLink size={10} /> ต้นทาง
+                                      <ExternalLink size={10} /> เธ•เนเธเธ—เธฒเธ
                                     </a>
                                   )}
                                 </div>
@@ -222,7 +220,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                             {/* Lineup & Zones Preview */}
                             <div className="mt-3.5 space-y-2 border-t border-white/5 pt-3 text-[11px]">
                               <div>
-                                <span className="text-gray-400 font-semibold">ไฮไลท์ศิลปิน: </span>
+                                <span className="text-gray-400 font-semibold">เนเธฎเนเธฅเธ—เนเธจเธดเธฅเธเธดเธ: </span>
                                 <span className="text-gray-200">
                                   {c.lineup?.flatMap((s) => s.bands || []).map((b) => b.name).slice(0, 4).join(', ')}
                                 </span>
@@ -234,7 +232,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                                     key={idx}
                                     className="rounded-lg bg-white/5 px-2 py-0.5 text-[10px] text-gray-300 border border-white/10"
                                   >
-                                    {z.name} (฿{z.price.toLocaleString()})
+                                    {z.name} (เธฟ{z.price.toLocaleString()})
                                   </span>
                                 ))}
                               </div>
@@ -254,7 +252,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                               className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-300 to-blue-400 px-3.5 py-2 text-xs font-black text-black hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all shadow-md shadow-cyan-400/20 cursor-pointer"
                             >
                               {isImporting ? <LoaderCircle size={13} className="animate-spin" /> : <Download size={13} />}
-                              <span>{isImporting ? 'กำลังนำเข้า…' : '📥 นำเข้าสู่ระบบ (1 คลิก)'}</span>
+                              <span>{isImporting ? 'เธเธณเธฅเธฑเธเธเธณเน€เธเนเธฒโ€ฆ' : '๐“ฅ เธเธณเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ (1 เธเธฅเธดเธ)'}</span>
                             </button>
                           </div>
                         </article>

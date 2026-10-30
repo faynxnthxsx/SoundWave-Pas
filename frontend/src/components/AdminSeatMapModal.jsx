@@ -1,27 +1,15 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   X,
   Lock,
   Unlock,
   Armchair,
   CheckCircle2,
-  AlertCircle,
   Clock,
-  User,
-  Phone,
-  Ticket as TicketIcon,
-  Search,
-  Filter,
-  Layers,
-  ChevronRight,
   RotateCcw,
-  Sparkles,
-  LoaderCircle,
-  HelpCircle
 } from 'lucide-react';
 import { useToast } from './Toast';
 
-const DEFAULT_ROWS = ['A', 'B', 'C', 'D', 'E'];
 const COLS_LEFT = [1, 2, 3, 4, 5, 6];
 const COLS_RIGHT = [7, 8, 9, 10, 11, 12];
 const ALL_COLS = [...COLS_LEFT, ...COLS_RIGHT];
@@ -38,7 +26,6 @@ export default function AdminSeatMapModal({
   const isSeatedCategory = zone?.category === 'SEATED';
   const [viewMode, setViewMode] = useState(isSeatedCategory ? 'visual' : 'table'); // 'visual' | 'table'
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'AVAILABLE' | 'SOLD' | 'PENDING' | 'RESERVED'
-  const [seatQuery, setSeatQuery] = useState('');
   const [selectedSeatDetail, setSelectedSeatDetail] = useState(null); // seat object clicked
   const [actionLoading, setActionLoading] = useState(false);
   const [quickReserveName, setQuickReserveName] = useState('Admin Reserved');

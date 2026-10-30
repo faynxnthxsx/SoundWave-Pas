@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Calendar, MapPin, Printer, CheckCircle2, XCircle, ArrowLeft, ShieldCheck, Sparkles, User, Armchair } from 'lucide-react';
+import { Calendar, MapPin, Printer, CheckCircle2, XCircle, ArrowLeft, User, Armchair } from 'lucide-react';
 
 export default function MyTicketPage() {
   const { ticketCode } = useParams();

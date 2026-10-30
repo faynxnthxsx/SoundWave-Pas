@@ -15,6 +15,7 @@ build/
 # Database
 backend/prisma/*.db
 backend/prisma/*.db-journal
+backend/mysql-data/
 backend/uploads/
 
 # Logs

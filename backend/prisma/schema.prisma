@@ -3,23 +3,23 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
 model Concert {
   id          Int      @id @default(autoincrement())
-  name        String
+  name        String   @db.Text
   slug        String   @unique
-  description String
+  description String   @db.LongText
   eventDate   DateTime
-  location    String
-  venue       String
+  location    String   @db.Text
+  venue       String   @db.Text
   latitude    Float?
   longitude   Float?
-  bannerUrl   String
-  lineupJson  String   // JSON string of bands & stages
-  scheduleJson String  // JSON string of timetable
+  bannerUrl   String   @db.LongText
+  lineupJson  String   @db.LongText // JSON string of bands & stages
+  scheduleJson String  @db.LongText // JSON string of timetable
   status      String   @default("UPCOMING") // UPCOMING, ON_SALE, PAUSED, CLOSED, COMPLETED
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -49,14 +49,14 @@ model RadarCandidate {
   id          Int      @id @default(autoincrement())
   externalId  String   @unique
   source      String
-  sourceUrl   String?
-  title       String
+  sourceUrl   String?  @db.Text
+  title       String   @db.Text
   eventDate   DateTime?
-  venue       String?
-  location    String?
-  description String   @default("")
-  imageUrl    String?
-  rawJson     String   @default("{}")
+  venue       String?  @db.Text
+  location    String?  @db.Text
+  description String   @default("") @db.VarChar(1000)
+  imageUrl    String?  @db.Text
+  rawJson     String   @db.LongText
   status      String   @default("NEW") // NEW, IMPORTED, DISMISSED
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

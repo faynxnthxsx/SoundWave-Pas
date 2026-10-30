@@ -19,7 +19,7 @@
 
 | ชื่อสมาชิก | หน้าที่หลัก (Role) | สิ่งที่รับผิดชอบ |
 | :--- | :--- | :--- |
-| 👑 **เฟย์ (Faye)** | **Team Lead & Backend Engineer** | คุมภาพรวมโปรเจกต์, วางฐานข้อมูล (Prisma + SQLite), ทำ REST API ทั้งหมด, ตรวจและรวมโค้ด (Code Review) |
+| 👑 **เฟย์ (Faye)** | **Team Lead & Backend Engineer** | คุมภาพรวมโปรเจกต์, วางฐานข้อมูล (Prisma + MySQL), ทำ REST API ทั้งหมด, ตรวจและรวมโค้ด (Code Review) |
 | 🎨 **ทาม (Time)** | **Frontend Dev 1 (Discovery & Booking)** | ออกแบบ Figma + เขียนโค้ดหน้า: หน้าแรก (Home), รายละเอียดคอนเสิร์ต (Lineup/Timetable), แผนผังเลือกโซนบัตร, หน้าจ่ายเงิน Mock PromptPay |
 | 🖨️ **เมย์ (May)** | **Frontend Dev 2 (Ticket Experience & Print)** | ออกแบบ Figma + เขียนโค้ดหน้า: หน้ารายละเอียดตั๋ว, ระบบพิมพ์บัตรที่ระลึก A4 (เส้นประ+บาร์โค้ด), หน้าจอ Gate Scanner UI |
 | 📱 **น้ำ (Nam)** | **Integration & Scanner Engineer** | สมัครและตั้งค่า LINE Developers, ออกแบบตั๋ว LINE Flex Message, ทำระบบยิงตั๋วเข้า LINE จริง, ทำระบบเปิดกล้องสแกน QR Code หน้างาน |

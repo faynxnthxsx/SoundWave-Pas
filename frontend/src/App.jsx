@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { ToastProvider } from './components/Toast';
+import { LanguageProvider } from './context/LanguageContext';
 
 // Booking Flow Pages (Time)
 import HomePage from './pages/booking/HomePage';
@@ -23,6 +24,7 @@ import TeamPortalPage from './pages/TeamPortalPage';
 export default function App() {
   return (
     <BrowserRouter>
+      <LanguageProvider>
       <ToastProvider>
         <div className="min-h-screen flex flex-col bg-[#07070b] text-gray-100 selection:bg-[#00f0ff] selection:text-black">
           {/* Navigation Bar */}
@@ -53,6 +55,7 @@ export default function App() {
           <Footer />
         </div>
       </ToastProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }

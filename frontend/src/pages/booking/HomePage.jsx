@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Sparkles, Clock, ArrowRight, Star, Users, Zap, CheckCircle2, Music, Mic2, Plus } from 'lucide-react';
+import { Calendar, MapPin, Sparkles, Clock, ArrowRight, Star, Users, Zap, CheckCircle2, Music, Mic2 } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 // ─── Default Fallback Artist Data with Photos, Date & Performance Time ───────
 const DEFAULT_ARTISTS = [
@@ -96,6 +97,7 @@ const DEFAULT_SCHEDULE = [
 ];
 
 export default function HomePage() {
+  const { lang, t, trData } = useLanguage();
   const [concerts, setConcerts] = useState([]);
   const [selectedConcertId, setSelectedConcertId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -185,8 +187,8 @@ export default function HomePage() {
 
   const featured = currentArtists[featuredIdx] || currentArtists[0];
   const eventDateFormatted = selectedConcert?.eventDate
-    ? new Date(selectedConcert.eventDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '28 – 29 พฤศจิกายน 2026';
+    ? new Date(selectedConcert.eventDate).toLocaleDateString(lang === 'en' ? 'en-US' : 'th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
+    : t('28 – 29 พฤศจิกายน 2026', '28 – 29 November 2026');
 
   return (
     <div className="pb-16 overflow-hidden bg-[#07070b]">
@@ -206,7 +208,7 @@ export default function HomePage() {
         <div className="relative z-10 max-w-4xl mx-auto text-center pt-8">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/15 text-gray-200 text-xs font-semibold uppercase tracking-wider mb-6">
             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            {eventDateFormatted} · {selectedConcert?.venue || selectedConcert?.location || 'Oasis Outdoor Arena'}
+            {eventDateFormatted} · {trData(selectedConcert?.venue || selectedConcert?.location || 'Oasis Outdoor Arena')}
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-tight uppercase">
@@ -228,19 +230,22 @@ export default function HomePage() {
           </h1>
 
           <p className="text-gray-300 text-sm sm:text-base max-w-2xl mx-auto mt-6 leading-relaxed">
-            {selectedConcert?.description || 'เทศกาลดนตรีและคอนเสิร์ตสดเต็มรูปแบบ พร้อมระบบออกตั๋วดิจิทัลผ่าน LINE และผังโซนที่นั่งครบวงจร'}
+            {trData(selectedConcert?.description) || t(
+              'เทศกาลดนตรีและคอนเสิร์ตสดเต็มรูปแบบ พร้อมระบบออกตั๋วดิจิทัลผ่าน LINE และผังโซนที่นั่งครบวงจร',
+              'Full-scale live music festival & concert experience with instant LINE digital tickets and interactive venue seat maps.'
+            )}
           </p>
 
           {/* Quick Info Bar */}
           <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
             {selectedConcert?.status === 'PAUSED' && (
               <div className="flex items-center gap-2 bg-amber-400/20 border border-amber-400/40 px-4 py-2 rounded-xl text-xs text-amber-200 font-bold animate-pulse">
-                <span>⏸️ พักการจำหน่ายบัตรชั่วคราว</span>
+                <span>{t('⏸️ พักการจำหน่ายบัตรชั่วคราว', '⏸️ Ticket Sales Temporarily Paused')}</span>
               </div>
             )}
             {selectedConcert?.status === 'CLOSED' && (
               <div className="flex items-center gap-2 bg-rose-500/20 border border-rose-500/40 px-4 py-2 rounded-xl text-xs text-rose-200 font-bold">
-                <span>🔴 ปิดจำหน่ายบัตรแล้ว</span>
+                <span>{t('🔴 ปิดจำหน่ายบัตรแล้ว', '🔴 Ticket Sales Closed')}</span>
               </div>
             )}
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-xs text-gray-200 font-medium">
@@ -249,11 +254,11 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-xs text-gray-200 font-medium">
               <MapPin className="w-4 h-4 text-pink-400" />
-              {selectedConcert?.venue || selectedConcert?.location || 'ประเทศไทย'}
+              {trData(selectedConcert?.venue || selectedConcert?.location || t('ประเทศไทย', 'Thailand'))}
             </div>
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-xs text-gray-200 font-medium">
               <Users className="w-4 h-4 text-emerald-400" />
-              {currentArtists.length} ศิลปินในงาน
+              {t(`${currentArtists.length} ศิลปินในงาน`, `${currentArtists.length} Performing Artists`)}
             </div>
           </div>
 
@@ -273,7 +278,7 @@ export default function HomePage() {
                 className="px-8 py-3.5 rounded-xl font-bold text-black text-sm uppercase tracking-wider flex items-center gap-2 bg-cyan-300 hover:bg-cyan-200 transition-all shadow-lg shadow-cyan-400/20 hover:scale-105"
               >
                 <Zap className="w-4 h-4 text-black" />
-                เลือกโซนและจองบัตร
+                {t('เลือกโซนและจองบัตร', 'Select Zone & Book Tickets')}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             )}
@@ -281,7 +286,7 @@ export default function HomePage() {
               href="#artists-section"
               className="px-6 py-3.5 rounded-xl font-semibold text-gray-300 text-sm border border-white/15 bg-white/5 hover:bg-white/10 transition-all"
             >
-              ดูทัพศิลปินแต่ละงาน ↓
+              {t('ดูทัพศิลปินแต่ละงาน ↓', 'View Lineup & Artists ↓')}
             </a>
           </div>
         </div>
@@ -298,14 +303,14 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
                 <Music className="w-4 h-4" />
-                <span>เลือกคอนเสิร์ตเพื่อดูไลน์อัป (Concert Lineup)</span>
+                <span>{t('เลือกคอนเสิร์ตเพื่อดูไลน์อัป (Concert Lineup)', 'Select Concert to View Lineup')}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
-                คลิกเลือกคอนเสิร์ต เพื่อดูรายชื่อวงและเวลาขึ้นแสดง
+                {t('คลิกเลือกคอนเสิร์ต เพื่อดูรายชื่อวงและเวลาขึ้นแสดง', 'Click a concert to explore performing artists & showtimes')}
               </h2>
             </div>
             <span className="text-xs text-gray-400">
-              พบ {concerts.length} คอนเสิร์ต
+              {t(`พบ ${concerts.length} คอนเสิร์ต`, `${concerts.length} Concerts Found`)}
             </span>
           </div>
 
@@ -366,9 +371,9 @@ export default function HomePage() {
                     </div>
                     <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
                       <Calendar size={12} className="text-pink-400" />
-                      <span>{new Date(c.eventDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</span>
+                      <span>{new Date(c.eventDate).toLocaleDateString(lang === 'en' ? 'en-US' : 'th-TH', { day: 'numeric', month: 'short' })}</span>
                       <span className="text-gray-600">·</span>
-                      <span className="text-cyan-300 font-bold">{artistCount} วง</span>
+                      <span className="text-cyan-300 font-bold">{t(`${artistCount} วง`, `${artistCount} Acts`)}</span>
                     </p>
                   </div>
                 </button>
@@ -384,10 +389,10 @@ export default function HomePage() {
               <Star className="w-4 h-4 fill-cyan-400" />
               Lineup & Schedule 2026 · {selectedConcert?.name}
             </div>
-            <h2 className="text-3xl font-black text-white">ทัพศิลปินและวันเวลาแสดง</h2>
+            <h2 className="text-3xl font-black text-white">{t('ทัพศิลปินและวันเวลาแสดง', 'Performing Artists & Showtimes')}</h2>
           </div>
           <p className="text-xs text-gray-400">
-            คลิกที่การ์ดศิลปินเพื่อดูรายละเอียดและเวลาขึ้นแสดง
+            {t('คลิกที่การ์ดศิลปินเพื่อดูรายละเอียดและเวลาขึ้นแสดง', 'Click any artist card to view performance details and showtime')}
           </p>
         </div>
 
@@ -409,7 +414,7 @@ export default function HomePage() {
                   {/* Floating Stage Badge */}
                   <div className="absolute top-4 left-4">
                     <span className="px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-black/70 backdrop-blur border border-white/20 text-white">
-                      🎪 {featured.stage}
+                      🎪 {trData(featured.stage)}
                     </span>
                   </div>
                 </div>
@@ -424,7 +429,7 @@ export default function HomePage() {
                       {featured.name}
                     </h3>
                     <p className="text-gray-300 text-xs sm:text-sm mt-3 leading-relaxed">
-                      {featured.description}
+                      {trData(featured.description)}
                     </p>
                   </div>
 
@@ -433,20 +438,20 @@ export default function HomePage() {
                     <div className="flex items-center justify-between text-xs p-3 rounded-xl bg-white/5 border border-white/10">
                       <span className="text-gray-400 flex items-center gap-1.5">
                         <Calendar className="w-4 h-4 text-pink-400" />
-                        วันที่แสดง
+                        {t('วันที่แสดง', 'Show Date')}
                       </span>
                       <span className="font-bold text-white font-mono text-sm">
-                        {featured.date}
+                        {trData(featured.date)}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between text-xs p-3 rounded-xl bg-white/5 border border-white/10">
                       <span className="text-gray-400 flex items-center gap-1.5">
                         <Clock className="w-4 h-4 text-cyan-400" />
-                        เวลาขึ้นแสดง
+                        {t('เวลาขึ้นแสดง', 'Showtime')}
                       </span>
                       <span className="font-bold text-cyan-300 font-mono text-base">
-                        {featured.time}
+                        {trData(featured.time)}
                       </span>
                     </div>
 
@@ -454,7 +459,7 @@ export default function HomePage() {
                       to={selectedConcert ? `/booking/zone-select?concertId=${selectedConcert.id}` : '/booking/zone-select'}
                       className="w-full py-3 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors mt-2"
                     >
-                      จองบัตรดู {featured.name}
+                      {t(`จองบัตรดู ${featured.name}`, `Book Tickets for ${featured.name}`)}
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
@@ -514,7 +519,7 @@ export default function HomePage() {
       <section className="py-12 px-4 max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Timetable</span>
-          <h3 className="text-2xl font-black text-white mt-1">กำหนดการกิจกรรมเทศกาล</h3>
+          <h3 className="text-2xl font-black text-white mt-1">{t('กำหนดการกิจกรรมเทศกาล', 'Festival Timetable & Schedule')}</h3>
           <p className="text-xs text-gray-500 mt-1">{selectedConcert?.name}</p>
         </div>
 
@@ -526,10 +531,10 @@ export default function HomePage() {
             >
               <div className="flex items-center gap-3">
                 <span className="text-lg">{s.icon || '🎵'}</span>
-                <span className="text-gray-200">{s.label || s.activity}</span>
+                <span className="text-gray-200">{trData(s.label || s.activity || s.artist)}</span>
               </div>
               <span className="font-mono font-bold text-white shrink-0 ml-2">
-                {s.time} น.
+                {s.time} {t('น.', 'hrs')}
               </span>
             </div>
           ))}
@@ -543,9 +548,9 @@ export default function HomePage() {
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Live events</p>
-            <h2 className="mt-1 text-2xl font-black text-white sm:text-3xl">คอนเสิร์ตทั้งหมดในระบบ</h2>
+            <h2 className="mt-1 text-2xl font-black text-white sm:text-3xl">{t('คอนเสิร์ตทั้งหมดในระบบ', 'All Live Concerts & Events')}</h2>
           </div>
-          <span className="text-xs text-gray-500">{concerts.length} งาน</span>
+          <span className="text-xs text-gray-500">{t(`${concerts.length} งาน`, `${concerts.length} Events`)}</span>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {concerts.map((event) => (
@@ -574,18 +579,18 @@ export default function HomePage() {
                 <h3 className="truncate font-bold text-white">{event.name}</h3>
                 <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-400">
                   <Calendar className="h-3.5 w-3.5 text-cyan-300" />
-                  {new Date(event.eventDate).toLocaleDateString('th-TH', { dateStyle: 'long' })}
+                  {new Date(event.eventDate).toLocaleDateString(lang === 'en' ? 'en-US' : 'th-TH', { dateStyle: 'long' })}
                 </p>
                 <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-gray-400">
                   <MapPin className="h-3.5 w-3.5 text-pink-300" />
-                  {event.venue || event.location}
+                  {trData(event.venue || event.location)}
                 </p>
                 <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3">
-                  <span className="text-xs text-gray-400">{event.zones?.length || 0} โซน</span>
+                  <span className="text-xs text-gray-400">{t(`${event.zones?.length || 0} โซน`, `${event.zones?.length || 0} Zones`)}</span>
                   <span className="text-xs font-bold text-cyan-200">
                     {event.zones?.length
-                      ? `เริ่ม ฿${Math.min(...event.zones.map((zone) => zone.price)).toLocaleString()}`
-                      : 'ดูรายละเอียด'}
+                      ? `${t('เริ่ม', 'From')} ฿${Math.min(...event.zones.map((zone) => zone.price)).toLocaleString()}`
+                      : t('ดูรายละเอียด', 'View Details')}
                   </span>
                 </div>
               </div>
@@ -601,15 +606,18 @@ export default function HomePage() {
         <div className="rounded-3xl border border-white/15 bg-gradient-to-b from-[#141420] to-[#0d0d16] p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 text-xs font-semibold uppercase tracking-wider mb-4">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            เปิดจำหน่ายบัตรอย่างเป็นทางการ
+            {t('เปิดจำหน่ายบัตรอย่างเป็นทางการ', 'Official Ticket Sales Open')}
           </div>
 
           <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-            พร้อมสัมผัสประสบการณ์ดนตรีสดแล้วหรือยัง?
+            {t('พร้อมสัมผัสประสบการณ์ดนตรีสดแล้วหรือยัง?', 'Ready for the Ultimate Live Music Experience?')}
           </h3>
 
           <p className="text-gray-300 text-xs sm:text-sm max-w-lg mx-auto mt-3 leading-relaxed">
-            เลือกโซนที่ต้องการ ไม่ว่าจะเป็น Standing Pit ติดขอบเวที, Seated VIP อัฒจันทร์มองเห็น 3 เวที หรือพื้นที่กางเต็นท์สัมผัสธรรมชาติ
+            {t(
+              'เลือกโซนที่ต้องการ ไม่ว่าจะเป็น Standing Pit ติดขอบเวที, Seated VIP อัฒจันทร์มองเห็น 3 เวที หรือพื้นที่กางเต็นท์สัมผัสธรรมชาติ',
+              'Choose your preferred zone — whether Front-Row Standing Pit, Panoramic VIP Seated Grandstand, or Starlight Camping Grounds.'
+            )}
           </p>
 
           <div className="mt-8">
@@ -617,7 +625,7 @@ export default function HomePage() {
               to={selectedConcert ? `/booking/zone-select?concertId=${selectedConcert.id}` : '/booking/zone-select'}
               className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-bold text-black text-sm uppercase tracking-wider bg-white hover:bg-gray-200 transition-all shadow-md hover:scale-105"
             >
-              เลือกโซนและซื้อบัตรเลย
+              {t('เลือกโซนและซื้อบัตรเลย', 'Select Zone & Book Now')}
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

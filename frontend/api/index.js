@@ -43,12 +43,6 @@ function verifyScrypt(password, stored) {
   }
 }
 
-function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
-  return `${salt}:${hash}`;
-}
-
 // ─── Live ThaiTicketMajor Radar Helper ───────────────────────────────────────
 const THAI_MONTHS = {
   'มกราคม': 0, 'ม.ค.': 0, 'กุมภาพันธ์': 1, 'ก.พ.': 1, 'มีนาคม': 2, 'มี.ค.': 2,
@@ -398,7 +392,7 @@ export default async function handler(req, res) {
   }
 
   if (method === 'POST' && pathname === '/api/bookings') {
-    const { concertId, zoneId, quantity, customerName, customerPhone, customerLineId, selectedSeats } = body;
+    const { zoneId, quantity, customerName, customerPhone, customerLineId, selectedSeats } = body;
     const zone = state.zones.find((z) => z.id === Number(zoneId));
     if (!zone) return res.status(400).json({ success: false, message: 'ไม่พบโซนที่เลือก' });
     const qty = Number(quantity) || 1;

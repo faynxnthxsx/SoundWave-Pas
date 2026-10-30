@@ -472,7 +472,7 @@ async function importDiscoveredConcert(externalId) {
 
   // Import as an event listing only. Do not invent ticket prices or activate
   // ticket sales for inventory that is sold by the original event organizer.
-  return prisma.concert.create({
+  const created = await prisma.concert.create({
     data: {
       name: target.name,
       slug: target.slug,
@@ -501,6 +501,13 @@ async function importDiscoveredConcert(externalId) {
       },
     },
   });
+
+  await prisma.radarCandidate.updateMany({
+    where: { OR: [{ externalId: String(externalId) }, { title: target.name }] },
+    data: { status: 'IMPORTED' },
+  }).catch(() => null);
+
+  return created;
 }
 
 module.exports = { getDiscoveredConcerts, importDiscoveredConcert };

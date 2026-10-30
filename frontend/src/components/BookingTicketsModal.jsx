@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Ticket, Printer, ExternalLink, CheckCircle2, QrCode, User, Armchair, Clock } from 'lucide-react';
+import { X, Ticket, Printer, ExternalLink, User, Armchair, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function BookingTicketsModal({ booking, onClose }) {
@@ -47,7 +47,6 @@ export default function BookingTicketsModal({ booking, onClose }) {
           {tickets.map((t, idx) => {
             const isUsed = t.status === 'USED';
             const isValid = t.status === 'VALID';
-            const isCancelled = t.status === 'CANCELLED';
 
             return (
               <article

@@ -6,7 +6,6 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
-  ShieldCheck,
   UserCheck,
   LogOut,
   KeyRound,
@@ -388,12 +387,12 @@ export default function GateScannerPage() {
       scannerRef.current = null;
       try {
         await scanner.stop();
-      } catch (e) {
+      } catch {
         /* ignore */
       }
       try {
         scanner.clear();
-      } catch (e) {
+      } catch {
         /* ignore */
       }
       setCameraActive(false);

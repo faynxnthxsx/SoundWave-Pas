@@ -8,6 +8,8 @@
     "start": "node src/server.js",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
+    "db:export": "node prisma/export-data.js",
+    "db:import": "node prisma/import-data.js",
     "db:ensure-organizer": "node prisma/ensure-local-organizer.js",
     "db:studio": "prisma studio"
   },

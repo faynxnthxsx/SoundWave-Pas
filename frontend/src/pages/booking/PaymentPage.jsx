@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { Clock, CheckCircle2, AlertTriangle, ArrowRight, Ticket, Copy, Printer } from 'lucide-react';
+import { Clock, CheckCircle2, AlertTriangle, ArrowRight, Ticket, Printer } from 'lucide-react';
 
 export default function PaymentPage() {
   const { bookingCode } = useParams();
@@ -13,9 +13,6 @@ export default function PaymentPage() {
   const [paying, setPaying] = useState(false);
   const [paidSuccess, setPaidSuccess] = useState(false);
   const [tickets, setTickets] = useState([]);
-  const [lineDelivery, setLineDelivery] = useState(null);
-  const [retryingLine, setRetryingLine] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch(`/api/bookings/${bookingCode}`)
@@ -23,7 +20,6 @@ export default function PaymentPage() {
       .then(data => {
         if (data.success) {
           setBooking(data.data);
-          setLineDelivery({ status: data.data.lineDeliveryStatus || (data.data.customerLineId ? 'UNKNOWN' : 'NOT_LINKED'), error: data.data.lineDeliveryError || null });
           if (data.data.status === 'PAID') {
             setPaidSuccess(true);
             const tList = data.data.tickets || [];
@@ -41,7 +37,9 @@ export default function PaymentPage() {
               };
               const updatedHistory = [newEntry, ...history.filter((h) => h.bookingCode !== data.data.bookingCode)];
               localStorage.setItem('soundwave_purchase_history', JSON.stringify(updatedHistory));
-            } catch (err) {}
+            } catch {
+              /* ignore corrupted local history */
+            }
           } else if (data.data.status === 'EXPIRED') {
             setIsExpired(true);
           } else {
@@ -78,7 +76,9 @@ export default function PaymentPage() {
       try {
         const savedSeats = localStorage.getItem(`soundwave_seats_${bookingCode}`);
         if (savedSeats) selectedSeats = JSON.parse(savedSeats);
-      } catch (e) {}
+      } catch {
+        /* ignore corrupted saved seats */
+      }
 
       const res = await fetch(`/api/bookings/${bookingCode}/pay`, {
         method: 'POST',
@@ -90,7 +90,6 @@ export default function PaymentPage() {
         setPaidSuccess(true);
         const issuedTickets = data.data?.tickets || [];
         setTickets(issuedTickets);
-        setLineDelivery(data.data?.lineDelivery || { status: booking.customerLineId ? 'UNKNOWN' : 'NOT_LINKED' });
 
         // ── SAVE PURCHASE TO LOCAL STORAGE HISTORY ──
         try {
@@ -118,27 +117,6 @@ export default function PaymentPage() {
     } finally {
       setPaying(false);
     }
-  };
-
-  const retryLineDelivery = async () => {
-    setRetryingLine(true);
-    try {
-      const response = await fetch(`/api/bookings/${encodeURIComponent(bookingCode)}/line-resend`, { method: 'POST' });
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.message || 'ส่งตั๋วเข้า LINE ไม่สำเร็จ');
-      setLineDelivery(result.data?.lineDelivery || { status: 'UNKNOWN' });
-    } catch (error) {
-      setLineDelivery({ status: 'FAILED', error: error.message });
-    } finally {
-      setRetryingLine(false);
-    }
-  };
-
-  const copyCode = (text) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
   };
 
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -208,12 +186,6 @@ export default function PaymentPage() {
             </div>
           ))}
         </div>
-
-        {copied && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white text-black text-xs font-bold px-4 py-2 rounded-xl shadow-lg">
-            คัดลอกรหัสตั๋วแล้ว ✓
-          </div>
-        )}
 
         <div className="mt-8 flex flex-col gap-2">
           <Link
