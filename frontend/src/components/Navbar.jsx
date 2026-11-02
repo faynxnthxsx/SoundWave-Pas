@@ -91,7 +91,7 @@ export default function Navbar() {
           {isTeamSurface ? (
             <div className="flex items-center gap-2.5">
               <LanguageSwitch />
-              <Link
+                            <Link
                 to="/team"
                 className="rounded-xl border border-white/10 px-3 py-2 text-xs text-gray-300 hover:bg-white/5"
               >
@@ -104,7 +104,7 @@ export default function Navbar() {
           ) : (
             <div className="flex items-center gap-2 sm:gap-3">
               <LanguageSwitch />
-
+              
               <Link
                 to="/"
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
@@ -125,10 +125,20 @@ export default function Navbar() {
 
               {authUser ? (
                 <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1.5">
-                  <UserRound size={14} className="text-emerald-300" />
-                  <span className="max-w-24 text-left text-[10px] leading-tight">
+                  {authUser.avatarUrl ? (
+                    <img
+                      src={authUser.avatarUrl}
+                      alt={authUser.username}
+                      className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/40"
+                    />
+                  ) : (
+                    <UserRound size={14} className="text-emerald-300" />
+                  )}
+                  <span className="max-w-28 text-left text-[10px] leading-tight">
                     <span className="block truncate font-bold text-white">{authUser.username}</span>
-                    <span className="text-emerald-300">{t('ออนไลน์', 'Online')}</span>
+                    <span className="block truncate text-emerald-300">
+                      {authUser.email || t('ออนไลน์', 'Online')}
+                    </span>
                   </span>
                   <button
                     type="button"

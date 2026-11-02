@@ -4,33 +4,22 @@ import {
   Lock,
   Unlock,
   Armchair,
-  CheckCircle2,
-  Clock,
   RotateCcw,
   Users,
   MapPinned,
   Plus,
 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { useToast } from './Toast';
 import { useLanguage } from '../context/LanguageContext';
 import StadiumZoneMap from '../pages/booking/StadiumZoneMap';
-
-// Match Customer ZoneSelectPage.jsx 100%: 3-Wing Stadium Bowl (14 seats per row, Rows A–G+)
-const STADIUM_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-const COLS_LEFT_WING = [1, 2, 3, 4];
-const COLS_CENTER = [5, 6, 7, 8, 9, 10];
-const COLS_RIGHT_WING = [11, 12, 13, 14];
-const ALL_COLS = [...COLS_LEFT_WING, ...COLS_CENTER, ...COLS_RIGHT_WING];
-
-function isZoneStanding(zone) {
-  if (!zone) return false;
-  const cat = String(zone.category || '').toUpperCase();
-  const name = String(zone.name || '').toLowerCase();
-  if (cat === 'SEATED' || cat === 'VIP') return false;
-  if (cat === 'STANDING' || cat === 'CAMPING') return true;
-  return /standing|ยืน|หลุม|pit|ga\b|camping|แคมป์/i.test(name);
-}
+import {
+  STADIUM_ROWS,
+  COLS_LEFT_WING,
+  COLS_CENTER,
+  COLS_RIGHT_WING,
+  ALL_COLS,
+  isZoneStanding,
+} from '../utils/seatLayout';
 
 export default function AdminSeatMapModal({
   zone,
@@ -44,7 +33,6 @@ export default function AdminSeatMapModal({
 }) {
   const toast = useToast();
   const { t, trData } = useLanguage();
-  useTranslation();
 
   const isStanding = useMemo(() => isZoneStanding(zone), [zone]);
   const [viewMode, setViewMode] = useState('visual'); // 'visual' | 'venue' | 'table'

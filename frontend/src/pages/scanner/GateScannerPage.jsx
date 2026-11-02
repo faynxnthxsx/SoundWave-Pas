@@ -17,7 +17,6 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import LanguageSwitch from '../../components/ui/LanguageSwitch';
 
@@ -47,7 +46,6 @@ export const extractTicketCode = (raw) => {
 
 export default function GateScannerPage() {
   const { lang, t, trData } = useLanguage();
-  useTranslation();
 
   // Staff Authentication State
   const [staff, setStaff] = useState(() => {

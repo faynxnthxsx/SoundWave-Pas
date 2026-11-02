@@ -7,12 +7,22 @@ const { getLineBotInfo } = require('../services/lineService');
 const prisma = new PrismaClient();
 const scrypt = promisify(crypto.scrypt);
 
-const publicUser = ({ id, username, lineUserId, createdAt }) => ({ id, username, lineUserId, createdAt });
+const publicUser = ({ id, username, email, googleId, avatarUrl, lineUserId, createdAt }) => ({
+  id,
+  username,
+  email: email || null,
+  googleId: googleId || null,
+  avatarUrl: avatarUrl || null,
+  lineUserId: lineUserId || null,
+  createdAt,
+});
+
 const hashPassword = async (password) => {
   const salt = crypto.randomBytes(16).toString('hex');
   const derived = await scrypt(password, salt, 64);
   return `${salt}:${derived.toString('hex')}`;
 };
+
 const verifyPassword = async (password, stored) => {
   const [salt, hash] = (stored || '').split(':');
   if (!salt || !hash) return false;
@@ -20,13 +30,33 @@ const verifyPassword = async (password, stored) => {
   const actual = await scrypt(password, salt, expected.length);
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 };
+
 const tokenHash = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
 const startSession = async (customerId) => {
   const token = crypto.randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await prisma.authSession.create({ data: { customerId, tokenHash: tokenHash(token), expiresAt } });
   return { token, expiresAt };
 };
+
+async function buildUniqueUsername(preferred) {
+  const base = String(preferred || 'user')
+    .replace(/[^A-Za-z0-9_.-]/g, '')
+    .slice(0, 18) || 'user';
+  const candidateBase = base.length >= 3 ? base : `${base}_sw`;
+
+  const existing = await prisma.customer.findUnique({ where: { username: candidateBase } });
+  if (!existing) return candidateBase;
+
+  for (let i = 0; i < 10; i++) {
+    const suffix = Math.floor(100 + Math.random() * 900);
+    const candidate = `${candidateBase.slice(0, 18)}_${suffix}`;
+    const taken = await prisma.customer.findUnique({ where: { username: candidate } });
+    if (!taken) return candidate;
+  }
+  return `user_${crypto.randomBytes(4).toString('hex')}`;
+}
 
 router.post('/register', async (req, res) => {
   try {
@@ -58,8 +88,12 @@ router.post('/login', async (req, res) => {
   try {
     const username = String(req.body?.username || '').trim();
     const password = String(req.body?.password || '');
-    const customer = await prisma.customer.findUnique({ where: { username } });
-    if (!customer || !(await verifyPassword(password, customer.passwordHash))) {
+    const customer = await prisma.customer.findFirst({
+      where: {
+        OR: [{ username }, { email: username.toLowerCase() }],
+      },
+    });
+    if (!customer || !customer.passwordHash || !(await verifyPassword(password, customer.passwordHash))) {
       return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หากลืมรหัสผ่าน ให้กด “ลืมรหัสผ่าน?” ด้านล่าง' });
     }
     const session = await startSession(customer.id);
@@ -67,6 +101,82 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Customer login error:', error);
     res.status(500).json({ success: false, message: 'เข้าสู่ระบบไม่สำเร็จ' });
+  }
+});
+
+// GET /api/auth/google/config - Return Google OAuth Client ID if configured
+router.get('/google/config', (req, res) => {
+  const rawId = (process.env.GOOGLE_CLIENT_ID || '').trim();
+  const isConfigured = Boolean(rawId && !rawId.startsWith('YOUR_'));
+  res.json({
+    success: true,
+    clientId: isConfigured ? rawId : null,
+  });
+});
+
+// POST /api/auth/google - Authenticate or register customer in MySQL via Google Account
+router.post('/google', async (req, res) => {
+  try {
+    const credential = req.body?.credential;
+    if (!credential) {
+      return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลยืนยันตัวตนจาก Google (Missing ID Token)' });
+    }
+
+    const verifyRes = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+    );
+    const payload = await verifyRes.json();
+    if (!verifyRes.ok || !payload?.sub || !payload?.email) {
+      return res.status(401).json({ success: false, message: 'ยืนยันตัวตนกับ Google ไม่สำเร็จ' });
+    }
+
+    const configuredClientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
+    if (configuredClientId && !configuredClientId.startsWith('YOUR_') && payload.aud !== configuredClientId) {
+      return res.status(401).json({ success: false, message: 'Google Client ID ไม่ตรงกับระบบ' });
+    }
+
+    const email = String(payload.email).trim().toLowerCase();
+    const googleId = String(payload.sub).trim();
+    const displayName = String(payload.name || email.split('@')[0]).trim();
+    const avatarUrl = payload.picture || null;
+
+    let customer = await prisma.customer.findFirst({
+      where: {
+        OR: [{ googleId }, { email }],
+      },
+    });
+
+    if (customer) {
+      customer = await prisma.customer.update({
+        where: { id: customer.id },
+        data: {
+          googleId: customer.googleId || googleId,
+          email: customer.email || email,
+          avatarUrl: avatarUrl || customer.avatarUrl,
+        },
+      });
+    } else {
+      const username = await buildUniqueUsername(displayName || email.split('@')[0]);
+      customer = await prisma.customer.create({
+        data: {
+          username,
+          email,
+          googleId,
+          avatarUrl,
+          passwordHash: null,
+        },
+      });
+    }
+
+    const session = await startSession(customer.id);
+    return res.json({
+      success: true,
+      user: publicUser(customer),
+      ...session,
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    return res.status(500).json({ success: false, message: 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ' });
   }
 });
 
@@ -132,7 +242,7 @@ router.get('/line/config', async (req, res) => {
   res.json({
     channelId: process.env.LINE_LOGIN_CHANNEL_ID || '2012117630',
     callbackUrl: process.env.LINE_LOGIN_CALLBACK_URL || 'http://localhost:5173/booking/zone-select',
-    officialAccountUrl
+    officialAccountUrl,
   });
 });
 
@@ -157,27 +267,27 @@ router.post('/line/verify', async (req, res) => {
       code: code.trim(),
       redirect_uri: redirectUri,
       client_id: channelId,
-      client_secret: channelSecret
+      client_secret: channelSecret,
     });
 
     const tokenRes = await fetch('https://api.line.me/oauth2/v2.1/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: tokenParams.toString()
+      body: tokenParams.toString(),
     });
 
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok) {
       console.error('LINE token error:', tokenData);
-      return res.status(400).json({ 
-        success: false, 
-        message: tokenData.error_description || tokenData.error || 'แลกเปลี่ยนโทเคนกับ LINE ไม่สำเร็จ' 
+      return res.status(400).json({
+        success: false,
+        message: tokenData.error_description || tokenData.error || 'แลกเปลี่ยนโทเคนกับ LINE ไม่สำเร็จ',
       });
     }
 
     // 2. Fetch User Profile using access token
     const profileRes = await fetch('https://api.line.me/v2/profile', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
 
     const profile = await profileRes.json();
@@ -189,7 +299,7 @@ router.post('/line/verify', async (req, res) => {
     let friendshipHttpStatus = null;
     try {
       const friendshipRes = await fetch('https://api.line.me/friendship/v1/status', {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` }
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
       });
       friendshipHttpStatus = friendshipRes.status;
       if (friendshipRes.ok) {
@@ -210,8 +320,8 @@ router.post('/line/verify', async (req, res) => {
         pictureUrl: profile.pictureUrl,
         statusMessage: profile.statusMessage,
         friendFlag,
-        friendshipHttpStatus
-      }
+        friendshipHttpStatus,
+      },
     });
   } catch (error) {
     console.error('Error during LINE Login exchange:', error);

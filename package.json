@@ -4,7 +4,7 @@
   "type": "module",
   "description": "SoundWave Pass — Full-stack Concert & Music Festival Ticketing System (Team Alpha)",
   "scripts": {
-    "build": "npm --prefix frontend ci && npm --prefix frontend run build && node -e \"import('fs').then(fs => fs.cpSync('frontend/dist', 'dist', { recursive: true }))\"",
+    "build": "npm --prefix frontend ci && npm --prefix frontend run build && node -e \"import('fs').then(fs => fs.cpSync('frontend/dist', 'dist', { recursive: true }))\" && prisma generate --schema backend/prisma/schema.prisma",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "db:studio": "npm --prefix backend run db:studio",
@@ -19,5 +19,13 @@
     "qr-scanner"
   ],
   "author": "Team Alpha (Faye, Time, May, Nam)",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@line/bot-sdk": "^9.6.0",
+    "@prisma/client": "^6.4.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "prisma": "^6.4.1"
+  }
 }

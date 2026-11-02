@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Clock, CheckCircle2, AlertTriangle, ArrowRight, Ticket, Printer } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function PaymentPage() {
   const { bookingCode } = useParams();
   const { t, trData } = useLanguage();
-  useTranslation();
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);

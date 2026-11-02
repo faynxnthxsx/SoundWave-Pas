@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Printer, Scissors, ArrowLeft, Calendar, MapPin, User } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 
 function BarcodeStrips({ value = '' }) {
@@ -23,7 +22,6 @@ function BarcodeStrips({ value = '' }) {
 export default function SouvenirPrintPage() {
   const { ticketCode } = useParams();
   const { lang, t, trData } = useLanguage();
-  useTranslation();
 
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);

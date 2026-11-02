@@ -21,6 +21,10 @@ router.post('/upload', async (req, res) => {
     if (!image.length || image.length > 4 * 1024 * 1024) {
       return res.status(400).json({ success: false, message: 'ขนาดไฟล์โปสเตอร์ต้องไม่เกิน 4 MB' });
     }
+    if (process.env.VERCEL) {
+      // Serverless filesystem is read-only/ephemeral: keep the image inline instead of writing to disk.
+      return res.status(201).json({ success: true, data: { url: req.body.image } });
+    }
     const extension = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[match[1]];
     const filename = `${crypto.randomUUID()}.${extension}`;
     const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');

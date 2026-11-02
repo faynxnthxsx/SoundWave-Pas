@@ -39,7 +39,7 @@ export default function LanguageSwitch({ className = '' }) {
     <div
       role="group"
       aria-label="Language Switcher (i18n)"
-      className={`inline-flex items-center rounded-full border border-white/15 bg-black/60 p-0.5 shadow-inner backdrop-blur-md ${className}`}
+      className={`theme-pill inline-flex items-center rounded-full border border-white/15 bg-black/60 p-0.5 shadow-inner backdrop-blur-md ${className}`}
     >
       <button
         type="button"

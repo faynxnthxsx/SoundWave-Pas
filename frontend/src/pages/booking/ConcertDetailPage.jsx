@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CalendarDays, Clock3, MapPin, Music2, Ticket } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function ConcertDetailPage() {
   const { id } = useParams();
   const { lang, t, trData } = useLanguage();
-  useTranslation();
 
   const [concert, setConcert] = useState(null);
   const [loading, setLoading] = useState(true);

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, LoaderCircle, MapPin, Search } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { THAILAND_PROVINCES } from '../data/thailandProvinces';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -17,7 +16,6 @@ export default function LocationPicker({
   onLocationSelect,
 }) {
   const { t, trData } = useLanguage();
-  useTranslation();
 
   const [query, setQuery] = useState(venue || '');
   const [results, setResults] = useState([]);

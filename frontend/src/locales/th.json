@@ -1,30 +1,4 @@
 {
-  "common": {
-    "langLabel": "ภาษาไทย",
-    "refresh": "รีเฟรช",
-    "close": "ปิด",
-    "update": "อัปเดต",
-    "saving": "กำลังบันทึก…",
-    "all": "ทั้งหมด",
-    "available": "ว่าง",
-    "sold": "ขายแล้ว",
-    "pending": "รอจ่ายเงิน",
-    "reserved": "สำรองไว้"
-  },
-  "seatMap": {
-    "badge": "ผังที่นั่งเชื่อมหน้าลูกค้า (Real-time Sync)",
-    "titlePrefix": "ผังที่นั่งแอดมิน",
-    "venueMapToggle": "ผังโซนสถานที่จริง (Step 1)",
-    "visualMapTab": "ผังที่นั่ง (Step 2)",
-    "tableTab": "ตารางรายการ",
-    "stageBanner": "▲ STAGE / ทิศทางหน้าเวทีการแสดง ▲",
-    "leftWing": "ฝั่งซ้าย (01-04)",
-    "centerBlock": "โซนกลางหน้าเวที (05-10)",
-    "rightWing": "ฝั่งขวา (11-14)",
-    "frontRow": "ติดเวที",
-    "lockRow": "ล็อกแถว",
-    "unlockRow": "ปลดแถว"
-  },
   "exact": {
     "กรุงเทพมหานคร": "กรุงเทพมหานคร",
     "กระบี่": "กระบี่",

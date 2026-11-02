@@ -1,30 +1,4 @@
 {
-  "common": {
-    "langLabel": "English",
-    "refresh": "Refresh",
-    "close": "Close",
-    "update": "Update",
-    "saving": "Saving…",
-    "all": "All",
-    "available": "Available",
-    "sold": "Sold",
-    "pending": "Pending Hold",
-    "reserved": "Reserved"
-  },
-  "seatMap": {
-    "badge": "Customer-Synced Seat Map (Real-time)",
-    "titlePrefix": "Admin Seat Map",
-    "venueMapToggle": "Real Venue Map (Step 1)",
-    "visualMapTab": "Seat Matrix (Step 2)",
-    "tableTab": "Ticket List",
-    "stageBanner": "▲ STAGE DIRECTION ▲",
-    "leftWing": "Left Wing (01-04)",
-    "centerBlock": "Center Block (05-10)",
-    "rightWing": "Right Wing (11-14)",
-    "frontRow": "Front Row",
-    "lockRow": "Lock Row",
-    "unlockRow": "Unlock Row"
-  },
   "exact": {
     "กรุงเทพมหานคร": "Bangkok",
     "กระบี่": "Krabi",

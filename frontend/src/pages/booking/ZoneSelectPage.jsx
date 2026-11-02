@@ -20,22 +20,14 @@ import AuthModal from '../../components/AuthModal';
 import LineConnectCard from '../../components/booking/LineConnectCard';
 import Button from '../../components/ui/Button';
 import { useLanguage } from '../../context/LanguageContext';
-
-// Realistic Arena / Stadium Seated Rows & Wing Columns (like ThaiTicketMajor / AllTicket)
-const STADIUM_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-const COLS_LEFT_WING = [1, 2, 3, 4];
-const COLS_CENTER = [5, 6, 7, 8, 9, 10];
-const COLS_RIGHT_WING = [11, 12, 13, 14];
-const ALL_COLS = [...COLS_LEFT_WING, ...COLS_CENTER, ...COLS_RIGHT_WING];
-
-function isZoneStanding(zone) {
-  if (!zone) return false;
-  const cat = String(zone.category || '').toUpperCase();
-  const name = String(zone.name || '').toLowerCase();
-  if (cat === 'SEATED' || cat === 'VIP') return false;
-  if (cat === 'STANDING') return true;
-  return /standing|ยืน|หลุม|pit|ga\b/i.test(name);
-}
+import {
+  STADIUM_ROWS,
+  COLS_LEFT_WING,
+  COLS_CENTER,
+  COLS_RIGHT_WING,
+  ALL_COLS,
+  isZoneStanding,
+} from '../../utils/seatLayout';
 
 export default function ZoneSelectPage() {
   const { t, trData } = useLanguage();

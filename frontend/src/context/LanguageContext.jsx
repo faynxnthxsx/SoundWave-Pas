@@ -39,63 +39,6 @@ const REGEX_REPLACEMENTS = [
 const THAI_CHAR_RE = /[\u0E01-\u0E3A\u0E40-\u0E5B]/;
 const EN_ALPHA_RE = /[A-Za-z]{2,}/;
 
-// Persistent runtime cache for newly added / Radar-discovered strings not pre-defined in locales/*.json
-const AUTO_CACHE_KEY = 'soundwave_auto_i18n_v1';
-const autoTranslateCache = (() => {
-  try {
-    const raw = localStorage.getItem(AUTO_CACHE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-})();
-const inflightAutoSet = new Set();
-const cacheListeners = new Set();
-let saveTimer = null;
-
-function notifyAutoCacheUpdated() {
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try {
-      localStorage.setItem(AUTO_CACHE_KEY, JSON.stringify(autoTranslateCache));
-    } catch {
-      /* ignore quota */
-    }
-    cacheListeners.forEach((fn) => fn());
-  }, 180);
-}
-
-function queueAutoTranslate(text, sl = 'th', tl = 'en') {
-  const key = `${sl}:${tl}:${text}`;
-  if (!text || text.length > 600 || autoTranslateCache[key] || inflightAutoSet.has(key)) return;
-  inflightAutoSet.add(key);
-
-  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`;
-  fetch(url)
-    .then((r) => (r.ok ? r.json() : null))
-    .then((data) => {
-      if (Array.isArray(data?.[0])) {
-        const translated = data[0]
-          .map((seg) => seg?.[0] || '')
-          .join('')
-          .trim();
-        if (translated && translated !== text) {
-          autoTranslateCache[key] = translated;
-          if (i18n?.addResource) {
-            i18n.addResource(tl, 'translation', `exact.${text}`, translated);
-          }
-          notifyAutoCacheUpdated();
-        }
-      }
-    })
-    .catch(() => {
-      /* offline fallback keeps local locale dictionary result */
-    })
-    .finally(() => {
-      inflightAutoSet.delete(key);
-    });
-}
-
 function splitBilingualText(rawText, targetLang) {
   if (!rawText || typeof rawText !== 'string') return null;
   const separators = [' | ', ' / '];
@@ -137,11 +80,6 @@ function translateThaiString(rawText) {
     return leading + exactDict[trimmed] + trailing;
   }
 
-  const cacheKey = `th:en:${trimmed}`;
-  if (autoTranslateCache[cacheKey]) {
-    return leading + autoTranslateCache[cacheKey] + trailing;
-  }
-
   let out = trimmed;
   for (const [th, en] of Object.entries(phraseDict)) {
     if (out.includes(th)) {
@@ -150,10 +88,6 @@ function translateThaiString(rawText) {
   }
   for (const [re, replacement] of REGEX_REPLACEMENTS) {
     out = out.replace(re, replacement);
-  }
-
-  if (THAI_CHAR_RE.test(out)) {
-    queueAutoTranslate(trimmed, 'th', 'en');
   }
 
   return leading + out + trailing;
@@ -228,20 +162,6 @@ export function LanguageProvider({ children }) {
       return 'th';
     }
   });
-  const [cacheTick, setCacheTick] = useState(0);
-
-  useEffect(() => {
-    const onCacheUpdate = () => {
-      setCacheTick((v) => v + 1);
-      if (lang === 'en') {
-        applyDomTranslation('en');
-      }
-    };
-    cacheListeners.add(onCacheUpdate);
-    return () => {
-      cacheListeners.delete(onCacheUpdate);
-    };
-  }, [lang]);
 
   useEffect(() => {
     try {
@@ -299,8 +219,7 @@ export function LanguageProvider({ children }) {
       }
       return translateThaiString(rawText);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lang, cacheTick]
+    [lang]
   );
 
   return (

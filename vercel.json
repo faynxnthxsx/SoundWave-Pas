@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/index.js": {
-      "includeFiles": "frontend/api/seed-snapshot.json"
+      "includeFiles": "node_modules/.prisma/client/**"
     }
   },
   "rewrites": [

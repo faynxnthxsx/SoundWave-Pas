@@ -23,7 +23,7 @@ import TeamPortalPage from './pages/TeamPortalPage';
 
 export default function App() {
   return (
-    <BrowserRouter>
+        <BrowserRouter>
       <LanguageProvider>
       <ToastProvider>
         <div className="min-h-screen flex flex-col bg-[#07070b] text-gray-100 selection:bg-[#00f0ff] selection:text-black">
@@ -57,5 +57,5 @@ export default function App() {
       </ToastProvider>
       </LanguageProvider>
     </BrowserRouter>
-  );
+      );
 }

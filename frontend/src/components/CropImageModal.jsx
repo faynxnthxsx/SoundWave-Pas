@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { ImagePlus, RotateCcw, X, ZoomIn, Move, Maximize2, Smartphone, Monitor, User } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../context/LanguageContext';
 
 const RATIO_CONFIGS = {
@@ -12,7 +11,6 @@ const RATIO_CONFIGS = {
 
 export default function CropImageModal({ file, initialRatio = 'poster', onCancel, onApply }) {
   const { t } = useLanguage();
-  useTranslation();
 
   const [source, setSource] = useState('');
   const [dimensions, setDimensions] = useState(null);

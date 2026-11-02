@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Calendar, MapPin, Printer, CheckCircle2, XCircle, ArrowLeft, User, Armchair } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function MyTicketPage() {
   const { ticketCode } = useParams();
   const navigate = useNavigate();
   const { lang, t, trData } = useLanguage();
-  useTranslation();
 
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
