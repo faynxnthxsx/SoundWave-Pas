@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import Button from './ui/Button';
@@ -15,6 +15,7 @@ export default function AuthModal({ onClose, onAuthenticated }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const tokenClientRef = useRef(null);
 
   useEffect(() => {
     fetch('/api/auth/google/config')
@@ -23,7 +24,69 @@ export default function AuthModal({ onClose, onAuthenticated }) {
         if (d?.clientId) setGoogleClientId(d.clientId);
       })
       .catch(() => {});
-  }, []);
+
+    const initClient = () => {
+      if (!window.google?.accounts?.oauth2 || !googleClientId) return;
+      try {
+        tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: 'email profile openid',
+          callback: async (tokenResponse) => {
+            if (tokenResponse?.error) {
+              setBusy(false);
+              if (tokenResponse.error !== 'access_denied') {
+                setError(tokenResponse.error_description || tokenResponse.error);
+              }
+              return;
+            }
+            if (tokenResponse?.access_token) {
+              await handleGoogleLogin({ access_token: tokenResponse.access_token });
+            }
+          },
+          error_callback: (err) => {
+            setBusy(false);
+            console.warn('Google OAuth error:', err);
+          },
+        });
+      } catch (err) {
+        console.warn('Failed to init Google token client:', err);
+      }
+    };
+
+    if (window.google?.accounts?.oauth2) {
+      initClient();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = initClient;
+    document.head.appendChild(script);
+  }, [googleClientId]);
+
+  const handleGoogleLogin = async (payload) => {
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || t('เข้าสู่ระบบด้วย Google ไม่สำเร็จ', 'Google Sign-In failed'));
+      }
+      onAuthenticated({ user: data.user, token: data.token, expiresAt: data.expiresAt });
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleGoogleSignIn = () => {
     setError('');
@@ -32,6 +95,32 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       return;
     }
 
+    // 1. First priority: Google 1-Click Account Chooser (Presents list of existing accounts with pictures, no typing password!)
+    if (tokenClientRef.current) {
+      tokenClientRef.current.requestAccessToken({ prompt: 'select_account' });
+      return;
+    }
+
+    if (window.google?.accounts?.oauth2) {
+      try {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: 'email profile openid',
+          callback: async (tokenResponse) => {
+            if (tokenResponse?.access_token) {
+              await handleGoogleLogin({ access_token: tokenResponse.access_token });
+            }
+          },
+        });
+        tokenClientRef.current = client;
+        client.requestAccessToken({ prompt: 'select_account' });
+        return;
+      } catch (err) {
+        console.warn('Google client direct request error:', err);
+      }
+    }
+
+    // 2. Fallback: Full-page redirect if GSI script was blocked by browser extension
     try {
       sessionStorage.setItem('sw_google_auth_state', window.location.pathname + window.location.search);
     } catch {}
@@ -41,12 +130,9 @@ export default function AuthModal({ onClose, onAuthenticated }) {
     const state = encodeURIComponent(window.location.pathname + window.location.search);
     const nonce = Math.random().toString(36).substring(2);
 
-    // Standard OAuth2 full-page redirect (Works 100% on mobile without popups or blank tabs)
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
       redirectUri
     )}&response_type=token%20id_token&scope=${scope}&state=${state}&nonce=${nonce}&prompt=select_account`;
-
-    window.location.href = googleAuthUrl;
   };
 
   const submit = async (event) => {
