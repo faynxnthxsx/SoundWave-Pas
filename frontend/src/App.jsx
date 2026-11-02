@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -28,6 +28,48 @@ function PageLoader() {
 }
 
 export default function App() {
+  // Listen for Google OAuth standard redirect callback in URL hash
+  useEffect(() => {
+    if (
+      window.location.hash &&
+      (window.location.hash.includes('access_token=') || window.location.hash.includes('id_token='))
+    ) {
+      const hash = window.location.hash.replace(/^#/, '');
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get('access_token');
+      const idToken = params.get('id_token');
+
+      // Clear the hash from address bar immediately
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+      if (accessToken || idToken) {
+        fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: accessToken, credential: idToken }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data?.success && data?.user) {
+              localStorage.setItem('soundwave_session', data.token);
+              localStorage.setItem('soundwave_user', JSON.stringify(data.user));
+
+              try {
+                const savedRoute = sessionStorage.getItem('sw_google_auth_state');
+                if (savedRoute && savedRoute !== window.location.pathname) {
+                  sessionStorage.removeItem('sw_google_auth_state');
+                  window.location.href = savedRoute;
+                  return;
+                }
+              } catch {}
+              window.location.reload();
+            }
+          })
+          .catch((err) => console.error('Google OAuth callback failed:', err));
+      }
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <LanguageProvider>

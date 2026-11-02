@@ -13,7 +13,13 @@ export default function Navbar() {
   const isTeamSurface = ['/admin', '/scanner', '/team'].some((path) => location.pathname.startsWith(path));
   const [showHistory, setShowHistory] = useState(false);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
-  const [authUser, setAuthUser] = useState(null);
+  const [authUser, setAuthUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('soundwave_user') || 'null');
+    } catch {
+      return null;
+    }
+  });
   const [authOpen, setAuthOpen] = useState(false);
 
   const openHistoryModal = () => {
@@ -73,41 +79,41 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-40 bg-[#07070b]/90 backdrop-blur-md border-b border-white/10 px-3.5 sm:px-6 lg:px-8 py-3 transition-all w-full max-w-full overflow-hidden">
-        <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-2">
+      <nav className="sticky top-0 z-40 bg-[#07070b]/90 backdrop-blur-md border-b border-white/10 px-2.5 sm:px-6 lg:px-8 py-2.5 sm:py-3 transition-all w-full max-w-full">
+        <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center font-black text-sm">
-              <Music className="w-5 h-5 text-black" />
+          <Link to="/" className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white text-black flex items-center justify-center font-black text-sm shrink-0">
+              <Music className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
             </div>
             <div>
-              <span className="text-lg font-black tracking-wider text-white">
+              <span className="text-base sm:text-lg font-black tracking-wider text-white">
                 SOUND<span className="text-cyan-400">WAVE</span>
-                <span className="text-xs ml-1 text-gray-400 font-mono hidden xs:inline">PASS</span>
+                <span className="text-xs ml-1 text-gray-400 font-mono hidden sm:inline">PASS</span>
               </span>
             </div>
           </Link>
 
           {isTeamSurface ? (
-            <div className="flex items-center gap-2.5">
-              <LanguageSwitch />
-                            <Link
+            <div className="flex items-center gap-2">
+              <LanguageSwitch className="scale-90 sm:scale-100 origin-right" />
+              <Link
                 to="/team"
-                className="rounded-xl border border-white/10 px-3 py-2 text-xs text-gray-300 hover:bg-white/5"
+                className="rounded-xl border border-white/10 px-2.5 sm:px-3 py-1.5 text-xs text-gray-300 hover:bg-white/5 whitespace-nowrap"
               >
                 {t('พื้นที่ทีมงาน', 'Team Portal')}
               </Link>
-              <Link to="/" className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-black">
+              <Link to="/" className="rounded-xl bg-white px-2.5 sm:px-3 py-1.5 text-xs font-bold text-black whitespace-nowrap">
                 {t('กลับหน้าร้าน', 'Back to Store')}
               </Link>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-              <LanguageSwitch />
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <LanguageSwitch className="scale-90 sm:scale-100 origin-right" />
               
               <Link
                 to="/"
-                className={`hidden sm:inline-flex px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`hidden md:inline-flex px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive('/')
                     ? 'bg-white/10 text-white border border-white/20'
                     : 'text-gray-300 hover:text-white hover:bg-white/5'
@@ -117,41 +123,38 @@ export default function Navbar() {
               </Link>
 
               {authUser && (
-                <Button variant="outline" size="sm" onClick={openHistoryModal} className="hidden sm:inline-flex">
+                <Button variant="outline" size="sm" onClick={openHistoryModal} className="hidden md:inline-flex">
                   <Ticket className="w-3.5 h-3.5 text-cyan-400" />
                   <span>{t('ประวัติการซื้อบัตร', 'My Tickets')}</span>
                 </Button>
               )}
 
               {authUser ? (
-                <div className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-2 sm:px-2.5 py-1.5">
+                <div className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-1.5 sm:px-2 py-1 shrink-0">
                   {authUser.avatarUrl ? (
                     <img
                       src={authUser.avatarUrl}
                       alt={authUser.username}
-                      className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/40"
+                      className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/40 shrink-0"
                     />
                   ) : (
-                    <UserRound size={14} className="text-emerald-300" />
+                    <UserRound size={13} className="text-emerald-300 shrink-0" />
                   )}
-                  <span className="max-w-20 sm:max-w-28 text-left text-[10px] leading-tight hidden xs:block">
-                    <span className="block truncate font-bold text-white">{authUser.username}</span>
-                    <span className="block truncate text-emerald-300">
-                      {authUser.email || t('ออนไลน์', 'Online')}
-                    </span>
+                  <span className="max-w-[70px] xs:max-w-[95px] sm:max-w-[120px] text-left text-[11px] font-bold text-white leading-tight truncate shrink-0">
+                    {authUser.username}
                   </span>
                   <button
                     type="button"
                     onClick={logout}
                     aria-label={t('ออกจากระบบ', 'Logout')}
                     title={t('ออกจากระบบ', 'Logout')}
-                    className="ml-0.5 sm:ml-1 text-gray-400 hover:text-white cursor-pointer p-1"
+                    className="p-1 text-gray-400 hover:text-rose-400 active:scale-90 cursor-pointer shrink-0 transition-colors"
                   >
-                    <LogOut size={14} />
+                    <LogOut size={13} className="text-gray-300 hover:text-rose-400" />
                   </button>
                 </div>
               ) : (
-                <Button variant="cyanOutline" size="sm" onClick={() => setAuthOpen(true)} className="px-2.5 sm:px-3 text-xs">
+                <Button variant="cyanOutline" size="sm" onClick={() => setAuthOpen(true)} className="px-2.5 py-1 text-xs whitespace-nowrap shrink-0">
                   {t('เข้าสู่ระบบ', 'Sign In')}
                 </Button>
               )}

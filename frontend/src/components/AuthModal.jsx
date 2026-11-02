@@ -23,14 +23,6 @@ export default function AuthModal({ onClose, onAuthenticated }) {
         if (d?.clientId) setGoogleClientId(d.clientId);
       })
       .catch(() => {});
-
-    if (!window.google?.accounts?.oauth2) {
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
   }, []);
 
   const handleGoogleSignIn = () => {
@@ -40,59 +32,21 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       return;
     }
 
-    if (!window.google?.accounts?.oauth2) {
-      setError(t('กำลังเชื่อมต่อบริการ Google กรุณากดอีกครั้ง', 'Loading Google service, please click again'));
-      return;
-    }
-
     try {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: googleClientId,
-        scope: 'email profile openid',
-        callback: async (tokenResponse) => {
-          if (tokenResponse?.error) {
-            setBusy(false);
-            if (tokenResponse.error !== 'access_denied') {
-              setError(tokenResponse.error_description || tokenResponse.error);
-            }
-            return;
-          }
-          if (tokenResponse?.access_token) {
-            await handleGoogleLogin({ access_token: tokenResponse.access_token });
-          }
-        },
-        error_callback: (err) => {
-          setBusy(false);
-          console.warn('Google OAuth error:', err);
-        },
-      });
-      client.requestAccessToken({ prompt: 'select_account' });
-    } catch (err) {
-      setBusy(false);
-      setError(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ Google');
-    }
-  };
+      sessionStorage.setItem('sw_google_auth_state', window.location.pathname + window.location.search);
+    } catch {}
 
-  const handleGoogleLogin = async (payload) => {
-    setBusy(true);
-    setError('');
-    try {
-      const response = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || t('เข้าสู่ระบบด้วย Google ไม่สำเร็จ', 'Google Sign-In failed'));
-      }
-      onAuthenticated({ user: data.user, token: data.token, expiresAt: data.expiresAt });
-      onClose();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
+    const redirectUri = window.location.origin;
+    const scope = encodeURIComponent('openid email profile');
+    const state = encodeURIComponent(window.location.pathname + window.location.search);
+    const nonce = Math.random().toString(36).substring(2);
+
+    // Standard OAuth2 full-page redirect (Works 100% on mobile without popups or blank tabs)
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=token%20id_token&scope=${scope}&state=${state}&nonce=${nonce}&prompt=select_account`;
+
+    window.location.href = googleAuthUrl;
   };
 
   const submit = async (event) => {
