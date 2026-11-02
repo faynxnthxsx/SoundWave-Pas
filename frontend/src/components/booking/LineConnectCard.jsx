@@ -43,24 +43,31 @@ export default function LineConnectCard({
                 {lineUser?.displayName || customerName || 'LINE User'}
                 <CheckCircle2 size={13} className="text-[#06c755]" />
               </p>
-              <p className="text-[10px] text-gray-400 font-mono">
-                LINE ID: {customerLineId ? `${customerLineId.slice(0, 10)}…` : t('เชื่อมต่อแล้ว', 'Connected')}
-              </p>
               <p className="text-[10px] text-[#06c755] font-semibold">
                 {t(
-                  '✓ ตั๋วจะถูกส่งเข้า LINE อัตโนมัติหลังจ่ายเงิน',
-                  '✓ Tickets will be sent to LINE automatically after payment'
+                  '✓ เชื่อมต่อบัญชี LINE สำเร็จ ตั๋วจะถูกส่งเข้าแชทอัตโนมัติ',
+                  '✓ LINE Connected — tickets will be delivered to chat'
                 )}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onDisconnectLine}
-            className="text-[10px] text-gray-400 hover:text-rose-400 px-2 py-1 rounded-lg border border-white/10 hover:border-rose-400/40 transition-colors cursor-pointer"
-          >
-            {t('ยกเลิก', 'Disconnect')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onLineLogin}
+              disabled={lineLoading}
+              className="text-[10px] text-[#06c755] hover:text-white px-2 py-1 rounded-lg border border-[#06c755]/30 hover:bg-[#06c755]/20 transition-all cursor-pointer font-bold"
+            >
+              {t('สลับบัญชี', 'Switch')}
+            </button>
+            <button
+              type="button"
+              onClick={onDisconnectLine}
+              className="text-[10px] text-gray-400 hover:text-rose-400 px-2 py-1 rounded-lg border border-white/10 hover:border-rose-400/40 transition-colors cursor-pointer"
+            >
+              {t('ยกเลิก', 'Disconnect')}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-2">

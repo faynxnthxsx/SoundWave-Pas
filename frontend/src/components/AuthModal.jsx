@@ -42,8 +42,9 @@ export default function AuthModal({ onClose, onAuthenticated }) {
         theme: 'outline',
         size: 'large',
         width: 320,
-        text: 'continue_with',
+        text: 'signin_with',
         shape: 'pill',
+        logo_alignment: 'left',
       });
     };
 
