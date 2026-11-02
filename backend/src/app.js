@@ -17,6 +17,10 @@ const PORT = process.env.PORT || 5000;
 
 // Middlewares
 app.use(cors());
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  next();
+});
 app.use(express.json({ limit: '7mb' }));
 app.use('/uploads', express.static(process.env.UPLOAD_DIR || path.join(__dirname, '../uploads')));
 

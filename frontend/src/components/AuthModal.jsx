@@ -46,7 +46,6 @@ export default function AuthModal({ onClose, onAuthenticated }) {
     }
 
     try {
-      setBusy(true);
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: googleClientId,
         scope: 'email profile openid',
@@ -60,8 +59,6 @@ export default function AuthModal({ onClose, onAuthenticated }) {
           }
           if (tokenResponse?.access_token) {
             await handleGoogleLogin({ access_token: tokenResponse.access_token });
-          } else {
-            setBusy(false);
           }
         },
         error_callback: (err) => {
