@@ -205,19 +205,19 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#07070b] via-[#07070b]/60 to-transparent" />
 
-        <div className="relative z-10 max-w-4xl mx-auto text-center pt-6 sm:pt-8 px-2 sm:px-4">
+        <div className="relative z-10 max-w-3xl mx-auto text-center pt-8 sm:pt-12 pb-6 px-4 sm:px-6">
           {/* Top Venue & Date Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/15 text-gray-200 text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-4 sm:mb-6 max-w-full">
+          <div className="inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/15 text-gray-200 text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-4 sm:mb-5 max-w-full">
             <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <span className="truncate">{eventDateFormatted} · {trData(selectedConcert?.venue || selectedConcert?.location || 'Oasis Outdoor Arena')}</span>
           </div>
 
           {/* Main Concert Title */}
-          <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight uppercase break-words">
+          <h1 className="text-xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight uppercase break-words text-center">
             {selectedConcert ? (
               <>
-                <span className="block">{selectedConcert.name}</span>
-                <span className="block text-base sm:text-2xl lg:text-3xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-pink-400 mt-1.5 font-mono">
+                <span className="block max-w-xl mx-auto">{selectedConcert.name}</span>
+                <span className="block text-sm sm:text-xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-pink-400 mt-2 font-mono tracking-wider">
                   SOUNDWAVE PASS LIVE
                 </span>
               </>
@@ -232,53 +232,53 @@ export default function HomePage() {
           </h1>
 
           {/* Concert Description */}
-          <p className="text-gray-300 text-xs sm:text-sm max-w-2xl mx-auto mt-4 sm:mt-6 leading-relaxed break-words px-2">
+          <p className="text-gray-300 text-xs sm:text-sm max-w-lg mx-auto mt-3 sm:mt-4 leading-relaxed text-center break-words px-2 sm:px-0">
             {trData(selectedConcert?.description) || t(
               'เทศกาลดนตรีและคอนเสิร์ตสดเต็มรูปแบบ พร้อมระบบออกตั๋วดิจิทัลผ่าน LINE และผังโซนที่นั่งครบวงจร',
               'Full-scale live music festival & concert experience with instant LINE digital tickets and interactive venue seat maps.'
             )}
           </p>
 
-          {/* Balanced Quick Info Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 max-w-xl mx-auto mt-5 sm:mt-7 w-full px-2">
+          {/* Balanced Minimalist Capsule Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mx-auto mt-5">
             {selectedConcert?.status === 'PAUSED' && (
-              <div className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-400/20 border border-amber-400/40 px-4 py-2 rounded-xl text-xs text-amber-200 font-bold animate-pulse">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 border border-amber-400/40 px-3 py-1.5 text-xs text-amber-200 font-bold animate-pulse">
                 <span>{t('⏸️ พักการจำหน่ายบัตรชั่วคราว', '⏸️ Ticket Sales Temporarily Paused')}</span>
               </div>
             )}
             {selectedConcert?.status === 'CLOSED' && (
-              <div className="w-full sm:w-auto flex items-center justify-center gap-2 bg-rose-500/20 border border-rose-500/40 px-4 py-2 rounded-xl text-xs text-rose-200 font-bold">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-500/40 px-3 py-1.5 text-xs text-rose-200 font-bold">
                 <span>{t('🔴 ปิดจำหน่ายบัตรแล้ว', '🔴 Ticket Sales Closed')}</span>
               </div>
             )}
-            <div className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl text-xs text-gray-200 min-w-0">
-              <Calendar className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span className="truncate font-medium">{eventDateFormatted}</span>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-[11px] sm:text-xs text-gray-200 backdrop-blur">
+              <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="font-medium">{eventDateFormatted}</span>
             </div>
-            <div className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl text-xs text-gray-200 min-w-0">
-              <MapPin className="w-4 h-4 text-pink-400 shrink-0" />
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-[11px] sm:text-xs text-gray-200 backdrop-blur max-w-[260px]">
+              <MapPin className="w-3.5 h-3.5 text-pink-400 shrink-0" />
               <span className="truncate font-medium">{trData(selectedConcert?.venue || selectedConcert?.location || t('ประเทศไทย', 'Thailand'))}</span>
             </div>
-            <div className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl text-xs text-gray-200 min-w-0">
-              <Users className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="truncate font-medium">{t(`${currentArtists.length} ศิลปินในงาน`, `${currentArtists.length} Performing Artists`)}</span>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-[11px] sm:text-xs text-gray-200 backdrop-blur">
+              <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="font-medium">{t(`${currentArtists.length} ศิลปินในงาน`, `${currentArtists.length} Performing Artists`)}</span>
             </div>
           </div>
 
-          {/* Balanced Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-4 mt-5 sm:mt-7 max-w-md sm:max-w-none mx-auto w-full px-2">
+          {/* Balanced Centered Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3.5 mt-5 sm:mt-6 max-w-xs sm:max-w-none mx-auto w-full">
             {selectedConcert?.status === 'PAUSED' ? (
-              <div className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-bold text-amber-200 text-xs sm:text-sm border border-amber-400/40 bg-amber-400/10 flex items-center justify-center gap-2 text-center">
-                <span>⏸️ พักการจำหน่ายชั่วคราว (กรุณารอประกาศเพิ่มเติม)</span>
+              <div className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-amber-200 text-xs sm:text-sm border border-amber-400/40 bg-amber-400/10 flex items-center justify-center gap-2 text-center">
+                <span>⏸️ พักการจำหน่ายชั่วคราว</span>
               </div>
             ) : selectedConcert?.status === 'CLOSED' ? (
-              <div className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-bold text-gray-400 text-xs sm:text-sm border border-white/10 bg-white/5 flex items-center justify-center gap-2 cursor-not-allowed text-center">
+              <div className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-gray-400 text-xs sm:text-sm border border-white/10 bg-white/5 flex items-center justify-center gap-2 cursor-not-allowed text-center">
                 <span>🔴 ปิดการจำหน่ายบัตรแล้ว</span>
               </div>
             ) : (
               <Link
                 to={selectedConcert ? `/booking/zone-select?concertId=${selectedConcert.id}` : '/booking/zone-select'}
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl font-bold text-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 bg-cyan-300 hover:bg-cyan-200 transition-all shadow-lg shadow-cyan-400/25 active:scale-95 text-center"
+                className="w-full sm:w-auto px-7 py-3 rounded-xl font-bold text-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 bg-cyan-300 hover:bg-cyan-200 transition-all shadow-lg shadow-cyan-400/25 active:scale-95 text-center"
               >
                 <Zap className="w-4 h-4 text-black shrink-0" />
                 <span>{t('เลือกโซนและจองบัตร', 'Select Zone & Book Tickets')}</span>
@@ -287,7 +287,7 @@ export default function HomePage() {
             )}
             <a
               href="#artists-section"
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-semibold text-gray-300 text-xs sm:text-sm border border-white/15 bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center text-center active:scale-95"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl font-semibold text-gray-300 text-xs sm:text-sm border border-white/15 bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center text-center active:scale-95"
             >
               {t('ดูทัพศิลปินแต่ละงาน ↓', 'View Lineup & Artists ↓')}
             </a>

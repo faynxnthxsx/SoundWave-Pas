@@ -560,7 +560,7 @@ export default function ZoneSelectPage() {
         className={`group relative flex flex-col items-center justify-center ${
           seatZoom
             ? 'w-7 h-7 sm:w-8 sm:h-8 rounded-t-lg sm:rounded-t-xl rounded-b-sm sm:rounded-b-md text-[9px] sm:text-[10px]'
-            : 'w-[18px] h-[18px] sm:w-8 sm:h-8 rounded-t-sm sm:rounded-t-xl rounded-b-xs sm:rounded-b-md text-[7px] sm:text-[10px]'
+            : 'w-4 h-4 sm:w-8 sm:h-8 rounded-t-sm sm:rounded-t-xl rounded-b-xs sm:rounded-b-md text-[6.5px] sm:text-[10px]'
         } font-mono font-bold transition-all duration-150 select-none touch-manipulation cursor-pointer ${
           isOccupied
             ? 'bg-[#0f1018] border border-white/[0.06] text-slate-600 cursor-not-allowed opacity-50'
@@ -594,7 +594,7 @@ export default function ZoneSelectPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07070b] px-3.5 py-7 pb-24 xl:pb-7 text-white sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#07070b] px-4 py-6 sm:py-7 pb-24 xl:pb-7 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         {/* Navigation Breadcrumb */}
         <Link
@@ -605,43 +605,45 @@ export default function ZoneSelectPage() {
         </Link>
 
         {/* Page Header + 2-Step Indicator */}
-        <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <header className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="min-w-0 max-w-full">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-300">
               {t('ระบบจองบัตรตามผังสถานที่จริง (2 ขั้นตอน)', 'Venue-Realistic 2-Step Booking')}
             </p>
-            <h1 className="mt-1 text-2xl font-black sm:text-3xl">
-              {t('เลือกโซนก่อน → แล้วเลือกที่นั่ง', 'Select Zone First → Then Pick Seats')} · {concert.name}
+            <h1 className="mt-1 text-xl sm:text-3xl font-black text-white leading-tight">
+              {t('เลือกโซนและที่นั่ง', 'Select Zone & Seats')}
             </h1>
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-400">
-              <MapPin size={13} className="text-pink-400" />
-              <span>{t('สถานที่จัดงานจริง:', 'Official Venue:')}</span>
-              <strong className="text-gray-200">{concert.venue || concert.location}</strong>
+            <p className="mt-1 text-xs font-semibold text-cyan-200/90 truncate max-w-full">
+              {concert.name}
+            </p>
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-400">
+              <MapPin size={13} className="text-pink-400 shrink-0" />
+              <span className="truncate">{concert.venue || concert.location}</span>
             </p>
           </div>
 
           {/* 2-Step Progress Pills */}
-          <div className="flex items-center gap-2 text-xs font-bold">
+          <div className="flex items-center gap-2 text-[11px] sm:text-xs font-bold w-full sm:w-auto">
             <span
-              className={`rounded-xl px-3.5 py-2 border transition-all ${
+              className={`flex-1 sm:flex-initial text-center rounded-xl px-3 py-2 border transition-all truncate ${
                 !selectedZone
                   ? 'border-cyan-400 bg-cyan-400/20 text-cyan-200 ring-2 ring-cyan-400/40'
                   : 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
               }`}
             >
-              {selectedZone ? `✓ 1. ${trData(selectedZone.name)}` : t('① เลือกโซนจากผังสนาม', '① Select Zone on Map')}
+              {selectedZone ? `✓ ${trData(selectedZone.name)}` : t('① เลือกโซน', '① Zone')}
             </span>
-            <ArrowRight size={14} className="text-gray-500" />
+            <ArrowRight size={13} className="text-gray-500 shrink-0" />
             <span
-              className={`rounded-xl px-3.5 py-2 border transition-all ${
+              className={`flex-1 sm:flex-initial text-center rounded-xl px-3 py-2 border transition-all truncate ${
                 selectedZone
                   ? 'border-cyan-400 bg-cyan-400/20 text-cyan-200 ring-2 ring-cyan-400/40'
                   : 'border-white/10 bg-white/5 text-gray-500'
               }`}
             >
               {isStanding
-                ? t('② เลือกจำนวนบัตรยืน (Run Queue)', '② Select Standing Quantity')
-                : t('② เลือกที่นั่งในโซน', '② Pick Seats in Zone')}
+                ? t('② บัตรยืน', '② Standing')
+                : t('② เลือกที่นั่ง', '② Seats')}
             </span>
           </div>
         </header>
@@ -826,7 +828,7 @@ export default function ZoneSelectPage() {
             {selectedZone && (
               <div
                 id="seat-picker-step2"
-                className="rounded-3xl border border-cyan-400/35 bg-[#111119] p-3 sm:p-6 shadow-2xl scroll-mt-20 sm:scroll-mt-24"
+                className="rounded-3xl border border-cyan-400/35 bg-[#111119] p-4 sm:p-6 shadow-2xl scroll-mt-20 sm:scroll-mt-24"
               >
                 {/* Step 2 Top Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-white/10">
@@ -1037,7 +1039,7 @@ export default function ZoneSelectPage() {
                     </div>
 
                     {/* Stadium Bowl Seat Rows (Rows A - G, Left Wing / Center / Right Wing) */}
-                    <div className={`space-y-1.5 sm:space-y-2.5 max-w-full py-3 px-1.5 sm:px-2 rounded-2xl bg-[#0b0b12] border border-white/10 select-none ${
+                    <div className={`space-y-1.5 sm:space-y-2.5 max-w-full py-3.5 px-3 sm:px-4 rounded-2xl bg-[#0b0b12] border border-white/10 select-none ${
                       seatZoom ? 'overflow-x-auto touch-pan-x' : 'overflow-hidden'
                     }`}>
                       {seatZoom && (
@@ -1069,7 +1071,7 @@ export default function ZoneSelectPage() {
                         >
                           {/* Left Row Badge */}
                           <span className={`${
-                            seatZoom ? 'w-6 h-6' : 'w-[18px] h-[18px]'
+                            seatZoom ? 'w-6 h-6' : 'w-4 h-4'
                           } sm:w-7 sm:h-7 rounded-md sm:rounded-lg bg-white/5 border border-white/10 font-mono text-[8.5px] sm:text-xs font-black text-gray-300 flex items-center justify-center shrink-0 select-none`}>
                             {rowLetter}
                           </span>
@@ -1101,7 +1103,7 @@ export default function ZoneSelectPage() {
 
                           {/* Right Row Badge */}
                           <span className={`${
-                            seatZoom ? 'w-6 h-6' : 'w-[18px] h-[18px]'
+                            seatZoom ? 'w-6 h-6' : 'w-4 h-4'
                           } sm:w-7 sm:h-7 rounded-md sm:rounded-lg bg-white/5 border border-white/10 font-mono text-[8.5px] sm:text-xs font-black text-gray-300 flex items-center justify-center shrink-0 select-none`}>
                             {rowLetter}
                           </span>

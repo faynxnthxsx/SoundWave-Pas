@@ -590,7 +590,7 @@ export default function StadiumZoneMap({
   return (
     <section className="overflow-hidden rounded-[28px] border border-cyan-400/25 bg-[#0b0f17] shadow-2xl">
       {/* Venue Map Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-3.5 sm:px-5 sm:py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-4 sm:px-5 sm:py-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-cyan-400/15 border border-cyan-400/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-200">
@@ -621,7 +621,7 @@ export default function StadiumZoneMap({
 
       {/* Main Content: Interactive SVG Seating Plan */}
       <div className="bg-[radial-gradient(ellipse_at_top,_#172033_0%,_#070a10_78%)] w-full overflow-hidden">
-        <div className="w-full p-2 sm:p-5 flex flex-col items-center justify-center">
+        <div className="w-full p-3.5 sm:p-5 flex flex-col items-center justify-center">
           <svg
             viewBox="0 0 800 565"
             role="img"
