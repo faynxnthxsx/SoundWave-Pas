@@ -8,7 +8,7 @@ export default function LineConnectCard({
   customerName,
   lineLoading,
   onLineLogin,
-  onMockLineLogin,
+  onMockLineLogin: _onMockLineLogin,
   onDisconnectLine,
 }) {
   const { t } = useLanguage();

@@ -313,7 +313,7 @@ export default function ZoneSelectPage() {
   };
 
   // Best-Available Adjacent Seats Helper (like ThaiTicketMajor / Ticketmaster quick pick)
-  const handleQuickAdjacentPick = (count) => {
+  const _handleQuickAdjacentPick = (count) => {
     const clamped = Math.max(0, Math.min(count, 6, selectedZone?.available || 6));
     setErrorMsg('');
     if (clamped === 0) {
