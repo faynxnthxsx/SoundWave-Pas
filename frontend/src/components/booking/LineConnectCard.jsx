@@ -77,17 +77,10 @@ export default function LineConnectCard({
               ? t('กำลังเชื่อมต่อ LINE...', 'Connecting LINE...')
               : t('เข้าสู่ระบบด้วย LINE (Log in with LINE)', 'Log in with LINE')}
           </button>
-          <div className="flex items-center justify-between text-[10px] text-gray-400 px-1 pt-0.5">
+          <div className="text-[10px] text-gray-400 px-1 pt-0.5">
             <span>
               {t('ดึงโปรไฟล์และยิงตั๋วเข้าแชตให้อัตโนมัติ', 'Auto-fill profile & send Flex tickets to chat')}
             </span>
-            <button
-              type="button"
-              onClick={onMockLineLogin}
-              className="text-cyan-300 hover:underline cursor-pointer font-bold"
-            >
-              {t('(คลิกทดสอบทันที - บัญชีจำลอง)', '(Quick Demo LINE Login)')}
-            </button>
           </div>
         </div>
       )}
