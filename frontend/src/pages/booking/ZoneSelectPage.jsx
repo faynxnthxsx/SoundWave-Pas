@@ -651,7 +651,7 @@ export default function ZoneSelectPage() {
           </div>
         )}
 
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(380px,0.7fr)]">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.7fr)] w-full max-w-full">
           {/* ── Left Column: Step 1 Venue Map -> Step 2 Seat Matrix / Standing Pit ── */}
           <div className="space-y-6">
             {/* 1. Macro Real Venue Map (Step 1) */}

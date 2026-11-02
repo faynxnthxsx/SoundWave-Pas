@@ -616,13 +616,13 @@ export default function StadiumZoneMap({
       </div>
 
       {/* Main Content: Interactive SVG Seating Plan */}
-      <div className="bg-[radial-gradient(ellipse_at_top,_#172033_0%,_#070a10_78%)]">
-        <div className="overflow-x-auto p-3 sm:p-5 flex flex-col items-center justify-center">
+      <div className="bg-[radial-gradient(ellipse_at_top,_#172033_0%,_#070a10_78%)] w-full overflow-hidden">
+        <div className="overflow-x-auto w-full p-2 sm:p-5 flex flex-col items-center justify-center touch-pan-x">
           <svg
             viewBox="0 0 800 565"
             role="img"
             aria-label={t('ผังเวทีคอนเสิร์ตและโซนบัตรตามสถานที่จริง', 'Concert venue stage and zone layout')}
-            className="w-full min-w-[540px] max-w-[780px] drop-shadow-[0_18px_40px_rgba(0,0,0,0.65)]"
+            className="w-full max-w-full h-auto drop-shadow-[0_18px_40px_rgba(0,0,0,0.65)]"
           >
             <defs>
               <linearGradient id="arena-shell" x1="0" x2="0" y1="0" y2="1">
