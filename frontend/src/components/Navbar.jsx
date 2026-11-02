@@ -130,17 +130,17 @@ export default function Navbar() {
               )}
 
               {authUser ? (
-                <div className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-1.5 sm:px-2 py-1 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-2 sm:px-2.5 py-1 shrink-0">
                   {authUser.avatarUrl ? (
                     <img
                       src={authUser.avatarUrl}
                       alt={authUser.username}
-                      className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/40 shrink-0"
+                      className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/50 shrink-0"
                     />
                   ) : (
                     <UserRound size={13} className="text-emerald-300 shrink-0" />
                   )}
-                  <span className="max-w-[70px] xs:max-w-[95px] sm:max-w-[120px] text-left text-[11px] font-bold text-white leading-tight truncate shrink-0">
+                  <span className="max-w-[65px] xs:max-w-[85px] sm:max-w-[110px] text-left text-[11px] font-bold text-white truncate shrink-0">
                     {authUser.username}
                   </span>
                   <button
@@ -148,9 +148,13 @@ export default function Navbar() {
                     onClick={logout}
                     aria-label={t('ออกจากระบบ', 'Logout')}
                     title={t('ออกจากระบบ', 'Logout')}
-                    className="p-1 text-gray-400 hover:text-rose-400 active:scale-90 cursor-pointer shrink-0 transition-colors"
+                    className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
                   >
-                    <LogOut size={13} className="text-gray-300 hover:text-rose-400" />
+                    <LogOut size={11} className="text-rose-400 shrink-0" />
+                    <span className="text-[10px] font-bold tracking-tight text-rose-200">
+                      <span className="hidden sm:inline">{t('ออกจากระบบ', 'Logout')}</span>
+                      <span className="sm:hidden">{t('ออก', 'Exit')}</span>
+                    </span>
                   </button>
                 </div>
               ) : (
