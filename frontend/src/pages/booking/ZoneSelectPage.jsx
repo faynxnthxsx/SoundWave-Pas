@@ -59,6 +59,11 @@ export default function ZoneSelectPage() {
   const [authOpen, setAuthOpen] = useState(false);
   const [hoveredSeat, setHoveredSeat] = useState(null);
 
+  // Mobile zone selection mode ('cards' | 'map')
+  const [mobileZoneMode, setMobileZoneMode] = useState('cards');
+  // Mobile seat grid zoom toggle (false = fit to screen ~320px, true = zoomed with scroll)
+  const [seatZoom, setSeatZoom] = useState(false);
+
   // Real-time Occupied Seats from Backend
   const [occupiedSeats, setOccupiedSeats] = useState([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
@@ -276,7 +281,7 @@ export default function ZoneSelectPage() {
     setQuantity(0);
     setErrorMsg('');
     setTimeout(() => {
-      document.getElementById('seat-picker-step2')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('seat-picker-step2')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 120);
   };
 
@@ -542,10 +547,6 @@ export default function ZoneSelectPage() {
           e.preventDefault();
           handleSeatClick(seatCode);
         }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          handleSeatClick(seatCode);
-        }}
         onMouseEnter={() => setHoveredSeat({ code: seatCode, row: rowLetter, col: colNum, occupied: isOccupied })}
         onMouseLeave={() => setHoveredSeat(null)}
         title={
@@ -555,17 +556,21 @@ export default function ZoneSelectPage() {
             ? t(`เลือกแล้ว: ${seatCode} (฿${selectedZone.price.toLocaleString()})`, `Selected: ${seatCode} (฿${selectedZone.price.toLocaleString()})`)
             : t(`แถว ${rowLetter} ที่นั่ง ${String(colNum).padStart(2, '0')} · ฿${selectedZone.price.toLocaleString()}`, `Row ${rowLetter} Seat ${String(colNum).padStart(2, '0')} · ฿${selectedZone.price.toLocaleString()}`)
         }
-        className={`group relative flex flex-col items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-t-xl rounded-b-md font-mono text-[10px] font-bold transition-all duration-150 select-none touch-manipulation ${
+        className={`group relative flex flex-col items-center justify-center ${
+          seatZoom
+            ? 'w-7 h-7 sm:w-8 sm:h-8 rounded-t-lg sm:rounded-t-xl rounded-b-sm sm:rounded-b-md text-[9px] sm:text-[10px]'
+            : 'w-[18px] h-[18px] sm:w-8 sm:h-8 rounded-t-sm sm:rounded-t-xl rounded-b-xs sm:rounded-b-md text-[7px] sm:text-[10px]'
+        } font-mono font-bold transition-all duration-150 select-none touch-manipulation cursor-pointer ${
           isOccupied
             ? 'bg-[#0f1018] border border-white/[0.06] text-slate-600 cursor-not-allowed opacity-50'
             : isSelected
-            ? 'bg-gradient-to-b from-cyan-300 to-teal-400 text-slate-950 border border-white shadow-[0_0_14px_rgba(34,211,238,0.55)] scale-110 z-10 font-black'
-            : 'bg-[#171b29] border border-slate-700/70 text-slate-300 hover:bg-cyan-500/15 hover:border-cyan-400/60 hover:text-white hover:scale-105 active:scale-95 cursor-pointer'
+            ? 'bg-gradient-to-b from-cyan-300 to-teal-400 text-slate-950 border border-white shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-110 z-10 font-black ring-1 ring-white'
+            : 'bg-[#171b29] border border-slate-700/70 text-slate-300 hover:bg-cyan-500/15 hover:border-cyan-400/60 hover:text-white active:scale-90'
         }`}
       >
-        {/* Realistic Stadium Seat Backrest Curve */}
+        {/* Realistic Stadium Seat Backrest Curve (shown when zoomed or on desktop) */}
         <span
-          className={`w-4 sm:w-5 h-1 rounded-full mb-0.5 transition-all ${
+          className={`${seatZoom ? 'w-3.5 sm:w-5 h-0.5 sm:h-1' : 'hidden sm:block w-5 h-1'} rounded-full mb-0.5 transition-all ${
             isOccupied
               ? 'bg-slate-800'
               : isSelected
@@ -575,11 +580,11 @@ export default function ZoneSelectPage() {
         />
 
         {isOccupied ? (
-          <span className="text-[9px] text-slate-600 font-bold leading-none">–</span>
+          <span className="text-[7px] sm:text-[9px] text-slate-600 font-bold leading-none">–</span>
         ) : isSelected ? (
-          <Check size={11} className="stroke-[3.5] text-slate-950 leading-none" />
+          <Check size={seatZoom ? 10 : 8} className="stroke-[3.5] text-slate-950 leading-none sm:w-3 sm:h-3" />
         ) : (
-          <span className="leading-none text-[9px] sm:text-[10px] tracking-tighter">
+          <span className="leading-none text-[7px] sm:text-[10px] tracking-tighter">
             {String(colNum).padStart(2, '0')}
           </span>
         )}
@@ -588,7 +593,7 @@ export default function ZoneSelectPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07070b] px-4 py-7 text-white sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#07070b] px-3.5 py-7 pb-24 xl:pb-7 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         {/* Navigation Breadcrumb */}
         <Link
@@ -660,23 +665,81 @@ export default function ZoneSelectPage() {
 
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.7fr)] w-full max-w-full">
           {/* ── Left Column: Step 1 Venue Map -> Step 2 Seat Matrix / Standing Pit ── */}
-          <div className="space-y-6">
-            {/* 1. Macro Real Venue Map (Step 1) */}
-            <StadiumZoneMap
-              zones={concert.zones || []}
-              selectedZoneId={selectedZone?.id}
-              onSelect={selectZone}
-              venueName={concert.venue || concert.location}
-              concertName={concert.name}
-            />
+          <div className="space-y-5">
+            {/* Active Zone Floating Confirmation Bar */}
+            {selectedZone && (
+              <div className="rounded-2xl border border-cyan-400/40 bg-gradient-to-r from-cyan-400/15 via-[#111119] to-cyan-400/10 p-3.5 flex items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-white/50" style={{ backgroundColor: zoneColor }} />
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider block">
+                      {t('โซนที่คุณกำลังเลือก:', 'Current Zone:')}
+                    </span>
+                    <span className="text-sm font-black text-white truncate block">
+                      {trData(selectedZone.name)} · <span className="font-mono text-cyan-200">฿{selectedZone.price.toLocaleString()}</span>
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedZone(null);
+                    setSelectedSeats([]);
+                    setQuantity(0);
+                  }}
+                  className="text-xs font-bold text-cyan-300 hover:underline shrink-0 bg-white/5 border border-cyan-400/30 px-3 py-1.5 rounded-xl cursor-pointer"
+                >
+                  {t('↺ เปลี่ยนโซน', '↺ Change Zone')}
+                </button>
+              </div>
+            )}
 
-            {/* Quick Zone Cards Selector (Step 1 Helper) */}
-            <div className="rounded-3xl border border-white/10 bg-[#111119] p-4 sm:p-5">
+            {/* Mobile View Mode Switcher (Tab between Zone Cards & Venue Map) */}
+            <div className="flex sm:hidden items-center p-1 rounded-2xl bg-white/5 border border-white/10">
+              <button
+                type="button"
+                onClick={() => setMobileZoneMode('cards')}
+                className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mobileZoneMode === 'cards'
+                    ? 'bg-cyan-400 text-black shadow-md'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Ticket size={13} />
+                <span>{t('รายการโซนบัตร', 'Zone List')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileZoneMode('map')}
+                className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mobileZoneMode === 'map'
+                    ? 'bg-cyan-400 text-black shadow-md'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <MapPinned size={13} />
+                <span>{t('ผังสถานที่จริง', 'Venue Map')}</span>
+              </button>
+            </div>
+
+            {/* 1. Macro Real Venue Map (Step 1) */}
+            <div className={`${mobileZoneMode === 'map' ? 'block' : 'hidden sm:block'}`}>
+              <StadiumZoneMap
+                zones={concert.zones || []}
+                selectedZoneId={selectedZone?.id}
+                onSelect={selectZone}
+                venueName={concert.venue || concert.location}
+                concertName={concert.name}
+              />
+            </div>
+
+            {/* 2. Quick Zone Cards Selector (Step 1 Cards) */}
+            <div className={`rounded-3xl border border-white/10 bg-[#111119] p-4 sm:p-5 ${mobileZoneMode === 'cards' ? 'block' : 'hidden sm:block'}`}>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-gray-300">
                   {t(
-                    'รายการโซนทั้งหมดของสถานที่นี้ (คลิกเลือกโซนเพื่อเปิดผังที่นั่ง):',
-                    'All Available Venue Zones (Click a zone to open its seat/standing map):'
+                    'รายการโซนทั้งหมด (แตะที่การ์ดเพื่อเลือกโซน):',
+                    'All Venue Zones (Tap any card to select):'
                   )}
                 </span>
                 {selectedZone && (
@@ -689,7 +752,7 @@ export default function ZoneSelectPage() {
                     }}
                     className="text-[11px] font-bold text-cyan-300 hover:underline cursor-pointer"
                   >
-                    {t('↺ เปลี่ยนโซนใหม่', '↺ Change Zone')}
+                    {t('↺ ล้างโซน', '↺ Clear')}
                   </button>
                 )}
               </div>
@@ -728,7 +791,7 @@ export default function ZoneSelectPage() {
                       <div className="text-right">
                         <span className="text-sm font-black text-cyan-300 font-mono">฿{z.price.toLocaleString()}</span>
                         <span className="block text-[10px] text-cyan-200 font-bold">
-                          {active ? t('✓ เลือกอยู่', '✓ Active') : t('เลือกโซน →', 'Select →')}
+                          {active ? t('✓ เลือกอยู่', '✓ Active') : t('แตะเลือกโซนนี้ →', 'Select →')}
                         </span>
                       </div>
                     </button>
@@ -762,7 +825,7 @@ export default function ZoneSelectPage() {
             {selectedZone && (
               <div
                 id="seat-picker-step2"
-                className="rounded-3xl border border-cyan-400/35 bg-[#111119] p-5 sm:p-6 shadow-2xl scroll-mt-24"
+                className="rounded-3xl border border-cyan-400/35 bg-[#111119] p-3 sm:p-6 shadow-2xl scroll-mt-20 sm:scroll-mt-24"
               >
                 {/* Step 2 Top Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-white/10">
@@ -806,27 +869,39 @@ export default function ZoneSelectPage() {
                     </div>
                   </div>
 
-                  {/* Refresh + Quick Auto-Pick Adjacent Bar */}
+                  {/* Free Seat Pick Info + Zoom Mode Toggle */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-black/40 p-1">
-                      <span className="px-2 text-[10px] font-bold text-gray-400">
-                        {isStanding ? t('จำนวนบัตร:', 'Qty:') : t('เลือกติดกัน:', 'Auto-Pick:')}
+                    <div className="flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-1.5">
+                      <span className="text-[11px] font-bold text-cyan-200">
+                        {t('เลือกอิสระ:', 'Selected:')}
                       </span>
-                      {[1, 2, 3, 4, 6].map((n) => (
+                      <span className="font-mono text-xs font-black text-white">
+                        {selectedSeats.length} / 6 {t('ที่นั่ง', 'seats')}
+                      </span>
+                    </div>
+
+                    {!isStanding && (
+                      <div className="flex sm:hidden items-center bg-black/50 border border-white/10 rounded-xl p-0.5 text-[10px] font-bold">
                         <button
-                          key={n}
                           type="button"
-                          onClick={() => handleQuickAdjacentPick(n)}
-                          className={`px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                            selectedSeats.length === n
-                              ? 'bg-cyan-400 text-black shadow-sm'
-                              : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                          onClick={() => setSeatZoom(false)}
+                          className={`px-2.5 py-1 rounded-lg transition-all ${
+                            !seatZoom ? 'bg-cyan-400 text-black shadow-sm font-black' : 'text-gray-400'
                           }`}
                         >
-                          {n} {t('ใบ', 'x')}
+                          {t('📱 พอดีจอ', '📱 Fit')}
                         </button>
-                      ))}
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() => setSeatZoom(true)}
+                          className={`px-2.5 py-1 rounded-lg transition-all ${
+                            seatZoom ? 'bg-cyan-400 text-black shadow-sm font-black' : 'text-gray-400'
+                          }`}
+                        >
+                          {t('🔍 ซูมใหญ่', '🔍 Zoom')}
+                        </button>
+                      </div>
+                    )}
 
                     <button
                       type="button"
@@ -961,60 +1036,72 @@ export default function ZoneSelectPage() {
                     </div>
 
                     {/* Stadium Bowl Seat Rows (Rows A - G, Left Wing / Center / Right Wing) */}
-                    <div className="space-y-2.5 overflow-x-auto max-w-full py-3 px-2 rounded-2xl bg-[#0b0b12] border border-white/10 touch-pan-x select-none">
-                      <div className="flex items-center justify-between text-[11px] text-cyan-300 font-bold px-2 pb-1 sm:hidden">
-                        <span>👈 {t('เลื่อนซ้าย-ขวาเพื่อเลือกที่นั่ง', 'Scroll left-right to pick seat')} 👉</span>
-                      </div>
+                    <div className={`space-y-1.5 sm:space-y-2.5 max-w-full py-3 px-1.5 sm:px-2 rounded-2xl bg-[#0b0b12] border border-white/10 select-none ${
+                      seatZoom ? 'overflow-x-auto touch-pan-x' : 'overflow-hidden'
+                    }`}>
+                      {seatZoom && (
+                        <div className="flex items-center justify-between text-[11px] text-cyan-300 font-bold px-2 pb-1 sm:hidden">
+                          <span>👈 {t('เลื่อนซ้าย-ขวาเพื่อเลือกที่นั่ง', 'Scroll left-right to pick seat')} 👉</span>
+                        </div>
+                      )}
                       {/* Column Wing Headers */}
-                      <div className="flex items-center justify-center gap-3 min-w-[580px] text-[10px] font-bold uppercase tracking-wider text-gray-500 pb-1">
-                        <span className="w-7 text-center">ROW</span>
-                        <span className="w-[132px] text-center">{t('ฝั่งซ้าย (01-04)', 'Left Wing (01-04)')}</span>
-                        <span className="w-4" />
-                        <span className="w-[200px] text-center text-cyan-300/80">
-                          {t('โซนกลางหน้าเวที (05-10)', 'Center Block (05-10)')}
+                      <div className={`flex items-center justify-between sm:justify-center gap-1 sm:gap-3 ${
+                        seatZoom ? 'min-w-[480px] sm:min-w-[580px]' : 'w-full min-w-0 sm:min-w-[580px]'
+                      } text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-500 pb-1`}>
+                        <span className={`${seatZoom ? 'w-6' : 'w-[18px]'} sm:w-7 text-center`}>ROW</span>
+                        <span className={`${seatZoom ? 'w-[112px]' : 'flex-1'} sm:w-[132px] text-center`}>{t('ซ้าย (01-04)', 'Left (01-04)')}</span>
+                        <span className={`${seatZoom ? 'w-2.5' : 'w-1'} sm:w-4`} />
+                        <span className={`${seatZoom ? 'w-[168px]' : 'flex-[1.4]'} sm:w-[200px] text-center text-cyan-300/80`}>
+                          {t('กลาง (05-10)', 'Center (05-10)')}
                         </span>
-                        <span className="w-4" />
-                        <span className="w-[132px] text-center">{t('ฝั่งขวา (11-14)', 'Right Wing (11-14)')}</span>
-                        <span className="w-7 text-center">ROW</span>
+                        <span className={`${seatZoom ? 'w-2.5' : 'w-1'} sm:w-4`} />
+                        <span className={`${seatZoom ? 'w-[112px]' : 'flex-1'} sm:w-[132px] text-center`}>{t('ขวา (11-14)', 'Right (11-14)')}</span>
+                        <span className={`${seatZoom ? 'w-6' : 'w-[18px]'} sm:w-7 text-center`}>ROW</span>
                       </div>
 
                       {STADIUM_ROWS.map((rowLetter, rowIdx) => (
                         <div
                           key={rowLetter}
-                          className="flex items-center justify-center gap-2 sm:gap-2.5 min-w-[580px]"
+                          className={`flex items-center justify-between sm:justify-center gap-1 sm:gap-2.5 ${
+                            seatZoom ? 'min-w-[480px] sm:min-w-[580px]' : 'w-full min-w-0 sm:min-w-[580px]'
+                          }`}
                         >
                           {/* Left Row Badge */}
-                          <span className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 font-mono text-xs font-black text-gray-300 flex items-center justify-center select-none">
+                          <span className={`${
+                            seatZoom ? 'w-6 h-6' : 'w-[18px] h-[18px]'
+                          } sm:w-7 sm:h-7 rounded-md sm:rounded-lg bg-white/5 border border-white/10 font-mono text-[8.5px] sm:text-xs font-black text-gray-300 flex items-center justify-center shrink-0 select-none`}>
                             {rowLetter}
                           </span>
 
                           {/* Left Wing (01 - 04) */}
-                          <div className="flex items-center gap-1 sm:gap-1.5 -rotate-2">
+                          <div className={`flex items-center ${seatZoom ? 'gap-1' : 'gap-0.5'} sm:gap-1.5 -rotate-1 sm:-rotate-2`}>
                             {COLS_LEFT_WING.map((colNum) => renderStadiumSeat(rowLetter, colNum))}
                           </div>
 
                           {/* Left Aisle Walkway */}
-                          <div className="w-3 sm:w-4 h-7 flex items-center justify-center select-none">
-                            <span className="w-0.5 h-5 bg-white/10 rounded-full" />
+                          <div className={`${seatZoom ? 'w-2.5 sm:w-4' : 'w-1 sm:w-4'} h-5 sm:h-7 flex items-center justify-center select-none shrink-0`}>
+                            <span className="w-0.5 h-3 sm:h-5 bg-white/15 rounded-full" />
                           </div>
 
                           {/* Center Block (05 - 10) */}
-                          <div className="flex items-center gap-1 sm:gap-1.5">
+                          <div className={`flex items-center ${seatZoom ? 'gap-1' : 'gap-0.5'} sm:gap-1.5`}>
                             {COLS_CENTER.map((colNum) => renderStadiumSeat(rowLetter, colNum))}
                           </div>
 
                           {/* Right Aisle Walkway */}
-                          <div className="w-3 sm:w-4 h-7 flex items-center justify-center select-none">
-                            <span className="w-0.5 h-5 bg-white/10 rounded-full" />
+                          <div className={`${seatZoom ? 'w-2.5 sm:w-4' : 'w-1 sm:w-4'} h-5 sm:h-7 flex items-center justify-center select-none shrink-0`}>
+                            <span className="w-0.5 h-3 sm:h-5 bg-white/15 rounded-full" />
                           </div>
 
                           {/* Right Wing (11 - 14) */}
-                          <div className="flex items-center gap-1 sm:gap-1.5 rotate-2">
+                          <div className={`flex items-center ${seatZoom ? 'gap-1' : 'gap-0.5'} sm:gap-1.5 rotate-1 sm:rotate-2`}>
                             {COLS_RIGHT_WING.map((colNum) => renderStadiumSeat(rowLetter, colNum))}
                           </div>
 
                           {/* Right Row Badge */}
-                          <span className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 font-mono text-xs font-black text-gray-300 flex items-center justify-center select-none">
+                          <span className={`${
+                            seatZoom ? 'w-6 h-6' : 'w-[18px] h-[18px]'
+                          } sm:w-7 sm:h-7 rounded-md sm:rounded-lg bg-white/5 border border-white/10 font-mono text-[8.5px] sm:text-xs font-black text-gray-300 flex items-center justify-center shrink-0 select-none`}>
                             {rowLetter}
                           </span>
 
@@ -1099,7 +1186,7 @@ export default function ZoneSelectPage() {
           </div>
 
           {/* ── Right Column: Booking Summary & Checkout Form ── */}
-          <aside className="rounded-[26px] border border-white/10 bg-[#111119] p-5 shadow-2xl sm:p-6 xl:sticky xl:top-24">
+          <aside id="booking-form-card" className="rounded-[26px] border border-white/10 bg-[#111119] p-4 sm:p-6 shadow-2xl xl:sticky xl:top-24 scroll-mt-20">
             <div className="mb-5 flex items-center gap-3">
               <span className="rounded-xl bg-cyan-200/10 p-2.5 text-cyan-100">
                 <Ticket size={19} />
@@ -1319,6 +1406,30 @@ export default function ZoneSelectPage() {
           </aside>
         </div>
       </div>
+      {/* Mobile Floating Checkout Action Bar */}
+      {selectedSeats.length > 0 && (
+        <div className="fixed bottom-0 inset-x-0 z-30 p-3 bg-[#0d0d15]/95 backdrop-blur-md border-t border-cyan-400/30 shadow-2xl xl:hidden">
+          <div className="flex items-center justify-between gap-3 max-w-md mx-auto">
+            <div>
+              <span className="text-[10px] text-gray-400 block font-semibold">
+                {t('ที่นั่งที่เลือก', 'Selected')}: <span className="text-cyan-300 font-mono font-bold">{selectedSeats.length} {t('ใบ', 'tickets')}</span>
+              </span>
+              <span className="text-base font-black text-cyan-200 font-mono">฿{totalPrice.toLocaleString()}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                document.getElementById('booking-form-card')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-black text-xs flex items-center gap-1.5 shadow-lg shadow-cyan-500/25 active:scale-95 transition-all cursor-pointer"
+            >
+              <span>{t('กรอกข้อมูลผู้จอง', 'Complete Booking')}</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {authOpen && (
         <AuthModal
           onClose={() => setAuthOpen(false)}

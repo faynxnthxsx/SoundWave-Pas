@@ -127,11 +127,6 @@ export default function StadiumZoneMap({
         e.stopPropagation();
         if (canSelect) onSelect(zone);
       },
-      onTouchEnd: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (canSelect) onSelect(zone);
-      },
       onMouseEnter: () => setHoveredZoneId(zone.id),
       onMouseLeave: () => setHoveredZoneId(null),
       onKeyDown: (event) => {
@@ -595,10 +590,10 @@ export default function StadiumZoneMap({
   return (
     <section className="overflow-hidden rounded-[28px] border border-cyan-400/25 bg-[#0b0f17] shadow-2xl">
       {/* Venue Map Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] px-5 py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-3.5 sm:px-5 sm:py-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-cyan-400/15 border border-cyan-400/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-200">
+            <span className="inline-flex items-center gap-1 rounded-full bg-cyan-400/15 border border-cyan-400/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-200">
               <Compass size={11} />
               {t(profile.badgeTh, profile.badgeEn)}
             </span>
@@ -608,17 +603,17 @@ export default function StadiumZoneMap({
               </span>
             )}
           </div>
-          <h2 className="mt-1.5 text-lg sm:text-xl font-black text-white">
+          <h2 className="mt-1 text-base sm:text-xl font-black text-white leading-snug">
             {t('ขั้นตอนที่ 1: คลิกเลือกโซนจากผังสถานที่จัดงานจริง', 'Step 1: Select a Zone on the Official Venue Seating Plan')}
           </h2>
-          <p className="mt-0.5 text-xs text-gray-400">
+          <p className="mt-0.5 text-[11px] sm:text-xs text-gray-400">
             {t(
               'คลิกที่บล็อกโซนสีบนผังเพื่อเปิดเลือกเก้าอี้รายที่นั่งในขั้นตอนที่ 2',
               'Click any colored zone block on the arena chart to pick individual seats in Step 2'
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-3.5 py-2 text-xs font-bold text-cyan-100">
+        <div className="hidden sm:flex items-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-3.5 py-2 text-xs font-bold text-cyan-100 shrink-0">
           <MapPinned size={15} className="text-cyan-300" />
           <span>{t(profile.titleTh.split('(')[0], profile.titleEn)}</span>
         </div>
@@ -626,12 +621,12 @@ export default function StadiumZoneMap({
 
       {/* Main Content: Interactive SVG Seating Plan */}
       <div className="bg-[radial-gradient(ellipse_at_top,_#172033_0%,_#070a10_78%)] w-full overflow-hidden">
-        <div className="overflow-x-auto w-full p-2 sm:p-5 flex flex-col items-center justify-center touch-pan-x">
+        <div className="w-full p-2 sm:p-5 flex flex-col items-center justify-center">
           <svg
             viewBox="0 0 800 565"
             role="img"
             aria-label={t('ผังเวทีคอนเสิร์ตและโซนบัตรตามสถานที่จริง', 'Concert venue stage and zone layout')}
-            className="w-full max-w-full h-auto drop-shadow-[0_18px_40px_rgba(0,0,0,0.65)]"
+            className="w-full max-w-full h-auto drop-shadow-[0_18px_40px_rgba(0,0,0,0.65)] select-none"
           >
             <defs>
               <linearGradient id="arena-shell" x1="0" x2="0" y1="0" y2="1">
@@ -666,25 +661,25 @@ export default function StadiumZoneMap({
 
           {/* Live Hovered / Selected Zone Quick Banner */}
           {activeZone && (
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-3 w-full max-w-[720px] rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-xs">
-              <div className="flex items-center gap-2.5">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 sm:gap-3 w-full max-w-[720px] rounded-2xl border border-white/15 bg-white/[0.04] px-3 sm:px-4 py-2 sm:py-2.5 text-xs">
+              <div className="flex items-center gap-2 min-w-0">
                 <span
-                  className="h-3.5 w-3.5 rounded-md shadow-sm ring-2 ring-white/40"
+                  className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-md shadow-sm ring-2 ring-white/40 shrink-0"
                   style={{ backgroundColor: activeZone.colorCode || '#06b6d4' }}
                 />
-                <span className="font-black text-white text-sm">{trData(activeZone.name)}</span>
-                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-bold text-cyan-200">
+                <span className="font-black text-white text-xs sm:text-sm truncate">{trData(activeZone.name)}</span>
+                <span className="rounded-md bg-white/10 px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-cyan-200 shrink-0">
                   {activeZone.category}
                 </span>
               </div>
-              <div className="flex items-center gap-4">
-                <span className="font-black text-amber-300 text-sm">
+              <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+                <span className="font-black text-amber-300 text-xs sm:text-sm font-mono">
                   ฿{Number(activeZone.price || 0).toLocaleString()}
                 </span>
-                <span className="text-gray-300 font-semibold">
+                <span className="text-gray-300 font-semibold text-[10px] sm:text-xs">
                   {activeZone.available <= 0
-                    ? t('บัตรหมด (SOLD OUT)', 'SOLD OUT')
-                    : t(`คงเหลือ ${activeZone.available} ที่นั่ง`, `${activeZone.available} available`)}
+                    ? t('บัตรหมด', 'SOLD OUT')
+                    : t(`ว่าง ${activeZone.available}`, `${activeZone.available} left`)}
                 </span>
               </div>
             </div>

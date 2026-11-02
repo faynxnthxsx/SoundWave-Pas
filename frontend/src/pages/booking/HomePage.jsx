@@ -206,12 +206,12 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#07070b] via-[#07070b]/60 to-transparent" />
 
         <div className="relative z-10 max-w-4xl mx-auto text-center pt-8">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/15 text-gray-200 text-xs font-semibold uppercase tracking-wider mb-6">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            {eventDateFormatted} · {trData(selectedConcert?.venue || selectedConcert?.location || 'Oasis Outdoor Arena')}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/15 text-gray-200 text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-6 max-w-full">
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="truncate">{eventDateFormatted} · {trData(selectedConcert?.venue || selectedConcert?.location || 'Oasis Outdoor Arena')}</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-tight uppercase">
+          <h1 className="text-3xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-tight uppercase break-words">
             {selectedConcert ? (
               <>
                 <span className="block">{selectedConcert.name}</span>
@@ -295,27 +295,27 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════════
           INTERACTIVE CONCERT SWITCHER & LINEUP SECTION
       ══════════════════════════════════════════════════════════════════ */}
-      <section id="artists-section" className="py-16 px-4 max-w-6xl mx-auto scroll-mt-20">
+      <section id="artists-section" className="py-12 sm:py-16 px-3.5 sm:px-4 max-w-6xl mx-auto scroll-mt-20 w-full overflow-hidden">
         
         {/* ── Dynamic Concert Switcher Bar ── */}
-        <div className="mb-8 rounded-3xl border border-white/15 bg-[#101019] p-4 sm:p-6 shadow-2xl">
+        <div className="mb-8 rounded-3xl border border-white/15 bg-[#101019] p-3.5 sm:p-6 shadow-2xl overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10">
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
-                <Music className="w-4 h-4" />
-                <span>{t('เลือกคอนเสิร์ตเพื่อดูไลน์อัป (Concert Lineup)', 'Select Concert to View Lineup')}</span>
+                <Music className="w-4 h-4 shrink-0" />
+                <span className="truncate">{t('เลือกคอนเสิร์ตเพื่อดูไลน์อัป (Concert Lineup)', 'Select Concert to View Lineup')}</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+              <h2 className="text-base sm:text-2xl font-black text-white mt-1 break-words leading-tight">
                 {t('คลิกเลือกคอนเสิร์ต เพื่อดูรายชื่อวงและเวลาขึ้นแสดง', 'Click a concert to explore performing artists & showtimes')}
               </h2>
             </div>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 shrink-0">
               {t(`พบ ${concerts.length} คอนเสิร์ต`, `${concerts.length} Concerts Found`)}
             </span>
           </div>
 
           {/* Concert Selector Pills / Cards */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full min-w-0">
             {concerts.map((c) => {
               const isSelected = c.id === selectedConcert?.id;
               let artistCount = 0;
@@ -335,24 +335,24 @@ export default function HomePage() {
                     setSelectedConcertId(c.id);
                     setFeaturedIdx(0);
                   }}
-                  className={`flex items-center gap-3.5 rounded-2xl border p-3.5 text-left transition-all ${
+                  className={`flex items-center gap-3 rounded-2xl border p-3 sm:p-3.5 text-left transition-all min-w-0 max-w-full ${
                     isSelected
-                      ? 'border-cyan-400 bg-gradient-to-r from-cyan-400/20 via-blue-500/15 to-purple-500/10 shadow-lg shadow-cyan-400/20 ring-2 ring-cyan-300 scale-[1.02]'
+                      ? 'border-cyan-400 bg-gradient-to-r from-cyan-400/20 via-blue-500/15 to-purple-500/10 shadow-lg shadow-cyan-400/20 ring-2 ring-cyan-300 scale-[1.01]'
                       : 'border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/5'
                   }`}
                 >
-                  <div className="h-14 w-14 rounded-xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
                     {c.bannerUrl ? (
                       <img src={c.bannerUrl} alt={c.name} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-cyan-300">
-                        <Sparkles size={20} />
+                        <Sparkles size={18} />
                       </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-xs font-black truncate ${isSelected ? 'text-cyan-200' : 'text-white'}`}>
+                      <span className={`text-xs font-black truncate block min-w-0 flex-1 ${isSelected ? 'text-cyan-200' : 'text-white'}`}>
                         {c.name}
                       </span>
                       {c.status === 'PAUSED' && (
@@ -383,15 +383,15 @@ export default function HomePage() {
         </div>
 
         {/* ── Lineup Header of Selected Concert ── */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8 pb-4 border-b border-white/10">
-          <div>
-            <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">
-              <Star className="w-4 h-4 fill-cyan-400" />
-              Lineup & Schedule 2026 · {selectedConcert?.name}
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 pb-4 border-b border-white/10 w-full overflow-hidden">
+          <div className="min-w-0 flex-1 max-w-full">
+            <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1 min-w-0">
+              <Star className="w-4 h-4 fill-cyan-400 shrink-0" />
+              <span className="truncate">Lineup & Schedule 2026 · {selectedConcert?.name}</span>
             </div>
-            <h2 className="text-3xl font-black text-white">{t('ทัพศิลปินและวันเวลาแสดง', 'Performing Artists & Showtimes')}</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-white break-words">{t('ทัพศิลปินและวันเวลาแสดง', 'Performing Artists & Showtimes')}</h2>
           </div>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 mt-1 sm:mt-0">
             {t('คลิกที่การ์ดศิลปินเพื่อดูรายละเอียดและเวลาขึ้นแสดง', 'Click any artist card to view performance details and showtime')}
           </p>
         </div>
@@ -420,15 +420,15 @@ export default function HomePage() {
                 </div>
 
                 {/* Artist Info Column */}
-                <div className="lg:col-span-5 p-6 sm:p-8 flex flex-col justify-between">
+                <div className="lg:col-span-5 p-4 sm:p-8 flex flex-col justify-between min-w-0">
                   <div>
                     <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400 block mb-1">
                       {featured.genre}
                     </span>
-                    <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                    <h3 className="text-2xl sm:text-4xl font-black text-white tracking-tight break-words">
                       {featured.name}
                     </h3>
-                    <p className="text-gray-300 text-xs sm:text-sm mt-3 leading-relaxed">
+                    <p className="text-gray-300 text-xs sm:text-sm mt-3 leading-relaxed break-words">
                       {trData(featured.description)}
                     </p>
                   </div>
@@ -457,10 +457,10 @@ export default function HomePage() {
 
                     <Link
                       to={selectedConcert ? `/booking/zone-select?concertId=${selectedConcert.id}` : '/booking/zone-select'}
-                      className="w-full py-3 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors mt-2"
+                      className="w-full py-3 px-4 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors mt-2 min-w-0 text-center"
                     >
-                      {t(`จองบัตรดู ${featured.name}`, `Book Tickets for ${featured.name}`)}
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span className="truncate">{t(`จองบัตรดู ${featured.name}`, `Book Tickets for ${featured.name}`)}</span>
+                      <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                     </Link>
                   </div>
                 </div>
@@ -468,7 +468,7 @@ export default function HomePage() {
             </div>
 
             {/* Small Artists Carousel Selector Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full min-w-0">
               {currentArtists.map((artist, i) => {
                 const isSelected = i === featuredIdx;
                 return (
@@ -476,19 +476,19 @@ export default function HomePage() {
                     key={`${artist.name}-${i}`}
                     type="button"
                     onClick={() => setFeaturedIdx(i)}
-                    className={`relative rounded-2xl overflow-hidden border p-2 text-left transition-all ${
+                    className={`relative rounded-2xl overflow-hidden border p-2 text-left transition-all min-w-0 w-full ${
                       isSelected
-                        ? 'border-cyan-400 bg-white/10 scale-[1.02] shadow-lg shadow-cyan-400/20'
+                        ? 'border-cyan-400 bg-white/10 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-400/20'
                         : 'border-white/10 bg-[#101018] hover:border-white/20'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 w-full">
                       <img
                         src={artist.image}
                         alt={artist.name}
-                        className="w-12 h-12 rounded-xl object-cover shrink-0 bg-white/5"
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover shrink-0 bg-white/5"
                       />
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 overflow-hidden">
                         <p className="text-xs font-bold text-white truncate">{artist.name}</p>
                         <p className="text-[10px] text-cyan-300 font-mono mt-0.5 truncate">{artist.time.split('–')[0]} น.</p>
                         <p className="text-[9px] text-gray-400 truncate">{artist.stage}</p>

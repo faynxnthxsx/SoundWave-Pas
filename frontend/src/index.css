@@ -12,17 +12,24 @@
   --color-dark-border: #28283c;
 }
 
-body {
+html,
+body,
+#root {
   margin: 0;
+  padding: 0;
   background-color: #07070b;
   color: #f3f4f6;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   overflow-x: hidden !important;
-  max-width: 100vw !important;
+  max-width: 100% !important;
   width: 100% !important;
   position: relative;
-  max-width: 100vw;
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 /* Neon Text Glow Effects */
