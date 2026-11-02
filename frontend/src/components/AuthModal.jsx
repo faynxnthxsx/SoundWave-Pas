@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import Button from './ui/Button';
@@ -15,8 +15,6 @@ export default function AuthModal({ onClose, onAuthenticated }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isGsiBlocked, setIsGsiBlocked] = useState(false);
-  const googleBtnRef = useRef(null);
 
   useEffect(() => {
     fetch('/api/auth/google/config')
@@ -25,51 +23,58 @@ export default function AuthModal({ onClose, onAuthenticated }) {
         if (d?.clientId) setGoogleClientId(d.clientId);
       })
       .catch(() => {});
+
+    if (!window.google?.accounts?.oauth2) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
   }, []);
 
-  useEffect(() => {
-    if (!googleClientId || !googleBtnRef.current) return;
-    const initGsi = () => {
-      if (!window.google?.accounts?.id || !googleBtnRef.current) return;
-      try {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          use_fedcm_for_prompt: true,
-          auto_select: false,
-          callback: async (response) => {
-            if (!response?.credential) return;
-            await handleGoogleLogin({ credential: response.credential });
-          },
-        });
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          width: 280,
-          text: 'signin_with',
-          shape: 'pill',
-          logo_alignment: 'left',
-        });
-      } catch (err) {
-        console.warn('Google GSI render error:', err);
-      }
-    };
-
-    if (window.google?.accounts?.id) {
-      initGsi();
+  const handleGoogleSignIn = () => {
+    setError('');
+    if (!googleClientId) {
+      setError(t('ไม่พบการตั้งค่า Google Client ID', 'Google Client ID not configured'));
       return;
     }
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = initGsi;
-    script.onerror = () => {
-      setIsGsiBlocked(true);
-    };
-    document.head.appendChild(script);
-  }, [googleClientId, mode]);
+
+    if (!window.google?.accounts?.oauth2) {
+      setError(t('กำลังเชื่อมต่อบริการ Google กรุณากดอีกครั้ง', 'Loading Google service, please click again'));
+      return;
+    }
+
+    try {
+      setBusy(true);
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: googleClientId,
+        scope: 'email profile openid',
+        callback: async (tokenResponse) => {
+          if (tokenResponse?.error) {
+            setBusy(false);
+            if (tokenResponse.error !== 'access_denied') {
+              setError(tokenResponse.error_description || tokenResponse.error);
+            }
+            return;
+          }
+          if (tokenResponse?.access_token) {
+            await handleGoogleLogin({ access_token: tokenResponse.access_token });
+          } else {
+            setBusy(false);
+          }
+        },
+        error_callback: (err) => {
+          setBusy(false);
+          console.warn('Google OAuth error:', err);
+        },
+      });
+      client.requestAccessToken({ prompt: 'select_account' });
+    } catch (err) {
+      setBusy(false);
+      setError(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ Google');
+    }
+  };
 
   const handleGoogleLogin = async (payload) => {
     setBusy(true);
@@ -173,21 +178,37 @@ export default function AuthModal({ onClose, onAuthenticated }) {
           </button>
         </header>
 
-        {/* Official Google Sign-In Button */}
+        {/* Clean Standard Google Sign-In Button (ไม่มี preview ชื่อ/รูป ค้างในกล่อง) */}
         {mode !== 'forgot' && (
           <div className="mb-4">
-            <div className={`flex justify-center items-center w-full min-h-[44px] ${busy ? 'pointer-events-none opacity-50' : ''}`}>
-              <div ref={googleBtnRef} className="flex justify-center" />
-            </div>
-
-            {isGsiBlocked && (
-              <p className="mt-2 text-[11px] text-amber-400/90 text-center">
-                {t(
-                  'หากปุ่ม Google ไม่แสดง กรุณาปิด AdBlock หรือเข้าสู่ระบบด้วยชื่อผู้ใช้ด้านล่าง',
-                  'If Google Sign-In is blocked by an extension, please disable AdBlock or sign in below.'
-                )}
-              </p>
-            )}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleGoogleSignIn}
+              className="w-full h-11 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 active:scale-[0.99] text-white font-medium text-xs flex items-center justify-center gap-3 transition-all cursor-pointer shadow-sm hover:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>
+                {busy ? t('กำลังเข้าสู่ระบบ...', 'Signing in...') : t('เข้าสู่ระบบด้วย Google', 'Sign in with Google')}
+              </span>
+            </button>
 
             <div className="relative my-3 flex items-center justify-center">
               <div className="w-full border-t border-white/10" />

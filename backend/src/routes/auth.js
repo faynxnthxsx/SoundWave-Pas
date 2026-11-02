@@ -118,21 +118,33 @@ router.get('/google/config', (req, res) => {
 router.post('/google', async (req, res) => {
   try {
     const credential = req.body?.credential;
-    if (!credential) {
-      return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลยืนยันตัวตนจาก Google (Missing ID Token)' });
+    const accessToken = req.body?.access_token || req.body?.accessToken;
+    if (!credential && !accessToken) {
+      return res.status(400).json({ success: false, message: 'ไม่พบข้อมูลยืนยันตัวตนจาก Google' });
     }
 
-    const verifyRes = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
-    );
-    const payload = await verifyRes.json();
-    if (!verifyRes.ok || !payload?.sub || !payload?.email) {
-      return res.status(401).json({ success: false, message: 'ยืนยันตัวตนกับ Google ไม่สำเร็จ' });
-    }
+    let payload = null;
+    if (credential) {
+      const verifyRes = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+      );
+      payload = await verifyRes.json();
+      if (!verifyRes.ok || !payload?.sub || !payload?.email) {
+        return res.status(401).json({ success: false, message: 'ยืนยันตัวตนกับ Google ไม่สำเร็จ' });
+      }
 
-    const configuredClientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
-    if (configuredClientId && !configuredClientId.startsWith('YOUR_') && payload.aud !== configuredClientId) {
-      return res.status(401).json({ success: false, message: 'Google Client ID ไม่ตรงกับระบบ' });
+      const configuredClientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
+      if (configuredClientId && !configuredClientId.startsWith('YOUR_') && payload.aud !== configuredClientId) {
+        return res.status(401).json({ success: false, message: 'Google Client ID ไม่ตรงกับระบบ' });
+      }
+    } else if (accessToken) {
+      const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      payload = await userinfoRes.json();
+      if (!userinfoRes.ok || !payload?.sub || !payload?.email) {
+        return res.status(401).json({ success: false, message: 'ดึงข้อมูลโปรไฟล์จาก Google ไม่สำเร็จ' });
+      }
     }
 
     const email = String(payload.email).trim().toLowerCase();
