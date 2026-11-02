@@ -117,14 +117,14 @@ export default function Navbar() {
               </Link>
 
               {authUser && (
-                <Button variant="outline" size="sm" onClick={openHistoryModal}>
+                <Button variant="outline" size="sm" onClick={openHistoryModal} className="hidden sm:inline-flex">
                   <Ticket className="w-3.5 h-3.5 text-cyan-400" />
                   <span>{t('ประวัติการซื้อบัตร', 'My Tickets')}</span>
                 </Button>
               )}
 
               {authUser ? (
-                <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1.5">
+                <div className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-2 sm:px-2.5 py-1.5">
                   {authUser.avatarUrl ? (
                     <img
                       src={authUser.avatarUrl}
@@ -134,7 +134,7 @@ export default function Navbar() {
                   ) : (
                     <UserRound size={14} className="text-emerald-300" />
                   )}
-                  <span className="max-w-28 text-left text-[10px] leading-tight">
+                  <span className="max-w-20 sm:max-w-28 text-left text-[10px] leading-tight hidden xs:block">
                     <span className="block truncate font-bold text-white">{authUser.username}</span>
                     <span className="block truncate text-emerald-300">
                       {authUser.email || t('ออนไลน์', 'Online')}
@@ -145,13 +145,13 @@ export default function Navbar() {
                     onClick={logout}
                     aria-label={t('ออกจากระบบ', 'Logout')}
                     title={t('ออกจากระบบ', 'Logout')}
-                    className="ml-1 text-gray-400 hover:text-white cursor-pointer"
+                    className="ml-0.5 sm:ml-1 text-gray-400 hover:text-white cursor-pointer p-1"
                   >
                     <LogOut size={14} />
                   </button>
                 </div>
               ) : (
-                <Button variant="cyanOutline" size="sm" onClick={() => setAuthOpen(true)}>
+                <Button variant="cyanOutline" size="sm" onClick={() => setAuthOpen(true)} className="px-2.5 sm:px-3 text-xs">
                   {t('เข้าสู่ระบบ', 'Sign In')}
                 </Button>
               )}

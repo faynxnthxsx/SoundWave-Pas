@@ -44,7 +44,7 @@ export function ToastProvider({ children }) {
       <div
         role="region"
         aria-label="การแจ้งเตือน"
-        className="fixed bottom-5 right-5 z-[120] flex flex-col gap-2.5 max-w-sm sm:max-w-md pointer-events-none"
+        className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 z-[120] flex flex-col gap-2 max-w-sm sm:max-w-md pointer-events-none"
       >
         {toasts.map((t) => (
           <div

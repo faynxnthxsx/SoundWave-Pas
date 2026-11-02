@@ -954,7 +954,10 @@ export default function ZoneSelectPage() {
                     </div>
 
                     {/* Stadium Bowl Seat Rows (Rows A - G, Left Wing / Center / Right Wing) */}
-                    <div className="space-y-2.5 overflow-x-auto py-3 px-2 rounded-2xl bg-[#0b0b12] border border-white/10">
+                    <div className="space-y-2.5 overflow-x-auto max-w-full py-3 px-2 rounded-2xl bg-[#0b0b12] border border-white/10 touch-pan-x select-none">
+                      <div className="flex items-center justify-between text-[11px] text-cyan-300 font-bold px-2 pb-1 sm:hidden">
+                        <span>👈 {t('เลื่อนซ้าย-ขวาเพื่อเลือกที่นั่ง', 'Scroll left-right to pick seat')} 👉</span>
+                      </div>
                       {/* Column Wing Headers */}
                       <div className="flex items-center justify-center gap-3 min-w-[580px] text-[10px] font-bold uppercase tracking-wider text-gray-500 pb-1">
                         <span className="w-7 text-center">ROW</span>
