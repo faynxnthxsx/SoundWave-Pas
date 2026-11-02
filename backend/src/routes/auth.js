@@ -227,6 +227,20 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+function getLineCallbackUrl(req) {
+  if (process.env.LINE_LOGIN_CALLBACK_URL && !process.env.LINE_LOGIN_CALLBACK_URL.includes('localhost')) {
+    return process.env.LINE_LOGIN_CALLBACK_URL;
+  }
+  const origin = req.headers['x-forwarded-host'] 
+    ? `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers['x-forwarded-host']}`
+    : req.headers.origin || (req.headers.host ? `https://${req.headers.host}` : null);
+
+  if (origin && origin.includes('vercel.app')) {
+    return `${origin}/booking/zone-select`;
+  }
+  return process.env.LINE_LOGIN_CALLBACK_URL || 'http://localhost:5173/booking/zone-select';
+}
+
 // GET /api/auth/line/config - Return client ID and redirect URI
 router.get('/line/config', async (req, res) => {
   let officialAccountUrl = null;
@@ -241,7 +255,7 @@ router.get('/line/config', async (req, res) => {
   }
   res.json({
     channelId: process.env.LINE_LOGIN_CHANNEL_ID || '2012117630',
-    callbackUrl: process.env.LINE_LOGIN_CALLBACK_URL || 'http://localhost:5173/booking/zone-select',
+    callbackUrl: getLineCallbackUrl(req),
     officialAccountUrl,
   });
 });
@@ -259,7 +273,7 @@ router.post('/line/verify', async (req, res) => {
     if (!channelSecret) {
       return res.status(503).json({ success: false, message: 'LINE Login ยังไม่ได้ตั้งค่า กรุณากำหนด LINE_LOGIN_CHANNEL_SECRET' });
     }
-    const redirectUri = process.env.LINE_LOGIN_CALLBACK_URL || 'http://localhost:5173/booking/zone-select';
+    const redirectUri = getLineCallbackUrl(req);
 
     // 1. Exchange code for access token
     const tokenParams = new URLSearchParams({
