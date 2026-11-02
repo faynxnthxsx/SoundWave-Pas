@@ -195,7 +195,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════════
           HERO — Modern, Premium Dark Aesthetic
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[85vh] flex flex-col items-center justify-center overflow-hidden px-4">
+      <section className="relative min-h-[80vh] sm:min-h-[85vh] flex flex-col items-center justify-center overflow-hidden px-4 w-full max-w-full">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -205,7 +205,7 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#07070b] via-[#07070b]/60 to-transparent" />
 
-        <div className="relative z-10 max-w-3xl mx-auto text-center pt-8 sm:pt-12 pb-6 px-4 sm:px-6">
+        <div className="relative z-10 w-full max-w-3xl mx-auto flex flex-col items-center text-center pt-8 sm:pt-12 pb-6 px-4 sm:px-6">
           {/* Top Venue & Date Pill */}
           <div className="inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/15 text-gray-200 text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-4 sm:mb-5 max-w-full">
             <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
@@ -213,7 +213,7 @@ export default function HomePage() {
           </div>
 
           {/* Main Concert Title */}
-          <h1 className="text-xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight uppercase break-words text-center">
+          <h1 className="text-xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight uppercase break-words text-center w-full max-w-xl mx-auto">
             {selectedConcert ? (
               <>
                 <span className="block max-w-xl mx-auto">{selectedConcert.name}</span>
@@ -232,7 +232,7 @@ export default function HomePage() {
           </h1>
 
           {/* Concert Description */}
-          <p className="text-gray-300 text-xs sm:text-sm max-w-lg mx-auto mt-3 sm:mt-4 leading-relaxed text-center break-words px-2 sm:px-0">
+          <p className="text-gray-300 text-xs sm:text-sm max-w-lg mx-auto mt-3 sm:mt-4 leading-relaxed text-center break-words [overflow-wrap:anywhere] px-2 sm:px-0">
             {trData(selectedConcert?.description) || t(
               'เทศกาลดนตรีและคอนเสิร์ตสดเต็มรูปแบบ พร้อมระบบออกตั๋วดิจิทัลผ่าน LINE และผังโซนที่นั่งครบวงจร',
               'Full-scale live music festival & concert experience with instant LINE digital tickets and interactive venue seat maps.'
@@ -266,7 +266,7 @@ export default function HomePage() {
           </div>
 
           {/* Balanced Centered Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3.5 mt-5 sm:mt-6 max-w-xs sm:max-w-none mx-auto w-full">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3.5 mt-5 sm:mt-6 w-full max-w-xs sm:max-w-none mx-auto">
             {selectedConcert?.status === 'PAUSED' ? (
               <div className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-amber-200 text-xs sm:text-sm border border-amber-400/40 bg-amber-400/10 flex items-center justify-center gap-2 text-center">
                 <span>⏸️ พักการจำหน่ายชั่วคราว</span>

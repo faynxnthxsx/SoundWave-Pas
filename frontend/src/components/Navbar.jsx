@@ -73,17 +73,17 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-40 bg-[#07070b]/90 backdrop-blur-md border-b border-white/10 px-4 lg:px-8 py-3.5 transition-all">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <nav className="sticky top-0 z-40 bg-[#07070b]/90 backdrop-blur-md border-b border-white/10 px-3.5 sm:px-6 lg:px-8 py-3 transition-all w-full max-w-full overflow-hidden">
+        <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-2">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link to="/" className="flex items-center gap-2 shrink-0">
             <div className="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center font-black text-sm">
               <Music className="w-5 h-5 text-black" />
             </div>
             <div>
               <span className="text-lg font-black tracking-wider text-white">
                 SOUND<span className="text-cyan-400">WAVE</span>
-                <span className="text-xs ml-1 text-gray-400 font-mono">PASS</span>
+                <span className="text-xs ml-1 text-gray-400 font-mono hidden xs:inline">PASS</span>
               </span>
             </div>
           </Link>
@@ -102,12 +102,12 @@ export default function Navbar() {
               </Link>
             </div>
           ) : (
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <LanguageSwitch />
               
               <Link
                 to="/"
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`hidden sm:inline-flex px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive('/')
                     ? 'bg-white/10 text-white border border-white/20'
                     : 'text-gray-300 hover:text-white hover:bg-white/5'
