@@ -1919,6 +1919,8 @@ export default function AdminPage() {
       {zoneSeatsModal && (
         <AdminSeatMapModal
           zone={zoneSeatsModal.zone}
+          allZones={concerts.find((c) => c.id === zoneSeatsModal.zone?.concertId)?.zones || []}
+          onSelectZone={(z) => openZoneSeats(z.id)}
           tickets={zoneSeatsModal.tickets || []}
           activePending={zoneSeatsModal.activePending || []}
           onClose={() => setZoneSeatsModal(null)}

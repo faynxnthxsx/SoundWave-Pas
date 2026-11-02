@@ -1,19 +1,24 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { ImagePlus, RotateCcw, X, ZoomIn, Move, Maximize2, Smartphone, Monitor, User } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../context/LanguageContext';
 
 const RATIO_CONFIGS = {
-  poster: { label: '4:5 โปสเตอร์', icon: Smartphone, width: 320, height: 400, canvasW: 1200, canvasH: 1500 },
-  banner: { label: '16:9 แบนเนอร์', icon: Monitor, width: 360, height: 202.5, canvasW: 1600, canvasH: 900 },
-  square: { label: '1:1 จัตุรัส/ศิลปิน', icon: User, width: 320, height: 320, canvasW: 1000, canvasH: 1000 },
-  original: { label: 'เต็มรูป (ไม่ตัดขอบ)', icon: Maximize2, width: 340, height: 340, canvasW: 1200, canvasH: 1200 },
+  poster: { labelTh: '4:5 โปสเตอร์', labelEn: '4:5 Poster', icon: Smartphone, width: 320, height: 400, canvasW: 1200, canvasH: 1500 },
+  banner: { labelTh: '16:9 แบนเนอร์', labelEn: '16:9 Banner', icon: Monitor, width: 360, height: 202.5, canvasW: 1600, canvasH: 900 },
+  square: { labelTh: '1:1 จัตุรัส/ศิลปิน', labelEn: '1:1 Square', icon: User, width: 320, height: 320, canvasW: 1000, canvasH: 1000 },
+  original: { labelTh: 'เต็มรูป (ไม่ตัดขอบ)', labelEn: 'Full Original', icon: Maximize2, width: 340, height: 340, canvasW: 1200, canvasH: 1200 },
 };
 
 export default function CropImageModal({ file, initialRatio = 'poster', onCancel, onApply }) {
+  const { t } = useLanguage();
+  useTranslation();
+
   const [source, setSource] = useState('');
   const [dimensions, setDimensions] = useState(null);
   const [selectedRatio, setSelectedRatio] = useState(initialRatio || 'poster');
   const [zoom, setZoom] = useState(1);
-  const [fitMode, setFitMode] = useState('cover'); // 'cover' | 'contain'
+  const [fitMode, setFitMode] = useState('cover');
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -31,7 +36,6 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
   const boxW = currentBox.width;
   const boxH = currentBox.height;
 
-  // Calculate scaling
   const baseScale = useMemo(() => {
     if (!dimensions) return 1;
     if (selectedRatio === 'original' || fitMode === 'contain') {
@@ -97,21 +101,20 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
       canvas.width = currentBox.canvasW;
       canvas.height = currentBox.canvasH;
       const context = canvas.getContext('2d');
-      context.fillStyle = '#0a0a10';
       context.fillStyle = '#08080e';
       context.fillRect(0, 0, canvas.width, canvas.height);
 
       if (fitMode === 'contain' || selectedRatio === 'original') {
-        // Draw subtle blurred ambient background so empty borders look polished instead of harsh black
         try {
           context.save();
           context.filter = 'blur(40px) brightness(0.35)';
           context.drawImage(imageRef.current, -40, -40, canvas.width + 80, canvas.height + 80);
           context.restore();
-        } catch { /* ignore fallback */ }
+        } catch {
+          /* ignore fallback */
+        }
       }
 
-      // Draw proportionally onto high-res export canvas
       const drawX = (left * canvas.width) / boxW;
       const drawY = (top * canvas.height) / boxH;
       const drawW = (imageWidth * canvas.width) / boxW;
@@ -121,7 +124,7 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       await onApply(dataUrl);
     } catch {
-      setError('บันทึกรูปภาพไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      setError(t('บันทึกรูปภาพไม่สำเร็จ กรุณาลองใหม่อีกครั้ง', 'Failed to process image. Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -139,7 +142,7 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
       }
     };
     reader.onerror = () => {
-      setError('ไม่สามารถอ่านไฟล์ต้นฉบับได้');
+      setError(t('ไม่สามารถอ่านไฟล์ต้นฉบับได้', 'Failed to read original file'));
       setBusy(false);
     };
     reader.readAsDataURL(file);
@@ -159,26 +162,28 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
               Image Framing Studio
             </span>
             <h2 id="crop-title" className="mt-0.5 text-lg sm:text-xl font-black text-white">
-              ปรับแต่งและจัดสัดส่วนรูปภาพ
+              {t('ปรับแต่งและจัดสัดส่วนรูปภาพ', 'Crop & Frame Image')}
             </h2>
             <p className="mt-0.5 text-xs text-gray-400">
-              เลือกสัดส่วนที่ต้องการ และลากภาพเพื่อเลือกส่วนสำคัญ ไม่ให้โดนตัดขอบ
+              {t(
+                'เลือกสัดส่วนที่ต้องการ และลากภาพเพื่อเลือกส่วนสำคัญ ไม่ให้โดนตัดขอบ',
+                'Select aspect ratio and drag the image to frame key details'
+              )}
             </p>
           </div>
           <button
             type="button"
             onClick={onCancel}
-            aria-label="ปิด"
+            aria-label={t('ปิด', 'Close')}
             className="rounded-lg p-1.5 text-gray-400 hover:bg-white/10 hover:text-white"
           >
             <X size={18} />
           </button>
         </header>
 
-        {/* ── Aspect Ratio Switcher ── */}
         <div className="mb-4">
           <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">
-            เลือกสัดส่วนรูปภาพ (Aspect Ratio):
+            {t('เลือกสัดส่วนรูปภาพ (Aspect Ratio):', 'Select Aspect Ratio:')}
           </span>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {Object.entries(RATIO_CONFIGS).map(([key, cfg]) => {
@@ -196,14 +201,13 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
                   }`}
                 >
                   <Icon size={14} />
-                  <span>{cfg.label}</span>
+                  <span>{t(cfg.labelTh, cfg.labelEn)}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* ── Visual Crop Frame ── */}
         <div className="relative mx-auto flex items-center justify-center p-3 rounded-2xl bg-black/40 border border-white/5 overflow-hidden">
           <div
             className="group relative cursor-grab overflow-hidden rounded-xl border-2 border-dashed border-cyan-400/60 bg-[#07070b] shadow-2xl active:cursor-grabbing transition-all"
@@ -225,7 +229,7 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
               <img
                 ref={imageRef}
                 src={source}
-                alt="พรีวิวรูปภาพ"
+                alt={t('พรีวิวรูปภาพ', 'Image Preview')}
                 draggable="false"
                 onLoad={(event) =>
                   setDimensions({
@@ -243,7 +247,6 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
               />
             )}
 
-            {/* Rule of Thirds Grid */}
             <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-40">
               <i className="border-b border-r border-white/30" />
               <i className="border-b border-r border-white/30" />
@@ -256,18 +259,18 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
               <i />
             </div>
 
-            {/* Overlay hint */}
             <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[10px] font-bold text-white shadow-md backdrop-blur border border-white/10 flex items-center gap-1.5 whitespace-nowrap">
               <Move size={12} className="text-cyan-300" />
-              <span>คลิกลากเพื่อเลื่อนตำแหน่งภาพ</span>
+              <span>{t('คลิกลากเพื่อเลื่อนตำแหน่งภาพ', 'Drag to reposition image')}</span>
             </div>
           </div>
         </div>
 
-        {/* ── Fit Mode & Zoom Controls ── */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-gray-400">การแสดงผล:</span>
+            <span className="text-[11px] font-semibold text-gray-400">
+              {t('การแสดงผล:', 'Fit Mode:')}
+            </span>
             <div className="flex rounded-xl bg-black/40 p-1 border border-white/10">
               <button
                 type="button"
@@ -280,7 +283,7 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
                   fitMode === 'contain' ? 'bg-white text-black font-bold shadow' : 'text-gray-400 hover:text-white'
                 }`}
               >
-                เห็นทั้งรูป (ไม่ตัดขอบ)
+                {t('เห็นทั้งรูป (ไม่ตัดขอบ)', 'Fit Whole Image')}
               </button>
               <button
                 type="button"
@@ -293,7 +296,7 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
                   fitMode === 'cover' ? 'bg-cyan-300 text-black font-bold shadow' : 'text-gray-400 hover:text-white'
                 }`}
               >
-                เต็มกรอบ (Crop)
+                {t('เต็มกรอบ (Crop)', 'Fill Frame (Crop)')}
               </button>
             </div>
           </div>
@@ -301,7 +304,7 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
           <div className="flex items-center gap-2 flex-1 min-w-[160px] justify-end">
             <ZoomIn size={14} className="text-gray-400" />
             <input
-              aria-label="ซูมรูปภาพ"
+              aria-label={t('ซูมรูปภาพ', 'Zoom image')}
               type="range"
               min="1"
               max="3"
@@ -322,7 +325,6 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
           </p>
         )}
 
-        {/* ── Footer Actions ── */}
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
           <button
             type="button"
@@ -333,7 +335,7 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
             className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10"
           >
             <RotateCcw size={13} />
-            <span>รีเซ็ตตำแหน่ง</span>
+            <span>{t('รีเซ็ตตำแหน่ง', 'Reset Position')}</span>
           </button>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -341,11 +343,14 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
               type="button"
               onClick={useOriginalFile}
               disabled={busy}
-              title="ใช้ภาพขนาดและสัดส่วนต้นฉบับ 100% โดยไม่ต้องตัดขอบใดๆ"
+              title={t(
+                'ใช้ภาพขนาดและสัดส่วนต้นฉบับ 100% โดยไม่ต้องตัดขอบใดๆ',
+                'Use 100% original image without cropping'
+              )}
               className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-gray-200 hover:bg-white/10 hover:border-white/30 transition-all disabled:opacity-50"
             >
               <Maximize2 size={13} className="text-cyan-300" />
-              <span>ใช้รูปต้นฉบับ (ไม่ตัดขอบ)</span>
+              <span>{t('ใช้รูปต้นฉบับ (ไม่ตัดขอบ)', 'Use Original Image')}</span>
             </button>
 
             <button
@@ -353,7 +358,7 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
               onClick={onCancel}
               className="rounded-xl border border-white/10 px-3.5 py-2 text-xs font-semibold text-gray-300 hover:bg-white/5"
             >
-              ยกเลิก
+              {t('ยกเลิก', 'Cancel')}
             </button>
 
             <button
@@ -363,7 +368,7 @@ export default function CropImageModal({ file, initialRatio = 'poster', onCancel
               className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-300 to-blue-500 px-4 py-2 text-xs font-black text-black shadow-lg shadow-cyan-400/25 transition-all hover:brightness-110 disabled:opacity-50"
             >
               <ImagePlus size={14} />
-              <span>{busy ? 'กำลังบันทึก…' : 'ใช้รูปที่ครอบตัดนี้'}</span>
+              <span>{busy ? t('กำลังบันทึก…', 'Saving…') : t('ใช้รูปที่ครอบตัดนี้', 'Apply Cropped Image')}</span>
             </button>
           </div>
         </div>

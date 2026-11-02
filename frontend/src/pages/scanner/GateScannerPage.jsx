@@ -17,37 +17,38 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../context/LanguageContext';
+import LanguageSwitch from '../../components/ui/LanguageSwitch';
 
 // Extract clean ticket code from URLs or raw scan text
 export const extractTicketCode = (raw) => {
   if (!raw) return '';
   let cleaned = String(raw).trim();
-  // Decode URL if encoded
   try {
     if (cleaned.includes('%')) cleaned = decodeURIComponent(cleaned);
   } catch {}
 
-  // If it's a URL like /tickets/SWP-XXX or /tickets/SWP-XXX/print
   if (cleaned.includes('/tickets/')) {
     const match = cleaned.match(/\/tickets\/([A-Za-z0-9_-]+)/);
     if (match && match[1]) return match[1].trim();
   }
-  // If it's a qrserver or query param URL with data=SWP-XXX
   if (cleaned.includes('data=')) {
     const match = cleaned.match(/data=([A-Za-z0-9_%-]+)/);
     if (match && match[1]) return match[1].trim();
   }
-  // If it contains slashes, take the last segment
   if (cleaned.includes('/')) {
     const parts = cleaned.split('/').filter(Boolean);
     cleaned = parts[parts.length - 1];
   }
-  // Strip query string and hash
   cleaned = cleaned.split('?')[0].split('#')[0].trim();
   return cleaned;
 };
 
 export default function GateScannerPage() {
+  const { lang, t, trData } = useLanguage();
+  useTranslation();
+
   // Staff Authentication State
   const [staff, setStaff] = useState(() => {
     try {
@@ -84,7 +85,6 @@ export default function GateScannerPage() {
   const fileInputRef = useRef(null);
   const audioCtxRef = useRef(null);
 
-  // Initialize or resume Web Audio Context on user gesture
   const initAudio = () => {
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -97,9 +97,7 @@ export default function GateScannerPage() {
     } catch {}
   };
 
-  // Synthesized Web Audio & Haptic Feedback
   const playSound = (type) => {
-    // Haptic vibration on mobile phones
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try {
         if (type === 'success') {
@@ -117,7 +115,6 @@ export default function GateScannerPage() {
       if (!ctx) return;
 
       if (type === 'success') {
-        // High-pitch dual chime
         const now = ctx.currentTime;
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
@@ -131,7 +128,6 @@ export default function GateScannerPage() {
         osc1.start(now);
         osc1.stop(now + 0.25);
       } else {
-        // Low-pitch buzzer
         const now = ctx.currentTime;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -154,7 +150,7 @@ export default function GateScannerPage() {
     if (e) e.preventDefault();
     initAudio();
     if (!username.trim() || !password.trim()) {
-      setLoginError('กรุณากรอก Username และ Password ให้ครบถ้วน');
+      setLoginError(t('กรุณากรอก Username และ Password ให้ครบถ้วน', 'Please enter both Username and Password'));
       return;
     }
 
@@ -170,7 +166,7 @@ export default function GateScannerPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setLoginError(data.message || 'Username หรือ Password ไม่ถูกต้อง');
+        setLoginError(data.message ? trData(data.message) : t('Username หรือ Password ไม่ถูกต้อง', 'Invalid Username or Password'));
       } else {
         const session = { ...data.staff, sessionToken: data.token, expiresAt: data.expiresAt };
         setStaff(session);
@@ -180,7 +176,12 @@ export default function GateScannerPage() {
       }
     } catch (err) {
       console.error('Login error:', err);
-      setLoginError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านได้ (ตรวจสอบว่า Backend เปิดอยู่หรือไม่)');
+      setLoginError(
+        t(
+          'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านได้ (ตรวจสอบว่า Backend เปิดอยู่หรือไม่)',
+          'Cannot connect to backend server'
+        )
+      );
     } finally {
       setLoginLoading(false);
     }
@@ -197,10 +198,10 @@ export default function GateScannerPage() {
         body: JSON.stringify({ username: username.trim(), newPassword: password }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || 'ตั้งรหัสผ่านไม่สำเร็จ');
+      if (!res.ok || !data.success) throw new Error(data.message || t('ตั้งรหัสผ่านไม่สำเร็จ', 'Failed to reset password'));
       setForgotMode(false);
       setPassword('');
-      setLoginError(data.message);
+      setLoginError(trData(data.message));
     } catch (err) {
       setLoginError(err.message);
     } finally {
@@ -208,7 +209,6 @@ export default function GateScannerPage() {
     }
   };
 
-  // Quick fill test accounts
   const handleQuickLogin = (u, p) => {
     initAudio();
     setUsername(u);
@@ -216,7 +216,6 @@ export default function GateScannerPage() {
     setLoginError('');
   };
 
-  // Handle Staff Logout
   const handleLogout = () => {
     stopCamera();
     if (staff?.sessionToken) {
@@ -230,7 +229,6 @@ export default function GateScannerPage() {
     setScanResult(null);
   };
 
-  // Enumerate cameras once staff is logged in
   useEffect(() => {
     if (!staff) return;
     Html5Qrcode.getCameras()
@@ -261,7 +259,7 @@ export default function GateScannerPage() {
         },
         body: JSON.stringify({
           ticketCode,
-          scannedBy: staff ? staff.name : 'เจ้าหน้าที่ไม่ระบุตัวตน',
+          scannedBy: staff ? staff.name : t('เจ้าหน้าที่ไม่ระบุตัวตน', 'Gate Staff'),
         }),
       });
 
@@ -274,19 +272,17 @@ export default function GateScannerPage() {
         playSound('error');
       }
 
-      // Add to recent scans history list
       setRecentScans((prev) => [
         {
           code: ticketCode,
           name: data.data?.attendeeName || 'N/A',
           valid: data.valid,
           status: data.status,
-          time: new Date().toLocaleTimeString('th-TH'),
+          time: new Date().toLocaleTimeString(lang === 'en' ? 'en-GB' : 'th-TH'),
         },
         ...prev.slice(0, 9),
       ]);
 
-      // If continuous mode is ON and camera is still running, auto-resume after 2.5s
       if (continuousMode && scannerRef.current) {
         if (autoResumeTimerRef.current) clearTimeout(autoResumeTimerRef.current);
         autoResumeTimerRef.current = setTimeout(() => {
@@ -298,7 +294,7 @@ export default function GateScannerPage() {
       setScanResult({
         valid: false,
         status: 'ERROR',
-        message: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ตรวจสอบตั๋วได้',
+        message: t('ไม่สามารถติดต่อเซิร์ฟเวอร์ตรวจสอบตั๋วได้', 'Unable to reach ticket verification server'),
       });
       playSound('error');
     } finally {
@@ -306,7 +302,7 @@ export default function GateScannerPage() {
     }
   };
 
-  // Start Camera with Dynamic Config for Mobile & PC
+  // Start Camera
   const startCamera = async (cameraIdOverride) => {
     if (scannerRef.current) return;
     initAudio();
@@ -353,9 +349,8 @@ export default function GateScannerPage() {
         try {
           await html5QrCode.start({ facingMode: 'environment' }, config, onDecoded, () => {});
         } catch {
-          // Fallback to first available camera on desktop/laptop
           const cameras = await Html5Qrcode.getCameras();
-          if (!cameras.length) throw new Error('ไม่พบกล้องในอุปกรณ์นี้');
+          if (!cameras.length) throw new Error(t('ไม่พบกล้องในอุปกรณ์นี้', 'No camera found on this device'));
           setAvailableCameras(cameras);
           const chosen = cameras.find((c) => /back|rear|environment/i.test(c.label)) || cameras[0];
           setSelectedCameraId(chosen.id);
@@ -370,12 +365,21 @@ export default function GateScannerPage() {
 
       const reason =
         err?.name === 'NotAllowedError'
-          ? 'เบราว์เซอร์ยังไม่ได้รับอนุญาตให้ใช้กล้อง โปรดกดไอคอนกุญแจ 🔒 ข้างแถบที่อยู่เว็บ แล้วเลือก "อนุญาตการใช้กล้อง (Allow Camera)"'
+          ? t(
+              'เบราว์เซอร์ยังไม่ได้รับอนุญาตให้ใช้กล้อง โปรดกดไอคอนกุญแจ 🔒 ข้างแถบที่อยู่เว็บ แล้วเลือก "อนุญาตการใช้กล้อง (Allow Camera)"',
+              'Camera permission denied. Please click the lock icon 🔒 in the address bar and allow camera access.'
+            )
           : err?.name === 'NotFoundError'
-          ? 'ไม่พบกล้องที่เชื่อมต่อกับอุปกรณ์'
+          ? t('ไม่พบกล้องที่เชื่อมต่อกับอุปกรณ์', 'No camera connected to this device')
           : err?.name === 'NotReadableError'
-          ? 'กล้องกำลังถูกใช้งานโดยแอปพลิเคชันอื่น โปรดปิดโปรแกรมอื่นแล้วลองใหม่'
-          : 'เปิดกล้องไม่สำเร็จ ตรวจสอบสิทธิ์การเข้าถึงกล้องบนเบราว์เซอร์';
+          ? t(
+              'กล้องกำลังถูกใช้งานโดยแอปพลิเคชันอื่น โปรดปิดโปรแกรมอื่นแล้วลองใหม่',
+              'Camera is currently in use by another application.'
+            )
+          : t(
+              'เปิดกล้องไม่สำเร็จ ตรวจสอบสิทธิ์การเข้าถึงกล้องบนเบราว์เซอร์',
+              'Failed to start camera. Please check browser camera permissions.'
+            );
       setCameraError(reason);
     }
   };
@@ -399,7 +403,7 @@ export default function GateScannerPage() {
     }
   };
 
-  // Flip Camera between back and front lens
+  // Flip Camera
   const toggleFlipCamera = async () => {
     if (!availableCameras.length) return;
     const currentIdx = availableCameras.findIndex((c) => c.id === selectedCameraId);
@@ -412,7 +416,7 @@ export default function GateScannerPage() {
     }
   };
 
-  // Scan from an Image File / Screenshot (from LINE photo or saved QR)
+  // Scan from Image File
   const handleScanImageFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -435,7 +439,12 @@ export default function GateScannerPage() {
       await handleVerifyTicket(decodedText);
     } catch (err) {
       console.error('File scan error:', err);
-      setCameraError('ไม่พบ QR Code ในรูปภาพที่เลือก กรุณาเลือกรูปภาพ QR Code ที่ชัดเจน');
+      setCameraError(
+        t(
+          'ไม่พบ QR Code ในรูปภาพที่เลือก กรุณาเลือกรูปภาพ QR Code ที่ชัดเจน',
+          'No QR Code detected in the selected image. Please choose a clear QR Code image.'
+        )
+      );
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -455,17 +464,22 @@ export default function GateScannerPage() {
   };
 
   // ==========================================
-  // VIEW 1: Staff Login View (ยังไม่ได้ล็อกอิน)
+  // VIEW 1: Staff Login View
   // ==========================================
   if (!staff) {
     return (
       <div className="max-w-md mx-auto px-4 py-12">
         <div className="bg-[#12121e] border border-[#27273e] rounded-3xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex justify-end mb-2">
+            <LanguageSwitch />
+          </div>
           <div className="text-center mb-6">
             <div className="w-14 h-14 rounded-2xl bg-cyan-400/10 border border-cyan-400/30 flex items-center justify-center text-cyan-300 mx-auto mb-3 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
               <KeyRound className="w-7 h-7" />
             </div>
-            <h1 className="text-2xl font-black text-white">ระบบสแกนตั๋วหน้างาน</h1>
+            <h1 className="text-2xl font-black text-white">
+              {t('ระบบสแกนตั๋วหน้างาน', 'Gate Ticket Scanner')}
+            </h1>
             <p className="text-xs text-gray-400 mt-1">SoundWave Pass Gate Check-in Terminal</p>
           </div>
 
@@ -479,13 +493,13 @@ export default function GateScannerPage() {
           <form onSubmit={forgotMode ? handleForgotPassword : handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
-                ชื่อผู้ใช้ (Username)
+                {t('ชื่อผู้ใช้ (Username)', 'Username')}
               </label>
               <div className="relative">
                 <UserCheck className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="เช่น faye, nam, gate01"
+                  placeholder={t('เช่น faye, nam, gate01', 'e.g. faye, nam, gate01')}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-[#181829] border border-[#2e2e4a] rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-400 transition-colors"
@@ -495,13 +509,15 @@ export default function GateScannerPage() {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
-                {forgotMode ? 'รหัสผ่านใหม่ (Password)' : 'รหัสผ่าน (Password)'}
+                {forgotMode
+                  ? t('รหัสผ่านใหม่ (New Password)', 'New Password')
+                  : t('รหัสผ่าน (Password)', 'Password')}
               </label>
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="กรอกรหัสผ่าน"
+                  placeholder={t('กรอกรหัสผ่าน', 'Enter password')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-[#181829] border border-[#2e2e4a] rounded-xl pl-10 pr-11 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-400 transition-colors"
@@ -521,7 +537,11 @@ export default function GateScannerPage() {
               disabled={loginLoading}
               className="w-full mt-2 py-3 rounded-xl bg-cyan-300 hover:bg-cyan-200 text-black font-extrabold text-sm uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-400/20"
             >
-              {loginLoading ? 'กำลังดำเนินการ...' : forgotMode ? 'ตั้งรหัสผ่านใหม่' : 'เข้าสู่ระบบตรวจตั๋ว'}
+              {loginLoading
+                ? t('กำลังดำเนินการ...', 'Processing...')
+                : forgotMode
+                ? t('ตั้งรหัสผ่านใหม่', 'Reset Password')
+                : t('เข้าสู่ระบบตรวจตั๋ว', 'Sign In to Scanner')}
             </button>
           </form>
 
@@ -533,13 +553,15 @@ export default function GateScannerPage() {
             }}
             className="mt-4 w-full text-xs font-bold text-cyan-200 hover:text-white"
           >
-            {forgotMode ? 'กลับเข้าสู่ระบบ' : 'ลืมรหัสผ่านพนักงาน?'}
+            {forgotMode
+              ? t('กลับเข้าสู่ระบบ', 'Back to Sign In')
+              : t('ลืมรหัสผ่านพนักงาน?', 'Forgot Staff Password?')}
           </button>
 
           {/* Quick Click Demo Logins */}
           <div className="mt-8 pt-6 border-t border-[#222238] text-center">
             <span className="text-[11px] text-gray-400 font-semibold block mb-2.5">
-              ⚡ บัญชีทดสอบด่วน (คลิกเพื่อเลือกทันที):
+              {t('⚡ บัญชีทดสอบด่วน (คลิกเพื่อเลือกทันที):', '⚡ Quick Demo Accounts (1-Click Fill):')}
             </span>
             <div className="flex flex-wrap gap-2 justify-center">
               <button
@@ -547,21 +569,21 @@ export default function GateScannerPage() {
                 onClick={() => handleQuickLogin('nam', '1234')}
                 className="px-3 py-1.5 rounded-lg bg-[#1e1e32] border border-[#333350] hover:border-emerald-400 text-xs text-gray-200 transition-colors cursor-pointer"
               >
-                📱 น้ำ (nam / 1234)
+                {t('📱 น้ำ (nam / 1234)', '📱 Nam (nam / 1234)')}
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogin('faye', '1234')}
                 className="px-3 py-1.5 rounded-lg bg-[#1e1e32] border border-[#333350] hover:border-cyan-400 text-xs text-gray-200 transition-colors cursor-pointer"
               >
-                👑 เฟย์ (faye / 1234)
+                {t('👑 เฟย์ (faye / 1234)', '👑 Faye (faye / 1234)')}
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickLogin('gate01', '1234')}
                 className="px-3 py-1.5 rounded-lg bg-[#1e1e32] border border-[#333350] hover:border-amber-400 text-xs text-gray-200 transition-colors cursor-pointer"
               >
-                🚪 ประตู 1 (gate01 / 1234)
+                {t('🚪 ประตู 1 (gate01 / 1234)', '🚪 Gate 1 (gate01 / 1234)')}
               </button>
             </div>
           </div>
@@ -571,11 +593,10 @@ export default function GateScannerPage() {
   }
 
   // ==========================================
-  // VIEW 2: Staff Scanner Console (ล็อกอินแล้ว)
+  // VIEW 2: Staff Scanner Console
   // ==========================================
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
-      {/* Hidden container for image file scanning */}
       <div id="reader-hidden" className="hidden"></div>
       <input
         ref={fileInputRef}
@@ -594,21 +615,24 @@ export default function GateScannerPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase font-bold tracking-widest text-cyan-300 bg-cyan-400/10 px-2 py-0.5 rounded-full border border-cyan-400/30">
-                {staff.role === 'SUPERVISOR' ? 'หัวหน้าสตาฟฟ์' : 'เจ้าหน้าที่ตรวจตั๋ว'}
+                {staff.role === 'SUPERVISOR'
+                  ? t('หัวหน้าสตาฟฟ์', 'Supervisor')
+                  : t('เจ้าหน้าที่ตรวจตั๋ว', 'Gate Staff')}
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             <p className="text-sm font-bold text-white mt-0.5">
-              {staff.name} <span className="text-xs font-normal text-gray-400">(@{staff.username})</span>
+              {trData(staff.name)} <span className="text-xs font-normal text-gray-400">(@{staff.username})</span>
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <LanguageSwitch />
           <button
             type="button"
             onClick={() => setSoundEnabled((v) => !v)}
-            title={soundEnabled ? 'ปิดเสียงแจ้งเตือน' : 'เปิดเสียงแจ้งเตือน'}
+            title={soundEnabled ? t('ปิดเสียงแจ้งเตือน', 'Mute Sound') : t('เปิดเสียงแจ้งเตือน', 'Enable Sound')}
             className="p-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
           >
             {soundEnabled ? <Volume2 size={16} className="text-cyan-400" /> : <VolumeX size={16} />}
@@ -618,7 +642,7 @@ export default function GateScannerPage() {
             onClick={handleLogout}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold hover:bg-rose-500/20 transition-colors cursor-pointer"
           >
-            <LogOut className="w-3.5 h-3.5" /> ออกจากระบบ
+            <LogOut className="w-3.5 h-3.5" /> {t('ออกจากระบบ', 'Sign Out')}
           </button>
         </div>
       </div>
@@ -635,10 +659,12 @@ export default function GateScannerPage() {
             />
             <span className="font-bold text-gray-200 flex items-center gap-1">
               <Zap size={14} className={continuousMode ? 'text-amber-400 animate-pulse' : 'text-gray-500'} />
-              โหมดสแกนคิวต่อเนื่อง
+              {t('โหมดสแกนคิวต่อเนื่อง', 'Continuous Queue Scan')}
             </span>
           </label>
-          <span className="text-[10px] text-gray-400 hidden sm:inline">(ตรวจคนถัดไปอัตโนมัติ)</span>
+          <span className="text-[10px] text-gray-400 hidden sm:inline">
+            {t('(ตรวจคนถัดไปอัตโนมัติ)', '(Auto-resume for next attendee)')}
+          </span>
         </div>
 
         {availableCameras.length > 1 && (
@@ -648,7 +674,7 @@ export default function GateScannerPage() {
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer font-semibold"
           >
             <SwitchCamera size={14} className="text-cyan-400" />
-            <span>สลับกล้อง</span>
+            <span>{t('สลับกล้อง', 'Switch Camera')}</span>
           </button>
         )}
       </div>
@@ -682,37 +708,38 @@ export default function GateScannerPage() {
                 {scanResult.status}
               </span>
               <h2 className="text-lg sm:text-xl font-black text-white leading-tight mt-0.5">
-                {scanResult.message}
+                {trData(scanResult.message)}
               </h2>
             </div>
           </div>
 
-          {/* Attendee Info Card if ticket found */}
+          {/* Attendee Info Card */}
           {scanResult.data && (
             <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-3 text-xs bg-black/20 p-3.5 rounded-2xl">
               <div>
-                <span className="text-gray-400 text-[11px]">ผู้ถือบัตร:</span>
+                <span className="text-gray-400 text-[11px]">{t('ผู้ถือบัตร:', 'Attendee:')}</span>
                 <p className="font-bold text-white text-sm">{scanResult.data.attendeeName}</p>
               </div>
               <div>
-                <span className="text-gray-400 text-[11px]">โซน:</span>
-                <p className="font-bold text-cyan-300 text-sm">{scanResult.data.zoneName}</p>
+                <span className="text-gray-400 text-[11px]">{t('โซน:', 'Zone:')}</span>
+                <p className="font-bold text-cyan-300 text-sm">{trData(scanResult.data.zoneName)}</p>
               </div>
               <div>
-                <span className="text-gray-400 text-[11px]">ที่นั่ง:</span>
+                <span className="text-gray-400 text-[11px]">{t('ที่นั่ง / คิว:', 'Seat / Queue:')}</span>
                 <p className="font-mono font-black text-amber-300 text-sm">
-                  {scanResult.data.seatNumber || 'บัตรยืน (Standing GA)'}
+                  {scanResult.data.seatNumber || t('บัตรยืน (Standing GA)', 'Standing GA')}
                 </p>
               </div>
               <div>
-                <span className="text-gray-400 text-[11px]">รหัสตั๋ว:</span>
+                <span className="text-gray-400 text-[11px]">{t('รหัสตั๋ว:', 'Ticket Code:')}</span>
                 <p className="font-mono font-bold text-gray-300 truncate">{scanResult.data.ticketCode}</p>
               </div>
               {scanResult.data.usedAt && (
                 <div className="col-span-2 pt-2 border-t border-white/5">
-                  <span className="text-gray-400 text-[11px]">เวลาที่บันทึกเข้างาน:</span>
+                  <span className="text-gray-400 text-[11px]">{t('เวลาที่บันทึกเข้างาน:', 'Checked-in At:')}</span>
                   <p className="font-mono text-gray-300 text-xs">
-                    {new Date(scanResult.data.usedAt).toLocaleString('th-TH')} (โดย {scanResult.data.scannedBy || staff.name})
+                    {new Date(scanResult.data.usedAt).toLocaleString(lang === 'en' ? 'en-GB' : 'th-TH')} (
+                    {t('โดย', 'by')} {trData(scanResult.data.scannedBy || staff.name)})
                   </p>
                 </div>
               )}
@@ -724,7 +751,7 @@ export default function GateScannerPage() {
             onClick={resetScan}
             className="mt-5 w-full py-3 rounded-xl bg-white text-black font-extrabold uppercase text-xs flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors cursor-pointer shadow-md"
           >
-            <RefreshCw className="w-4 h-4" /> สแกนคนถัดไป (Next Attendee)
+            <RefreshCw className="w-4 h-4" /> {t('สแกนคนถัดไป (Next Attendee)', 'Scan Next Attendee')}
           </button>
         </div>
       )}
@@ -732,27 +759,21 @@ export default function GateScannerPage() {
       {/* Camera Viewport */}
       {(!scanResult || continuousMode) && (
         <div className="bg-[#12121e] border border-[#27273e] rounded-3xl p-4 sm:p-6 text-center shadow-xl">
-          {/* Viewfinder Wrapper */}
           <div className="relative max-w-sm mx-auto overflow-hidden rounded-3xl bg-black aspect-square flex items-center justify-center border-2 border-cyan-400/40 shadow-[0_0_30px_rgba(0,240,255,0.15)]">
             <div id="reader" className="w-full h-full"></div>
 
-            {/* Neon Viewfinder Frame & Animated Laser Overlay */}
             {cameraActive && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                {/* 4 Neon Corners */}
                 <div className="relative w-[72%] h-[72%] border border-cyan-400/30 rounded-2xl">
                   <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-cyan-400 rounded-tl-xl shadow-[0_0_10px_#00f0ff]" />
                   <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-cyan-400 rounded-tr-xl shadow-[0_0_10px_#00f0ff]" />
                   <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-cyan-400 rounded-bl-xl shadow-[0_0_10px_#00f0ff]" />
                   <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-cyan-400 rounded-br-xl shadow-[0_0_10px_#00f0ff]" />
-
-                  {/* Animated Scanning Laser Line */}
                   <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-cyan-300 to-transparent shadow-[0_0_12px_#00f0ff] animate-bounce top-1/2 -translate-y-1/2" />
                 </div>
               </div>
             )}
 
-            {/* Continuous Mode Live Overlay Toast */}
             {continuousMode && scanResult && (
               <div
                 className={`absolute inset-x-3 bottom-3 p-3.5 rounded-2xl border backdrop-blur-md shadow-2xl transition-all ${
@@ -761,11 +782,12 @@ export default function GateScannerPage() {
               >
                 <div className="flex items-center gap-2">
                   {scanResult.valid ? <CheckCircle2 size={18} className="text-emerald-400" /> : <XCircle size={18} className="text-rose-400" />}
-                  <span className="text-xs font-black truncate">{scanResult.message}</span>
+                  <span className="text-xs font-black truncate">{trData(scanResult.message)}</span>
                 </div>
                 {scanResult.data && (
                   <p className="mt-1 text-[11px] text-gray-200">
-                    {scanResult.data.attendeeName} · <strong className="text-cyan-300">{scanResult.data.zoneName}</strong> ({scanResult.data.seatNumber || 'บัตรยืน'})
+                    {scanResult.data.attendeeName} · <strong className="text-cyan-300">{trData(scanResult.data.zoneName)}</strong> (
+                    {scanResult.data.seatNumber || t('บัตรยืน', 'Standing')})
                   </p>
                 )}
               </div>
@@ -776,16 +798,21 @@ export default function GateScannerPage() {
                 <div className="w-16 h-16 rounded-3xl bg-cyan-400/10 border border-cyan-400/30 flex items-center justify-center text-cyan-300 mb-3 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
                   <Camera className="w-8 h-8" />
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">กล้องสแกนเนอร์พร้อมทำงาน</h3>
+                <h3 className="text-sm font-bold text-white mb-1">
+                  {t('กล้องสแกนเนอร์พร้อมทำงาน', 'Scanner Camera Ready')}
+                </h3>
                 <p className="text-xs text-gray-400 mb-4 max-w-xs">
-                  ส่อง QR Code จากแอป LINE, ตั๋วดิจิทัลบนมือถือ หรือตั๋วที่พิมพ์ใส่กระดาษ A4
+                  {t(
+                    'ส่อง QR Code จากแอป LINE, ตั๋วดิจิทัลบนมือถือ หรือตั๋วที่พิมพ์ใส่กระดาษ A4',
+                    'Point camera at QR Code from LINE app, mobile ticket, or printed A4 souvenir pass'
+                  )}
                 </p>
                 <button
                   type="button"
                   onClick={() => startCamera()}
                   className="px-6 py-3 rounded-xl bg-cyan-300 hover:bg-cyan-200 text-black font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-cyan-400/20"
                 >
-                  เปิดกล้องสแกนเนอร์
+                  {t('เปิดกล้องสแกนเนอร์', 'Start Scanner Camera')}
                 </button>
               </div>
             )}
@@ -806,7 +833,7 @@ export default function GateScannerPage() {
                 onClick={stopCamera}
                 className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 text-xs font-semibold transition-all cursor-pointer"
               >
-                พักกล้อง
+                {t('พักกล้อง', 'Pause Camera')}
               </button>
             )}
 
@@ -816,19 +843,22 @@ export default function GateScannerPage() {
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-cyan-400 text-gray-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
             >
               <ImageIcon size={14} className="text-cyan-400" />
-              <span>เลือกรูปภาพ QR จากเครื่อง / LINE</span>
+              <span>{t('เลือกรูปภาพ QR จากเครื่อง / LINE', 'Scan QR Image from Device / LINE')}</span>
             </button>
           </div>
 
           {/* Manual Input Fallback */}
           <div className="mt-6 pt-5 border-t border-white/10 text-left">
             <span className="text-xs text-gray-400 font-semibold block mb-2">
-              หรือทดสอบด้วยการกรอกรหัสตั๋วโดยตรง (หรือยิงด้วยเครื่องบาร์โค้ด USB):
+              {t(
+                'หรือทดสอบด้วยการกรอกรหัสตั๋วโดยตรง (หรือยิงด้วยเครื่องบาร์โค้ด USB):',
+                'Or verify manually by entering Ticket Code (or USB barcode scanner):'
+              )}
             </span>
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="เช่น SWP-STAN-6BJ6-5306"
+                placeholder={t('เช่น SWP-STAN-6BJ6-5306', 'e.g. SWP-STAN-6BJ6-5306')}
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
                 onKeyDown={(e) => {
@@ -844,18 +874,21 @@ export default function GateScannerPage() {
                 onClick={() => handleVerifyTicket(manualCode)}
                 className="px-5 py-2.5 rounded-xl bg-cyan-300 hover:bg-cyan-200 text-black font-extrabold text-xs uppercase disabled:opacity-50 transition-all cursor-pointer shrink-0"
               >
-                {loading ? 'ตรวจ...' : 'ตรวจสอบ'}
+                {loading ? t('ตรวจ...', 'Checking...') : t('ตรวจสอบ', 'Verify')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Recent Scans History in this Session */}
+      {/* Recent Scans History */}
       {recentScans.length > 0 && (
         <div className="mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
           <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
-            ประวัติการสแกนรอบนี้ ({recentScans.length} ใบ):
+            {t(
+              `ประวัติการสแกนรอบนี้ (${recentScans.length} ใบ):`,
+              `Recent Scans in this Session (${recentScans.length}):`
+            )}
           </span>
           <div className="space-y-1.5 max-h-40 overflow-y-auto">
             {recentScans.map((scan, idx) => (

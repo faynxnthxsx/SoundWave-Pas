@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 
 export function FlagTH({ className = 'w-4 h-3' }) {
@@ -25,17 +26,25 @@ export function FlagEN({ className = 'w-4 h-3' }) {
 
 export default function LanguageSwitch({ className = '' }) {
   const { lang, setLang } = useLanguage();
+  const { i18n } = useTranslation();
+
+  const handleSelectLanguage = (nextLang) => {
+    setLang(nextLang);
+    if (i18n.language !== nextLang) {
+      i18n.changeLanguage(nextLang);
+    }
+  };
 
   return (
     <div
       role="group"
-      aria-label="Language Switcher"
+      aria-label="Language Switcher (i18n)"
       className={`inline-flex items-center rounded-full border border-white/15 bg-black/60 p-0.5 shadow-inner backdrop-blur-md ${className}`}
     >
       <button
         type="button"
-        onClick={() => setLang('th')}
-        title="ภาษาไทย (Thai)"
+        onClick={() => handleSelectLanguage('th')}
+        title="ภาษาไทย (Thai - i18n)"
         className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black tracking-wide transition-all cursor-pointer ${
           lang === 'th'
             ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-black shadow-[0_0_12px_rgba(34,211,238,0.45)]'
@@ -47,8 +56,8 @@ export default function LanguageSwitch({ className = '' }) {
       </button>
       <button
         type="button"
-        onClick={() => setLang('en')}
-        title="English (EN)"
+        onClick={() => handleSelectLanguage('en')}
+        title="English (EN - i18n)"
         className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black tracking-wide transition-all cursor-pointer ${
           lang === 'en'
             ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-black shadow-[0_0_12px_rgba(34,211,238,0.45)]'

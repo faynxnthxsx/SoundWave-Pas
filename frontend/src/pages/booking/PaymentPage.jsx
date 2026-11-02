@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Clock, CheckCircle2, AlertTriangle, ArrowRight, Ticket, Printer } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function PaymentPage() {
   const { bookingCode } = useParams();
+  const { t, trData } = useLanguage();
+  useTranslation();
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,8 +20,8 @@ export default function PaymentPage() {
 
   useEffect(() => {
     fetch(`/api/bookings/${bookingCode}`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.success) {
           setBooking(data.data);
           if (data.data.status === 'PAID') {
@@ -33,9 +37,12 @@ export default function PaymentPage() {
                 zoneName: data.data.items?.[0]?.zone?.name || 'Festival Zone',
                 totalAmount: data.data.totalAmount,
                 tickets: tList,
-                paidAt: data.data.paidAt || new Date().toISOString()
+                paidAt: data.data.paidAt || new Date().toISOString(),
               };
-              const updatedHistory = [newEntry, ...history.filter((h) => h.bookingCode !== data.data.bookingCode)];
+              const updatedHistory = [
+                newEntry,
+                ...history.filter((h) => h.bookingCode !== data.data.bookingCode),
+              ];
               localStorage.setItem('soundwave_purchase_history', JSON.stringify(updatedHistory));
             } catch {
               /* ignore corrupted local history */
@@ -56,7 +63,7 @@ export default function PaymentPage() {
   useEffect(() => {
     if (paidSuccess || isExpired) return;
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
+      setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
           setIsExpired(true);
@@ -71,7 +78,6 @@ export default function PaymentPage() {
   const handleSimulatePayment = async () => {
     setPaying(true);
     try {
-      // Check if user selected specific seat numbers in ZoneSelectPage
       let selectedSeats = [];
       try {
         const savedSeats = localStorage.getItem(`soundwave_seats_${bookingCode}`);
@@ -83,7 +89,7 @@ export default function PaymentPage() {
       const res = await fetch(`/api/bookings/${bookingCode}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedSeats })
+        body: JSON.stringify({ selectedSeats }),
       });
       const data = await res.json();
       if (data.success) {
@@ -91,7 +97,6 @@ export default function PaymentPage() {
         const issuedTickets = data.data?.tickets || [];
         setTickets(issuedTickets);
 
-        // ── SAVE PURCHASE TO LOCAL STORAGE HISTORY ──
         try {
           const history = JSON.parse(localStorage.getItem('soundwave_purchase_history') || '[]');
           const newEntry = {
@@ -101,19 +106,21 @@ export default function PaymentPage() {
             zoneName: booking.items?.[0]?.zone?.name || 'Festival Zone',
             totalAmount: booking.totalAmount,
             tickets: issuedTickets,
-            paidAt: new Date().toISOString()
+            paidAt: new Date().toISOString(),
           };
-          const updatedHistory = [newEntry, ...history.filter(h => h.bookingCode !== booking.bookingCode)];
+          const updatedHistory = [
+            newEntry,
+            ...history.filter((h) => h.bookingCode !== booking.bookingCode),
+          ];
           localStorage.setItem('soundwave_purchase_history', JSON.stringify(updatedHistory));
         } catch (err) {
           console.error('Failed to save order history:', err);
         }
-
       } else {
-        alert(data.message || 'เกิดข้อผิดพลาดในการชำระเงิน');
+        alert(data.message || t('เกิดข้อผิดพลาดในการชำระเงิน', 'Payment failed'));
       }
     } catch {
-      alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      alert(t('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'Cannot connect to server'));
     } finally {
       setPaying(false);
     }
@@ -121,21 +128,23 @@ export default function PaymentPage() {
 
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  if (loading) return (
-    <div className="min-h-[70vh] flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
+    );
 
-  if (!booking) return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
-      <AlertTriangle className="w-10 h-10 text-pink-400 mb-2" />
-      <h2 className="text-lg font-bold text-white">ไม่พบรายการจองนี้</h2>
-      <Link to="/" className="mt-3 px-4 py-2 rounded-xl bg-white/10 text-white text-xs">
-        กลับหน้าแรก
-      </Link>
-    </div>
-  );
+  if (!booking)
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+        <AlertTriangle className="w-10 h-10 text-pink-400 mb-2" />
+        <h2 className="text-lg font-bold text-white">{t('ไม่พบรายการจองนี้', 'Booking not found')}</h2>
+        <Link to="/" className="mt-3 px-4 py-2 rounded-xl bg-white/10 text-white text-xs">
+          {t('กลับหน้าแรก', 'Back to Home')}
+        </Link>
+      </div>
+    );
 
   // ── SUCCESS SCREEN ──────────────────────────────────────────────
   if (paidSuccess) {
@@ -148,14 +157,17 @@ export default function PaymentPage() {
         <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-400">
           Payment Completed
         </span>
-        <h1 className="text-2xl font-black text-white mt-1">ชำระเงินเรียบร้อยแล้ว!</h1>
+        <h1 className="text-2xl font-black text-white mt-1">
+          {t('ชำระเงินเรียบร้อยแล้ว!', 'Payment Completed!')}
+        </h1>
         <p className="text-xs text-gray-400 mt-1">
-          รหัสการจอง: <span className="font-mono text-white font-bold">{booking.bookingCode}</span>
+          {t('รหัสการจอง:', 'Booking Code:')}{' '}
+          <span className="font-mono text-white font-bold">{booking.bookingCode}</span>
         </p>
 
         {/* Issued Tickets List */}
         <div className="space-y-3 mt-6 text-left">
-          {tickets.map(tkt => (
+          {tickets.map((tkt) => (
             <div
               key={tkt.id}
               className="p-4 rounded-2xl bg-[#12121a] border border-white/10 flex items-center justify-between"
@@ -164,7 +176,9 @@ export default function PaymentPage() {
                 <span className="text-[10px] text-gray-400 font-mono uppercase">TICKET NUMBER</span>
                 <p className="font-mono font-bold text-white text-sm mt-0.5">{tkt.ticketCode}</p>
                 {tkt.seatNumber && (
-                  <p className="text-xs font-mono text-cyan-300 font-bold mt-0.5">ที่นั่ง: {tkt.seatNumber}</p>
+                  <p className="text-xs font-mono text-cyan-300 font-bold mt-0.5">
+                    {t('ที่นั่ง / คิว:', 'Seat / Queue:')} {tkt.seatNumber}
+                  </p>
                 )}
                 <p className="text-xs text-gray-400 mt-0.5">{tkt.attendeeName}</p>
               </div>
@@ -174,13 +188,13 @@ export default function PaymentPage() {
                   to={`/tickets/${tkt.ticketCode}`}
                   className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1 transition-colors"
                 >
-                  <Ticket className="w-3.5 h-3.5 text-cyan-400" /> เปิดดูตั๋ว
+                  <Ticket className="w-3.5 h-3.5 text-cyan-400" /> {t('เปิดดูตั๋ว', 'View Pass')}
                 </Link>
                 <Link
                   to={`/tickets/${tkt.ticketCode}/print`}
                   className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1 transition-colors"
                 >
-                  <Printer className="w-3.5 h-3.5 text-pink-400" /> พิมพ์ A4
+                  <Printer className="w-3.5 h-3.5 text-pink-400" /> {t('พิมพ์ A4', 'Print A4')}
                 </Link>
               </div>
             </div>
@@ -192,7 +206,7 @@ export default function PaymentPage() {
             to={`/tickets/${tickets[0]?.ticketCode || ''}`}
             className="w-full py-3 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors shadow-lg"
           >
-            เปิดหน้าตั๋วเข้างานทันที
+            {t('เปิดหน้าตั๋วเข้างานทันที', 'Open Entry Ticket Now')}
             <ArrowRight className="w-4 h-4" />
           </Link>
           <button
@@ -201,13 +215,10 @@ export default function PaymentPage() {
             className="w-full py-2.5 rounded-xl bg-cyan-400/10 border border-cyan-400/30 text-cyan-300 font-bold text-xs uppercase flex items-center justify-center gap-1.5 hover:bg-cyan-400/20 transition-colors cursor-pointer"
           >
             <Ticket className="w-3.5 h-3.5" />
-            ดูประวัติการซื้อตั๋วทั้งหมดในเครื่องนี้
+            {t('ดูประวัติการซื้อตั๋วทั้งหมดในเครื่องนี้', 'View My Ticket Purchase History')}
           </button>
-          <Link
-            to="/"
-            className="w-full py-2 rounded-xl text-gray-400 text-xs hover:text-white"
-          >
-            กลับสู่หน้าหลัก
+          <Link to="/" className="w-full py-2 rounded-xl text-gray-400 text-xs hover:text-white">
+            {t('กลับสู่หน้าหลัก', 'Back to Home')}
           </Link>
         </div>
       </div>
@@ -221,57 +232,54 @@ export default function PaymentPage() {
         <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-4 text-red-400">
           <AlertTriangle className="w-8 h-8" />
         </div>
-        <h1 className="text-xl font-bold text-white">หมดเวลาทำรายการ</h1>
+        <h1 className="text-xl font-bold text-white">{t('หมดเวลาทำรายการ', 'Reservation Expired')}</h1>
         <p className="text-xs text-gray-400 mt-2 mb-6">
-          ระบบได้ยกเลิกคำสั่งจอง {booking.bookingCode} และคืนโควต้าที่นั่งแล้ว
+          {t(
+            `ระบบได้ยกเลิกคำสั่งจอง ${booking.bookingCode} และคืนโควต้าที่นั่งแล้ว`,
+            `Booking ${booking.bookingCode} has expired and seat quota has been released.`
+          )}
         </p>
         <Link
           to="/booking/zone-select"
           className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white text-black font-bold text-xs uppercase hover:bg-gray-200"
         >
-          ทำรายการใหม่อีกครั้ง
+          {t('ทำรายการใหม่อีกครั้ง', 'Book Again')}
         </Link>
       </div>
     );
   }
 
-  // ── COMPACT & PROFESSIONAL CHECKOUT SCREEN ─────────────────────
+  // ── CHECKOUT SCREEN ─────────────────────
   return (
     <div className="max-w-md mx-auto px-4 py-8">
-      
-      {/* Sleek, Professional Countdown Bar */}
       <div className="mb-4 p-3 rounded-2xl bg-[#12121a] border border-white/10 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2 text-gray-300">
           <Clock className="w-4 h-4 text-cyan-400" />
-          <span>โปรดชำระเงินภายใน:</span>
+          <span>{t('โปรดชำระเงินภายใน:', 'Complete payment within:')}</span>
         </div>
         <div className="flex items-center gap-1 font-mono font-black text-sm text-cyan-300 bg-white/5 px-2.5 py-1 rounded-lg">
-          {fmt(timeLeft)} นาที
+          {fmt(timeLeft)} {t('นาที', 'min')}
         </div>
       </div>
 
-      {/* Main Payment Card */}
       <div className="bg-[#111119] border border-white/10 rounded-3xl p-6 shadow-2xl">
-        
-        {/* Header Title */}
         <div className="text-center pb-4 border-b border-white/10">
           <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase block">
             SoundWave Pass Checkout
           </span>
           <h1 className="text-xl font-bold text-white mt-0.5">
-            สแกนชำระเงิน PromptPay
+            {t('สแกนชำระเงิน PromptPay', 'Scan to Pay via PromptPay')}
           </h1>
           <p className="text-[11px] text-gray-400 mt-0.5">
-            รหัสการจอง: <span className="font-mono text-white font-semibold">{booking.bookingCode}</span>
+            {t('รหัสการจอง:', 'Booking Code:')}{' '}
+            <span className="font-mono text-white font-semibold">{booking.bookingCode}</span>
           </p>
         </div>
 
-        {/* Compact PromptPay QR Card */}
         <div className="my-5 flex flex-col items-center">
           <div className="bg-white p-4 rounded-2xl shadow-md text-center max-w-[220px]">
-            {/* PromptPay Official Style Header */}
             <div className="bg-[#003d79] text-white text-[9px] font-bold px-2 py-0.5 rounded mb-2 tracking-wider">
-              PROMPTPAY · พร้อมเพย์
+              {t('PROMPTPAY · พร้อมเพย์', 'THAI QR PROMPTPAY')}
             </div>
 
             <QRCodeSVG
@@ -282,7 +290,7 @@ export default function PaymentPage() {
             />
 
             <p className="text-[9px] text-gray-500 font-mono mt-2">
-              สแกนผ่านแอปธนาคารทุกธนาคาร
+              {t('สแกนผ่านแอปธนาคารทุกธนาคาร', 'Scan with any mobile banking app')}
             </p>
           </div>
         </div>
@@ -290,34 +298,38 @@ export default function PaymentPage() {
         {/* Order Breakdown */}
         <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 text-xs space-y-1.5 mb-5">
           <div className="flex justify-between">
-            <span className="text-gray-400">ผู้จอง:</span>
+            <span className="text-gray-400">{t('ผู้จอง:', 'Buyer:')}</span>
             <span className="font-medium text-white">{booking.customerName}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">โซน:</span>
-            <span className="font-medium text-white">{booking.items?.[0]?.zone?.name}</span>
+            <span className="text-gray-400">{t('โซน:', 'Zone:')}</span>
+            <span className="font-medium text-white">{trData(booking.items?.[0]?.zone?.name)}</span>
           </div>
           {(booking.selectedSeatsList?.length > 0 || booking.selectedSeats) && (
             <div className="flex justify-between">
-              <span className="text-gray-400">ที่นั่งที่ระบุ:</span>
+              <span className="text-gray-400">{t('ที่นั่ง / คิวที่ระบุ:', 'Selected Seats / Queue:')}</span>
               <span className="font-mono font-bold text-cyan-300">
-                {(booking.selectedSeatsList || (booking.selectedSeats ? JSON.parse(booking.selectedSeats) : [])).join(', ')}
+                {(
+                  booking.selectedSeatsList ||
+                  (booking.selectedSeats ? JSON.parse(booking.selectedSeats) : [])
+                ).join(', ')}
               </span>
             </div>
           )}
           <div className="flex justify-between">
-            <span className="text-gray-400">จำนวน:</span>
-            <span className="font-medium text-white">{booking.items?.[0]?.quantity} ใบ</span>
+            <span className="text-gray-400">{t('จำนวน:', 'Quantity:')}</span>
+            <span className="font-medium text-white">
+              {booking.items?.[0]?.quantity} {t('ใบ', 'tickets')}
+            </span>
           </div>
           <div className="flex justify-between pt-2 border-t border-white/10 text-sm">
-            <span className="font-bold text-gray-300">ยอดชำระ:</span>
+            <span className="font-bold text-gray-300">{t('ยอดชำระ:', 'Total Amount:')}</span>
             <span className="font-mono font-black text-cyan-300 text-base">
               ฿{booking.totalAmount.toLocaleString()}
             </span>
           </div>
         </div>
 
-        {/* Simulated Payment Action */}
         <button
           type="button"
           disabled={paying}
@@ -325,14 +337,18 @@ export default function PaymentPage() {
           className="w-full py-3.5 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
         >
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          {paying ? 'กำลังตรวจสอบยอดเงิน...' : 'ยืนยันการโอนเงินเรียบร้อยแล้ว'}
+          {paying
+            ? t('กำลังตรวจสอบยอดเงิน...', 'Verifying payment...')
+            : t('ยืนยันการโอนเงินเรียบร้อยแล้ว', 'Confirm Payment Completed')}
         </button>
 
         <p className="text-center text-[10px] text-gray-500 mt-3">
-          * ระบบจำลอง: กดเพื่อยืนยันการรับเงินและออกตั๋วเข้า LINE ทันที
+          {t(
+            '* ระบบจำลอง: กดเพื่อยืนยันการรับเงินและออกตั๋วเข้า LINE ทันที',
+            '* Demo Mode: Click to simulate instant payment verification & LINE ticket delivery'
+          )}
         </p>
       </div>
-
     </div>
   );
 }
