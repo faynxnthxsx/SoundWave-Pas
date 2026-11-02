@@ -538,7 +538,14 @@ export default function ZoneSelectPage() {
         key={seatCode}
         type="button"
         disabled={isOccupied}
-        onClick={() => handleSeatClick(seatCode)}
+        onClick={(e) => {
+          e.preventDefault();
+          handleSeatClick(seatCode);
+        }}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          handleSeatClick(seatCode);
+        }}
         onMouseEnter={() => setHoveredSeat({ code: seatCode, row: rowLetter, col: colNum, occupied: isOccupied })}
         onMouseLeave={() => setHoveredSeat(null)}
         title={
@@ -548,7 +555,7 @@ export default function ZoneSelectPage() {
             ? t(`เลือกแล้ว: ${seatCode} (฿${selectedZone.price.toLocaleString()})`, `Selected: ${seatCode} (฿${selectedZone.price.toLocaleString()})`)
             : t(`แถว ${rowLetter} ที่นั่ง ${String(colNum).padStart(2, '0')} · ฿${selectedZone.price.toLocaleString()}`, `Row ${rowLetter} Seat ${String(colNum).padStart(2, '0')} · ฿${selectedZone.price.toLocaleString()}`)
         }
-        className={`group relative flex flex-col items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-t-xl rounded-b-md font-mono text-[10px] font-bold transition-all duration-150 select-none ${
+        className={`group relative flex flex-col items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-t-xl rounded-b-md font-mono text-[10px] font-bold transition-all duration-150 select-none touch-manipulation ${
           isOccupied
             ? 'bg-[#0f1018] border border-white/[0.06] text-slate-600 cursor-not-allowed opacity-50'
             : isSelected

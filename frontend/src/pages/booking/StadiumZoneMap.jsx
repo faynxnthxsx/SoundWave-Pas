@@ -122,7 +122,16 @@ export default function StadiumZoneMap({
       'aria-label': `${zone.name}, ฿${zone.price}, ${
         isPaused ? 'Paused' : zone.available > 0 ? `${zone.available} available` : 'Sold out'
       }`,
-      onClick: () => canSelect && onSelect(zone),
+      onClick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (canSelect) onSelect(zone);
+      },
+      onTouchEnd: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (canSelect) onSelect(zone);
+      },
       onMouseEnter: () => setHoveredZoneId(zone.id),
       onMouseLeave: () => setHoveredZoneId(null),
       onKeyDown: (event) => {
@@ -131,7 +140,7 @@ export default function StadiumZoneMap({
           onSelect(zone);
         }
       },
-      style: { cursor: canSelect ? 'pointer' : 'not-allowed' },
+      style: { cursor: canSelect ? 'pointer' : 'not-allowed', touchAction: 'manipulation' },
     };
   };
 
