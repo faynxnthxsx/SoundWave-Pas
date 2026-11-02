@@ -97,16 +97,21 @@ export default function MyTicketPage() {
               ⚡ SoundWave Official Pass
             </span>
 
-            <span
-              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
-                isValid
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                  : 'bg-red-500/20 text-red-400 border border-red-500/40'
-              }`}
-            >
-              {isValid ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-              {isValid ? t('พร้อมเข้างาน (VALID)', 'VALID') : t('ใช้แล้ว (USED)', 'USED')}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-400/20 text-cyan-300 border border-cyan-400/30">
+                {t('จองแล้ว', 'BOOKED')}
+              </span>
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
+                  isValid
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    : 'bg-red-500/20 text-red-400 border border-red-500/40'
+                }`}
+              >
+                {isValid ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                {isValid ? t('พร้อมเข้างาน (VALID)', 'VALID') : t('ใช้แล้ว (USED)', 'USED')}
+              </span>
+            </div>
           </div>
         </div>
 

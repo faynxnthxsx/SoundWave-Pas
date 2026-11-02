@@ -171,7 +171,12 @@ export default function PaymentPage() {
               className="p-4 rounded-2xl bg-[#12121a] border border-white/10 flex items-center justify-between"
             >
               <div>
-                <span className="text-[10px] text-gray-400 font-mono uppercase">TICKET NUMBER</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] text-gray-400 font-mono uppercase">TICKET NUMBER</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <CheckCircle2 size={11} /> {t('จองแล้ว / ชำระแล้ว', 'BOOKED & PAID')}
+                  </span>
+                </div>
                 <p className="font-mono font-bold text-white text-sm mt-0.5">{tkt.ticketCode}</p>
                 {tkt.seatNumber && (
                   <p className="text-xs font-mono text-cyan-300 font-bold mt-0.5">
