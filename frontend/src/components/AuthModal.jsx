@@ -32,6 +32,8 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       if (!window.google?.accounts?.id) return;
       window.google.accounts.id.initialize({
         client_id: googleClientId,
+        use_fedcm_for_prompt: false,
+        auto_select: false,
         callback: async (response) => {
           if (!response?.credential) return;
           await handleGoogleLogin({ credential: response.credential });
@@ -39,6 +41,7 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       });
       googleBtnRef.current.innerHTML = '';
       window.google.accounts.id.renderButton(googleBtnRef.current, {
+        type: 'standard',
         theme: 'outline',
         size: 'large',
         width: 320,

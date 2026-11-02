@@ -51,23 +51,13 @@ export default function LineConnectCard({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onLineLogin}
-              disabled={lineLoading}
-              className="text-[10px] text-[#06c755] hover:text-white px-2 py-1 rounded-lg border border-[#06c755]/30 hover:bg-[#06c755]/20 transition-all cursor-pointer font-bold"
-            >
-              {t('สลับบัญชี', 'Switch')}
-            </button>
-            <button
-              type="button"
-              onClick={onDisconnectLine}
-              className="text-[10px] text-gray-400 hover:text-rose-400 px-2 py-1 rounded-lg border border-white/10 hover:border-rose-400/40 transition-colors cursor-pointer"
-            >
-              {t('ยกเลิก', 'Disconnect')}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onDisconnectLine}
+            className="text-[10px] text-gray-400 hover:text-rose-400 px-2.5 py-1.5 rounded-lg border border-white/10 hover:border-rose-400/40 transition-colors cursor-pointer"
+          >
+            {t('ยกเลิก', 'Disconnect')}
+          </button>
         </div>
       ) : (
         <div className="space-y-2">
