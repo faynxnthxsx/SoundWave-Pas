@@ -6,6 +6,7 @@ import {
   Check,
   LoaderCircle,
   MapPin,
+  MapPinned,
   Minus,
   Plus,
   Ticket,
