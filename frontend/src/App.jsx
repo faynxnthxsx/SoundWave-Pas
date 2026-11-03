@@ -79,7 +79,7 @@ export default function App() {
             <Navbar />
 
             {/* Dynamic Pages with Code Splitting */}
-            <main className="flex-1 w-full max-w-full overflow-x-hidden">
+            <main className="flex-1 w-full max-w-full overflow-x-hidden pb-16 md:pb-0">
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Booking Flow */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Ticket, Music, LogOut, UserRound } from 'lucide-react';
+import { Ticket, Music, LogOut, UserRound, Home, Users } from 'lucide-react';
 import AuthModal from './AuthModal';
 import PurchaseHistoryModal from './PurchaseHistoryModal';
 import LanguageSwitch from './ui/LanguageSwitch';
@@ -79,41 +79,43 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-40 bg-[#07070b]/90 backdrop-blur-md border-b border-white/10 px-2 sm:px-6 lg:px-8 py-2 sm:py-3 transition-all w-full max-w-full">
-        <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-1 sm:gap-2">
+      {/* TOP HEADER */}
+      <nav className="sticky top-0 z-40 bg-[#07070b]/90 backdrop-blur-md border-b border-white/10 px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 transition-all w-full max-w-full">
+        <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-2">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-white text-black flex items-center justify-center font-black text-sm shrink-0">
-              <Music className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-black" />
+          <Link to="/" className="flex items-center gap-2 shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white text-black flex items-center justify-center font-black text-sm shrink-0">
+              <Music className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
             </div>
             <div>
-              <span className="text-sm sm:text-lg font-black tracking-wider text-white">
+              <span className="text-base sm:text-lg font-black tracking-wider text-white">
                 SOUND<span className="text-cyan-400">WAVE</span>
                 <span className="text-xs ml-1 text-gray-400 font-mono hidden sm:inline">PASS</span>
               </span>
             </div>
           </Link>
 
+          {/* DESKTOP NAVBAR (md:flex) */}
           {isTeamSurface ? (
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="hidden md:flex items-center gap-2 shrink-0">
               <LanguageSwitch />
               <Link
                 to="/team"
-                className="rounded-xl border border-white/10 px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs text-gray-300 hover:bg-white/5 whitespace-nowrap"
+                className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-gray-300 hover:bg-white/5 whitespace-nowrap"
               >
                 {t('พื้นที่ทีมงาน', 'Team Portal')}
               </Link>
-              <Link to="/" className="rounded-xl bg-white px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-black whitespace-nowrap">
+              <Link to="/" className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-black whitespace-nowrap">
                 {t('กลับหน้าร้าน', 'Back to Store')}
               </Link>
             </div>
           ) : (
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="hidden md:flex items-center gap-2 shrink-0">
               <LanguageSwitch />
               
               <Link
                 to="/"
-                className={`hidden md:inline-flex px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`inline-flex px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive('/')
                     ? 'bg-white/10 text-white border border-white/20'
                     : 'text-gray-300 hover:text-white hover:bg-white/5'
@@ -127,27 +129,25 @@ export default function Navbar() {
                   variant="outline"
                   size="sm"
                   onClick={openHistoryModal}
-                  title={t('ประวัติการซื้อบัตร', 'My Tickets')}
-                  aria-label={t('ประวัติการซื้อบัตร', 'My Tickets')}
-                  className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs"
+                  className="px-3 py-1.5 text-xs"
                 >
                   <Ticket className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span className="hidden sm:inline whitespace-nowrap">{t('ประวัติการซื้อบัตร', 'My Tickets')}</span>
+                  <span className="whitespace-nowrap">{t('ประวัติการซื้อบัตร', 'My Tickets')}</span>
                 </Button>
               )}
 
               {authUser ? (
-                <div className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-1.5 sm:px-2.5 py-1 shrink-0">
+                <div className="flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 shrink-0">
                   {authUser.avatarUrl ? (
                     <img
                       src={authUser.avatarUrl}
                       alt={authUser.username}
-                      className="h-4 w-4 sm:h-5 sm:w-5 rounded-full object-cover ring-1 ring-emerald-400/50 shrink-0"
+                      className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/50 shrink-0"
                     />
                   ) : (
-                    <UserRound size={12} className="text-emerald-300 shrink-0" />
+                    <UserRound size={13} className="text-emerald-300 shrink-0" />
                   )}
-                  <span className="max-w-[48px] xs:max-w-[70px] sm:max-w-[110px] text-left text-[10px] sm:text-[11px] font-bold text-white truncate shrink-0">
+                  <span className="max-w-[110px] text-left text-[11px] font-bold text-white truncate shrink-0">
                     {authUser.username}
                   </span>
                   <button
@@ -155,20 +155,116 @@ export default function Navbar() {
                     onClick={logout}
                     aria-label={t('ออกจากระบบ', 'Logout')}
                     title={t('ออกจากระบบ', 'Logout')}
-                    className="ml-0.5 flex items-center gap-1 px-1 sm:px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
+                    className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
                   >
                     <LogOut size={11} className="text-rose-400 shrink-0" />
-                    <span className="text-[10px] font-bold tracking-tight text-rose-200 hidden sm:inline">
+                    <span className="text-[10px] font-bold tracking-tight text-rose-200">
                       {t('ออกจากระบบ', 'Logout')}
                     </span>
                   </button>
                 </div>
               ) : (
-                <Button variant="cyanOutline" size="sm" onClick={() => setAuthOpen(true)} className="px-2 sm:px-2.5 py-1 text-xs whitespace-nowrap shrink-0">
+                <Button variant="cyanOutline" size="sm" onClick={() => setAuthOpen(true)} className="px-3 py-1.5 text-xs whitespace-nowrap shrink-0">
                   {t('เข้าสู่ระบบ', 'Sign In')}
                 </Button>
               )}
             </div>
+          )}
+
+          {/* MOBILE TOP RIGHT (md:hidden): Only Logo & User Profile / Sign In */}
+          <div className="flex md:hidden items-center gap-2 shrink-0">
+            {authUser ? (
+              <div className="flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 shrink-0">
+                {authUser.avatarUrl ? (
+                  <img
+                    src={authUser.avatarUrl}
+                    alt={authUser.username}
+                    className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/50 shrink-0"
+                  />
+                ) : (
+                  <UserRound size={13} className="text-emerald-300 shrink-0" />
+                )}
+                <span className="max-w-[85px] xs:max-w-[110px] text-left text-[11px] font-bold text-white truncate shrink-0">
+                  {authUser.username}
+                </span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  aria-label={t('ออกจากระบบ', 'Logout')}
+                  title={t('ออกจากระบบ', 'Logout')}
+                  className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
+                >
+                  <LogOut size={11} className="text-rose-400 shrink-0" />
+                  <span className="text-[10px] font-bold tracking-tight text-rose-200">
+                    {t('ออก', 'Exit')}
+                  </span>
+                </button>
+              </div>
+            ) : (
+              <Button
+                variant="cyanOutline"
+                size="sm"
+                onClick={() => setAuthOpen(true)}
+                className="px-2.5 py-1 text-xs whitespace-nowrap shrink-0"
+              >
+                {t('เข้าสู่ระบบ', 'Sign In')}
+              </Button>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* MOBILE BOTTOM NAVIGATION BAR (md:hidden) */}
+      <nav
+        aria-label="Mobile Bottom Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#07070b]/95 backdrop-blur-xl border-t border-white/10 px-4 py-1.5 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]"
+      >
+        <div className="flex items-center justify-around max-w-md mx-auto">
+          {/* Home */}
+          <Link
+            to="/"
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+              isActive('/')
+                ? 'text-cyan-400 font-bold'
+                : 'text-gray-400 hover:text-white font-medium'
+            }`}
+          >
+            <Home size={19} className={isActive('/') ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
+            <span className="text-[10px] mt-0.5 tracking-tight">{t('หน้าแรก', 'Home')}</span>
+          </Link>
+
+          {/* Tickets / Purchase History */}
+          <button
+            type="button"
+            onClick={authUser ? openHistoryModal : () => setAuthOpen(true)}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+              showHistory
+                ? 'text-cyan-400 font-bold'
+                : 'text-gray-400 hover:text-white font-medium'
+            }`}
+          >
+            <Ticket size={19} className={showHistory ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
+            <span className="text-[10px] mt-0.5 tracking-tight">{t('ประวัติบัตร', 'My Tickets')}</span>
+          </button>
+
+          {/* Language Switch */}
+          <div className="flex flex-col items-center justify-center py-0.5">
+            <LanguageSwitch className="scale-95" />
+          </div>
+
+          {/* If Team Surface */}
+          {isTeamSurface && (
+            <Link
+              to="/team"
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+                isActive('/team')
+                  ? 'text-cyan-400 font-bold'
+                  : 'text-gray-400 hover:text-white font-medium'
+              }`}
+            >
+              <Users size={19} />
+              <span className="text-[10px] mt-0.5 tracking-tight">{t('ทีมงาน', 'Team')}</span>
+            </Link>
           )}
         </div>
       </nav>
