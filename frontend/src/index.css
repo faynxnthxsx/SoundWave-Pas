@@ -757,32 +757,42 @@ html.light body {
 [data-theme="light"] .zone-summary-box p,
 [data-theme="light"] .zone-summary-box span,
 [data-theme="light"] .buyer-info-box span {
-  color: #0f172a !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
 }
 
 [data-theme="light"] .zone-summary-box p.text-gray-500,
 [data-theme="light"] .zone-summary-box span.text-gray-400,
-[data-theme="light"] .zone-summary-box span.text-gray-500 {
-  color: #475569 !important;
-  font-weight: 600 !important;
+[data-theme="light"] .zone-summary-box span.text-gray-500,
+[data-theme="light"] .zone-summary-box span.text-gray-300 {
+  color: #000000 !important;
+  font-weight: 800 !important;
 }
 
 [data-theme="light"] .zone-summary-box span.font-mono,
 [data-theme="light"] .zone-summary-box span.text-cyan-100,
 [data-theme="light"] .zone-summary-box span.text-cyan-200,
 [data-theme="light"] .zone-summary-box span.text-cyan-300 {
-  color: #0284c7 !important;
+  color: #000000 !important;
   font-weight: 900 !important;
 }
 
 [data-theme="light"] .zone-summary-box button {
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #000000 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .zone-summary-box button:hover {
+  background-color: #e2e8f0 !important;
+  border-color: #475569 !important;
 }
 
 [data-theme="light"] .zone-summary-box button svg {
-  color: #0f172a !important;
+  color: #000000 !important;
+  stroke: #000000 !important;
+  stroke-width: 2.5 !important;
 }
 
 /* LINE Connect Card */
@@ -869,12 +879,20 @@ html.light body {
 
 [data-theme="light"] .standing-pit-card .standing-qty-btn {
   background-color: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
+  border: 1.5px solid #94a3b8 !important;
   color: #000000 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .standing-pit-card .standing-qty-btn:hover {
+  background-color: #e2e8f0 !important;
+  border-color: #475569 !important;
 }
 
 [data-theme="light"] .standing-pit-card .standing-qty-btn svg {
   color: #000000 !important;
+  stroke: #000000 !important;
+  stroke-width: 2.5 !important;
 }
 
 [data-theme="light"] .standing-pit-card .standing-queue-badge {
@@ -889,28 +907,31 @@ html.light body {
   font-weight: 900 !important;
 }
 
-/* Primary checkout button - Preserves original signature cyan-to-teal gradient */
+/* Primary checkout button - Striking Cyan/Sky Blue in Light Mode so it's always clearly visible */
 [data-theme="light"] button.bg-gradient-to-r.from-cyan-300:not(:disabled) {
-  background-image: linear-gradient(to right, #67e8f9, #5eead4) !important;
+  background-image: linear-gradient(to right, #00f0ff, #38bdf8) !important;
   color: #000000 !important;
-  box-shadow: 0 10px 25px -3px rgba(34, 211, 238, 0.35) !important;
+  font-weight: 900 !important;
+  box-shadow: 0 10px 25px -3px rgba(6, 182, 212, 0.45) !important;
+  border: 1px solid #06b6d4 !important;
 }
 
 [data-theme="light"] button.bg-gradient-to-r.from-cyan-300:not(:disabled) * {
   color: #000000 !important;
+  font-weight: 900 !important;
 }
 
 [data-theme="light"] button.bg-gradient-to-r.from-cyan-300:disabled {
-  background: #e2e8f0 !important;
-  border: 1px solid #cbd5e1 !important;
-  color: #475569 !important;
-  opacity: 1 !important;
-  box-shadow: none !important;
+  background-image: linear-gradient(to right, #7dd3fc, #38bdf8) !important;
+  border: 1.5px solid #0284c7 !important;
+  color: #000000 !important;
+  opacity: 0.9 !important;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25) !important;
 }
 
 [data-theme="light"] button.bg-gradient-to-r.from-cyan-300:disabled * {
-  color: #475569 !important;
-  font-weight: 800 !important;
+  color: #000000 !important;
+  font-weight: 900 !important;
 }
 
 /* Purchase History Modal in Light Mode */

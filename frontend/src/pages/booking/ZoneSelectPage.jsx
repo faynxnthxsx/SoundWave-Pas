@@ -952,14 +952,15 @@ export default function ZoneSelectPage() {
 
                       {/* Quantity Stepper inside Standing Pit */}
                       <div className="mt-4 flex items-center justify-center gap-3 sm:gap-4">
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(selectedSeats.length - 1)}
-                          disabled={selectedSeats.length <= 0}
-                          className="standing-qty-btn flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl border border-white/15 bg-black/50 text-white hover:bg-white/10 disabled:opacity-30 cursor-pointer"
-                        >
-                          <Minus size={16} />
-                        </button>
+                        {selectedSeats.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(selectedSeats.length - 1)}
+                            className="standing-qty-btn flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl border border-white/15 bg-black/50 text-white hover:bg-white/10 cursor-pointer"
+                          >
+                            <Minus size={16} />
+                          </button>
+                        )}
                         <div className="standing-qty-display min-w-32 sm:min-w-36 rounded-2xl border border-white/15 bg-black/60 px-4 py-2 sm:px-5 sm:py-2.5">
                           <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">
                             {t('จำนวนบัตรยืนที่เลือก', 'Standing Tickets')}
@@ -1239,15 +1240,16 @@ export default function ZoneSelectPage() {
                     </span>
                   </span>
                   <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      aria-label="ลดจำนวนบัตร"
-                      onClick={() => handleQuantityChange(selectedSeats.length - 1)}
-                      disabled={selectedSeats.length <= 0}
-                      className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 disabled:opacity-30 cursor-pointer"
-                    >
-                      <Minus size={15} />
-                    </button>
+                    {selectedSeats.length > 0 && (
+                      <button
+                        type="button"
+                        aria-label="ลดจำนวนบัตร"
+                        onClick={() => handleQuantityChange(selectedSeats.length - 1)}
+                        className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 cursor-pointer"
+                      >
+                        <Minus size={15} />
+                      </button>
+                    )}
                     <span aria-live="polite" className="min-w-6 text-center text-base font-black text-cyan-300">
                       {selectedSeats.length}
                     </span>
