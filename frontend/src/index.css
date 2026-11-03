@@ -1759,3 +1759,122 @@ html.light .admin-seatmap-modal .bg-white\/5 {
   background-color: #f1f5f9 !important;
   border-color: #cbd5e1 !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT MODE: STANDING PIT MANAGER & QUEUE SLOTS IN ADMIN SEAT MAP
+   ══════════════════════════════════════════════════════════════════════ */
+[data-theme="light"] .standing-pit-manager,
+html.light .standing-pit-manager {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-badge,
+html.light .standing-pit-manager .standing-badge {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-badge span,
+html.light .standing-pit-manager .standing-badge span {
+  color: #000000 !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="light"] .standing-pit-manager p,
+html.light .standing-pit-manager p {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-slots-grid,
+html.light .standing-pit-manager .standing-slots-grid {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Slot Buttons */
+[data-theme="light"] .standing-pit-manager .standing-slot-btn,
+html.light .standing-pit-manager .standing-slot-btn {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-slot-code,
+html.light .standing-pit-manager .standing-slot-code {
+  color: #000000 !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-slot-name,
+html.light .standing-pit-manager .standing-slot-name {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+/* Available Slot: Clean white pill with soft green border and crisp black/green text */
+[data-theme="light"] .standing-pit-manager .standing-slot-available,
+html.light .standing-pit-manager .standing-slot-available {
+  background-color: #ffffff !important;
+  border: 1.5px solid #86efac !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-slot-available:hover,
+html.light .standing-pit-manager .standing-slot-available:hover {
+  background-color: #f0fdf4 !important;
+  border-color: #22c55e !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-slot-available .standing-slot-name,
+html.light .standing-pit-manager .standing-slot-available .standing-slot-name {
+  color: #16a34a !important;
+}
+
+/* Sold Slot (Occupied with Attendee Name, e.g. อารียา, fay nonthisa): Soft pink pill with crisp black text */
+[data-theme="light"] .standing-pit-manager .standing-slot-sold,
+html.light .standing-pit-manager .standing-slot-sold {
+  background-color: #fdf2f8 !important;
+  border: 1.5px solid #f472b6 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-slot-sold:hover,
+html.light .standing-pit-manager .standing-slot-sold:hover {
+  background-color: #fce7f3 !important;
+  border-color: #ec4899 !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-slot-sold .standing-slot-name,
+html.light .standing-pit-manager .standing-slot-sold .standing-slot-name {
+  color: #be185d !important;
+  font-weight: 800 !important;
+}
+
+/* Reserved Slot (Admin Lock): Soft orange pill */
+[data-theme="light"] .standing-pit-manager .standing-slot-reserved,
+html.light .standing-pit-manager .standing-slot-reserved {
+  background-color: #fff7ed !important;
+  border: 1.5px solid #fb923c !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-slot-reserved .standing-slot-name,
+html.light .standing-pit-manager .standing-slot-reserved .standing-slot-name {
+  color: #c2410c !important;
+  font-weight: 800 !important;
+}
+
+/* Pending Slot: Soft yellow pill */
+[data-theme="light"] .standing-pit-manager .standing-slot-pending,
+html.light .standing-pit-manager .standing-slot-pending {
+  background-color: #fefce8 !important;
+  border: 1.5px solid #facc15 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .standing-pit-manager .standing-slot-pending .standing-slot-name,
+html.light .standing-pit-manager .standing-slot-pending .standing-slot-name {
+  color: #a16207 !important;
+  font-weight: 800 !important;
+}

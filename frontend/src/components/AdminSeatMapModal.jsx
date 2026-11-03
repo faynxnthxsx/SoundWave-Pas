@@ -760,14 +760,14 @@ export default function AdminSeatMapModal({
                 /* ── MODE A: STANDING PIT & QUEUE NO. GRID (Matches Customer Standing Pit) ── */
                 <div className="space-y-5">
                   <div
-                    className="relative mx-auto max-w-3xl rounded-3xl border-2 p-5 sm:p-6 text-center transition-all overflow-hidden"
+                    className="standing-pit-manager relative mx-auto max-w-3xl rounded-3xl border-2 p-5 sm:p-6 text-center transition-all overflow-hidden"
                     style={{
                       borderColor: `${zoneColor}88`,
                       background: `radial-gradient(circle at 50% 0%, ${zoneColor}28, rgba(15,15,24,0.95) 75%)`,
                     }}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10">
-                      <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/50 px-3.5 py-1 text-xs font-black text-white">
+                      <div className="standing-badge inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/50 px-3.5 py-1 text-xs font-black text-white">
                         <Users size={14} style={{ color: zoneColor }} />
                         <span>{trData(zone?.name)} — STANDING PIT QUEUE (STD-xxx)</span>
                       </div>
@@ -790,7 +790,7 @@ export default function AdminSeatMapModal({
                       )}
                     </p>
 
-                    <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-72 overflow-y-auto p-2 rounded-2xl bg-black/40 border border-white/10">
+                    <div className="standing-slots-grid grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-72 overflow-y-auto p-2 rounded-2xl bg-black/40 border border-white/10">
                       {standingSlots.map((qCode) => {
                         const seatInfo = seatMap.get(qCode);
                         const status = seatInfo?.status || 'AVAILABLE';
@@ -803,20 +803,20 @@ export default function AdminSeatMapModal({
                             type="button"
                             disabled={actionLoading}
                             onClick={() => handleSeatClick(qCode)}
-                            className={`rounded-xl py-2 px-1.5 font-mono text-[10px] font-bold transition-all cursor-pointer ${
+                            className={`standing-slot-btn rounded-xl py-2 px-1.5 font-mono text-[10px] font-bold transition-all cursor-pointer ${
                               isDimmed ? 'opacity-20' : 'hover:scale-105'
                             } ${isSelected ? 'ring-2 ring-white' : ''} ${
                               status === 'AVAILABLE'
-                                ? 'bg-[#171b29] border border-emerald-500/35 text-emerald-200 hover:bg-emerald-500/20'
+                                ? 'standing-slot-available bg-[#171b29] border border-emerald-500/35 text-emerald-200 hover:bg-emerald-500/20'
                                 : status === 'RESERVED'
-                                ? 'bg-orange-500/25 border border-orange-400/60 text-orange-200'
+                                ? 'standing-slot-reserved bg-orange-500/25 border border-orange-400/60 text-orange-200'
                                 : status === 'PENDING'
-                                ? 'bg-amber-400/25 border border-amber-400/60 text-amber-200'
-                                : 'bg-purple-500/25 border border-purple-400/60 text-purple-200'
+                                ? 'standing-slot-pending bg-amber-400/25 border border-amber-400/60 text-amber-200'
+                                : 'standing-slot-sold bg-purple-500/25 border border-purple-400/60 text-purple-200'
                             }`}
                           >
-                            <div>{qCode}</div>
-                            <div className="text-[8px] opacity-80 truncate">
+                            <div className="standing-slot-code">{qCode}</div>
+                            <div className="standing-slot-name text-[8px] opacity-80 truncate">
                               {status === 'AVAILABLE'
                                 ? t('ว่าง', 'Free')
                                 : seatInfo?.attendeeName || status}
