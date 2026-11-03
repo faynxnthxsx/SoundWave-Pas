@@ -45,6 +45,7 @@ import EditConcertModal from '../../components/EditConcertModal';
 import BookingTicketsModal from '../../components/BookingTicketsModal';
 import { useToast } from '../../components/Toast';
 import { useLanguage } from '../../context/LanguageContext';
+import { getAdminCache, setAdminCache, clearAdminCache } from '../../utils/adminCache';
 
 // ── Preset ticket categories ──────────────────────────────────────────────────
 const PRESET_CATEGORIES = [
@@ -142,11 +143,24 @@ export default function AdminPage() {
   // 'events'   = 🎸 คอนเสิร์ต & ผังที่นั่ง
   // 'orders'   = 🧾 รายการจอง & ตั๋วลูกค้า
   // 'create'   = + เพิ่มคอนเสิร์ตใหม่
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const savedTab = sessionStorage.getItem('soundwave_admin_tab');
+      if (['overview', 'events', 'orders', 'create'].includes(savedTab)) return savedTab;
+    } catch {}
+    return 'overview';
+  });
 
-  const [stats, setStats] = useState(null);
-  const [concerts, setConcerts] = useState([]);
-  const [bookings, setBookings] = useState([]);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('soundwave_admin_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
+
+  const initialCache = getAdminCache();
+  const [stats, setStats] = useState(() => initialCache?.stats || null);
+  const [concerts, setConcerts] = useState(() => initialCache?.concerts || []);
+  const [bookings, setBookings] = useState(() => initialCache?.bookings || []);
   const [bookingFilter, setBookingFilter] = useState('all');
 
   // Universal Quick Search Query
@@ -159,7 +173,7 @@ export default function AdminPage() {
   const [cropFile, setCropFile] = useState(null);
   const [cropTarget, setCropTarget] = useState(null);
   const [artistEditor, setArtistEditor] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !initialCache?.stats);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -172,7 +186,7 @@ export default function AdminPage() {
 
   // Discovery Radar Modal state
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
-  const [discoveryPendingCount, setDiscoveryPendingCount] = useState(0);
+  const [discoveryPendingCount, setDiscoveryPendingCount] = useState(() => initialCache?.discoveryPendingCount || 0);
 
   // Edit Concert Modal state
   const [editConcertModal, setEditConcertModal] = useState(null);
@@ -187,8 +201,8 @@ export default function AdminPage() {
   const askConfirm = (title, message, onConfirm) => setConfirmDialog({ title, message, onConfirm });
 
   // ── Load Dashboard Data ───────────────────────────────────────────────────
-  const loadDashboard = useCallback(async () => {
-    setLoading(true);
+  const loadDashboard = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const [summary, eventList, bookingList, discoveryData] = await Promise.all([
         api('/stats'),
@@ -199,24 +213,39 @@ export default function AdminPage() {
       setStats(summary);
       setConcerts(eventList);
       setBookings(bookingList);
-      if (discoveryData?.pendingCount !== undefined) {
-        setDiscoveryPendingCount(discoveryData.pendingCount);
-      }
+      const pendingCount = discoveryData?.pendingCount !== undefined ? discoveryData.pendingCount : 0;
+      setDiscoveryPendingCount(pendingCount);
+
+      // Stale-While-Revalidate: sync to memory cache
+      setAdminCache({
+        stats: summary,
+        concerts: eventList,
+        bookings: bookingList,
+        discoveryPendingCount: pendingCount,
+      });
     } catch (err) {
       if (err.status === 401) {
+        clearAdminCache();
         localStorage.removeItem('soundwave_organizer');
         setOrganizer(null);
         setLoginError('เซสชันหมดอายุ กรุณาเข้าสู่ระบบเจ้าของงานอีกครั้ง');
       }
-      toast.error(err.message || 'โหลดข้อมูลล้มเหลว');
+      if (!isSilent) {
+        toast.error(err.message || 'โหลดข้อมูลล้มเหลว');
+      }
     } finally {
       setLoading(false);
     }
   }, [toast]);
 
   useEffect(() => {
-    if (organizer?.sessionToken) loadDashboard();
-    else setLoading(false);
+    if (organizer?.sessionToken) {
+      // If we already have cached data, revalidate silently in background (0ms loading screen)
+      const hasCache = !!getAdminCache()?.stats;
+      loadDashboard(hasCache);
+    } else {
+      setLoading(false);
+    }
   }, [loadDashboard, organizer]);
 
   // ── Seat Management Open / Refresh ────────────────────────────────────────
@@ -238,6 +267,7 @@ export default function AdminPage() {
       const [summary, eventList] = await Promise.all([api('/stats'), api('/concerts')]);
       setStats(summary);
       setConcerts(eventList);
+      setAdminCache({ stats: summary, concerts: eventList });
     } catch (err) {
       console.warn('Failed to refresh zone seats:', err);
     }
@@ -259,9 +289,11 @@ export default function AdminPage() {
         COMPLETED: 'จบงานแล้ว (COMPLETED)',
       };
       toast.success(`เปลี่ยนสถานะคอนเสิร์ตเป็น "${statusLabels[newStatus] || newStatus}" เรียบร้อยแล้ว`);
-      setConcerts((prev) =>
-        prev.map((c) => (c.id === concertId ? { ...c, status: newStatus } : c))
-      );
+      setConcerts((prev) => {
+        const next = prev.map((c) => (c.id === concertId ? { ...c, status: newStatus } : c));
+        setAdminCache({ concerts: next });
+        return next;
+      });
     } catch (err) {
       toast.error(err.message || 'เปลี่ยนสถานะคอนเสิร์ตไม่สำเร็จ');
     }
@@ -276,13 +308,15 @@ export default function AdminPage() {
         body: JSON.stringify({ isActive: !currentActive }),
       });
       toast.success(res.message || 'เปลี่ยนสถานะโซนสำเร็จ');
-      setConcerts((prev) =>
-        prev.map((c) => ({
+      setConcerts((prev) => {
+        const next = prev.map((c) => ({
           ...c,
           zones: (c.zones || []).map((z) => (z.id === zoneId ? { ...z, isActive: !currentActive } : z)),
           zoneStats: (c.zoneStats || []).map((z) => (z.id === zoneId ? { ...z, isActive: !currentActive } : z)),
-        }))
-      );
+        }));
+        setAdminCache({ concerts: next });
+        return next;
+      });
     } catch (err) {
       toast.error(err.message || 'เปลี่ยนสถานะโซนไม่สำเร็จ');
     }
@@ -671,6 +705,8 @@ export default function AdminPage() {
         });
       }
     } catch {}
+    clearAdminCache();
+    sessionStorage.removeItem('soundwave_admin_tab');
     localStorage.removeItem('soundwave_organizer');
     setOrganizer(null);
     setStats(null);

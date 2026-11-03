@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CalendarDays, CircleDollarSign, Ticket, Users } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CircleDollarSign, LoaderCircle, Ticket, Users } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
+import { getAdminCache, setAdminCache } from '../../utils/adminCache';
 
 const money = (value) =>
   new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(value || 0);
@@ -9,8 +10,14 @@ const money = (value) =>
 export default function AdminInsightPage() {
   const { lang, t, trData } = useLanguage();
   const { type } = useParams();
-  const [data, setData] = useState({ stats: null, concerts: [], bookings: [] });
+  const cached = getAdminCache();
+  const [data, setData] = useState(() => ({
+    stats: cached?.stats || null,
+    concerts: cached?.concerts || [],
+    bookings: cached?.bookings || [],
+  }));
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(() => !cached?.stats);
 
   const dateLabel = (value) =>
     value
@@ -25,6 +32,7 @@ export default function AdminInsightPage() {
     const session = JSON.parse(localStorage.getItem('soundwave_organizer') || 'null');
     if (!session?.sessionToken) {
       setError('กรุณาเข้าสู่ระบบเจ้าของงานก่อน');
+      setLoading(false);
       return;
     }
     const headers = { Authorization: `Bearer ${session.sessionToken}` };
@@ -37,8 +45,12 @@ export default function AdminInsightPage() {
         })
       )
     )
-      .then(([stats, concerts, bookings]) => setData({ stats, concerts, bookings }))
-      .catch((err) => setError(err.message));
+      .then(([stats, concerts, bookings]) => {
+        setData({ stats, concerts, bookings });
+        setAdminCache({ stats, concerts, bookings });
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const paid = useMemo(
@@ -89,6 +101,12 @@ export default function AdminInsightPage() {
             </p>
           </div>
         </header>
+        {loading && !data.stats && !error && (
+          <div className="mt-16 flex flex-col items-center justify-center gap-3 py-16 text-cyan-400">
+            <LoaderCircle className="animate-spin" size={32} />
+            <p className="text-xs font-mono tracking-wider text-gray-400">LOADING INSIGHT REPORT...</p>
+          </div>
+        )}
         {error && (
           <p className="mt-6 rounded-2xl border border-rose-400/25 bg-rose-400/10 p-4 text-sm text-rose-200">
             {trData(error)}

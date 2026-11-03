@@ -6,7 +6,7 @@ const VARIANT_STYLES = {
   secondary:
     'bg-white text-black font-bold hover:bg-gray-200 disabled:bg-gray-700 disabled:text-gray-400',
   cyanOutline:
-    'border border-cyan-300/30 bg-cyan-300/10 font-semibold text-cyan-100 hover:bg-cyan-300/20',
+    'btn-cyan-outline border border-cyan-400/40 bg-cyan-400/15 font-bold text-cyan-200 hover:bg-cyan-400/25',
   outline:
     'border border-white/10 bg-white/[0.03] font-semibold text-gray-300 hover:text-white hover:bg-white/10',
   ghost:
@@ -40,7 +40,7 @@ export default function Button({
     <button
       type={type}
       disabled={disabled}
-      className={`${displayClass} items-center justify-center gap-1.5 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${variantClass} ${sizeClass} ${className}`.trim()}
+      className={`btn-soundwave ${displayClass} items-center justify-center gap-1.5 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${variantClass} ${sizeClass} ${className}`.trim()}
       {...props}
     >
       {children}

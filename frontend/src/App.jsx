@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { ToastProvider } from './components/Toast';
 import { LanguageProvider } from './context/LanguageContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Eager load critical home and booking page
 import HomePage from './pages/booking/HomePage';
@@ -89,47 +90,49 @@ export default function App() {
   return (
     <BrowserRouter>
       <LanguageProvider>
-        <ToastProvider>
-          <div className="min-h-screen flex flex-col bg-[#07070b] text-gray-100 selection:bg-[#00f0ff] selection:text-black overflow-x-hidden w-full max-w-full">
-            {/* Google Login Overlay (Dark themed, prevents white screen) */}
-            {googleProcessing && (
-              <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#07070b]/95 backdrop-blur-md">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent mb-4" />
-                <p className="text-sm font-semibold text-white">กำลังเข้าสู่ระบบด้วย Google…</p>
-                <p className="text-xs text-gray-400 mt-1">กรุณารอสักครู่ ระบบกำลังนำท่านเข้าใช้งาน</p>
-              </div>
-            )}
+        <ThemeProvider>
+          <ToastProvider>
+            <div className="theme-app-container min-h-screen flex flex-col bg-[#07070b] text-gray-100 selection:bg-[#00f0ff] selection:text-black overflow-x-hidden w-full max-w-full">
+              {/* Google Login Overlay (Dark themed, prevents white screen) */}
+              {googleProcessing && (
+                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#07070b]/95 backdrop-blur-md">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent mb-4" />
+                  <p className="text-sm font-semibold text-white">กำลังเข้าสู่ระบบด้วย Google…</p>
+                  <p className="text-xs text-gray-400 mt-1">กรุณารอสักครู่ ระบบกำลังนำท่านเข้าใช้งาน</p>
+                </div>
+              )}
 
-            {/* Navigation Bar */}
-            <Navbar />
+              {/* Navigation Bar */}
+              <Navbar />
 
-            {/* Dynamic Pages with Code Splitting */}
-            <main className="flex-1 w-full max-w-full overflow-x-hidden pb-16 md:pb-0">
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  {/* Booking Flow */}
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/concerts/:id" element={<ConcertDetailPage />} />
-                  <Route path="/booking/zone-select" element={<ZoneSelectPage />} />
-                  <Route path="/booking/payment/:bookingCode" element={<PaymentPage />} />
+              {/* Dynamic Pages with Code Splitting */}
+              <main className="flex-1 w-full max-w-full overflow-x-hidden pb-16 md:pb-0">
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    {/* Booking Flow */}
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/concerts/:id" element={<ConcertDetailPage />} />
+                    <Route path="/booking/zone-select" element={<ZoneSelectPage />} />
+                    <Route path="/booking/payment/:bookingCode" element={<PaymentPage />} />
 
-                  {/* Ticket & Printing */}
-                  <Route path="/tickets/:ticketCode" element={<MyTicketPage />} />
-                  <Route path="/tickets/:ticketCode/print" element={<SouvenirPrintPage />} />
+                    {/* Ticket & Printing */}
+                    <Route path="/tickets/:ticketCode" element={<MyTicketPage />} />
+                    <Route path="/tickets/:ticketCode/print" element={<SouvenirPrintPage />} />
 
-                  {/* Gate Scanner & Admin */}
-                  <Route path="/scanner" element={<GateScannerPage />} />
-                  <Route path="/admin" element={<AdminPage />} />
-                  <Route path="/admin/insights/:type" element={<AdminInsightPage />} />
-                  <Route path="/team" element={<TeamPortalPage />} />
-                </Routes>
-              </Suspense>
-            </main>
+                    {/* Gate Scanner & Admin */}
+                    <Route path="/scanner" element={<GateScannerPage />} />
+                    <Route path="/admin" element={<AdminPage />} />
+                    <Route path="/admin/insights/:type" element={<AdminInsightPage />} />
+                    <Route path="/team" element={<TeamPortalPage />} />
+                  </Routes>
+                </Suspense>
+              </main>
 
-            {/* Global Footer */}
-            <Footer />
-          </div>
-        </ToastProvider>
+              {/* Global Footer */}
+              <Footer />
+            </div>
+          </ToastProvider>
+        </ThemeProvider>
       </LanguageProvider>
     </BrowserRouter>
   );

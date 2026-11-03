@@ -645,7 +645,7 @@ export default function StadiumZoneMap({
   const activeZone = zones.find((z) => z.id === (hoveredZoneId || selectedZoneId));
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-cyan-400/25 bg-[#0b0f17] shadow-2xl">
+    <section className="stadium-map-container overflow-hidden rounded-[28px] border border-cyan-400/25 bg-[#0b0f17] shadow-2xl">
       {/* Venue Map Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-4 sm:px-5 sm:py-4">
         <div>
@@ -670,7 +670,7 @@ export default function StadiumZoneMap({
             )}
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-3.5 py-2 text-xs font-bold text-cyan-100 shrink-0">
+        <div className="venue-profile-badge hidden sm:flex items-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-3.5 py-2 text-xs font-bold text-cyan-100 shrink-0">
           <MapPinned size={15} className="text-cyan-300" />
           <span>{t(profile.titleTh.split('(')[0], profile.titleEn)}</span>
         </div>

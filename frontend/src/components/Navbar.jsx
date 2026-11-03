@@ -4,6 +4,7 @@ import { Ticket, Music, LogOut, UserRound, Home, Users, Store, QrCode, ShieldChe
 import AuthModal from './AuthModal';
 import PurchaseHistoryModal from './PurchaseHistoryModal';
 import LanguageSwitch from './ui/LanguageSwitch';
+import ThemeToggle from './ui/ThemeToggle';
 import Button from './ui/Button';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -98,6 +99,7 @@ export default function Navbar() {
           {/* DESKTOP NAVBAR (md:flex) */}
           {isTeamSurface ? (
             <div className="hidden md:flex items-center gap-2 shrink-0">
+              <ThemeToggle />
               <LanguageSwitch />
               <Link
                 to="/team"
@@ -111,6 +113,7 @@ export default function Navbar() {
             </div>
           ) : (
             <div className="hidden md:flex items-center gap-2 shrink-0">
+              <ThemeToggle />
               <LanguageSwitch />
               
               <Link
@@ -171,8 +174,9 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* MOBILE TOP RIGHT (md:hidden): Language Switcher on Top */}
-          <div className="flex md:hidden items-center shrink-0">
+          {/* MOBILE TOP RIGHT (md:hidden): Theme & Language Switcher */}
+          <div className="flex md:hidden items-center gap-1.5 shrink-0">
+            <ThemeToggle />
             <LanguageSwitch />
           </div>
         </div>

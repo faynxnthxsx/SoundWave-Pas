@@ -557,16 +557,16 @@ export default function ZoneSelectPage() {
             ? t(`เลือกแล้ว: ${seatCode} (฿${selectedZone.price.toLocaleString()})`, `Selected: ${seatCode} (฿${selectedZone.price.toLocaleString()})`)
             : t(`แถว ${rowLetter} ที่นั่ง ${String(colNum).padStart(2, '0')} · ฿${selectedZone.price.toLocaleString()}`, `Row ${rowLetter} Seat ${String(colNum).padStart(2, '0')} · ฿${selectedZone.price.toLocaleString()}`)
         }
-        className={`group relative flex flex-col items-center justify-center ${
+        className={`stadium-seat-btn group relative flex flex-col items-center justify-center ${
           seatZoom
             ? 'w-7 h-7 sm:w-8 sm:h-8 rounded-t-lg sm:rounded-t-xl rounded-b-sm sm:rounded-b-md text-[9px] sm:text-[10px]'
             : 'w-4 h-4 sm:w-8 sm:h-8 rounded-t-sm sm:rounded-t-xl rounded-b-xs sm:rounded-b-md text-[6.5px] sm:text-[10px]'
         } font-mono font-bold transition-all duration-150 select-none touch-manipulation cursor-pointer ${
           isOccupied
-            ? 'bg-[#0f1018] border border-white/[0.06] text-slate-600 cursor-not-allowed opacity-50'
+            ? 'is-occupied bg-[#0f1018] border border-white/[0.06] text-slate-600 cursor-not-allowed opacity-50'
             : isSelected
-            ? 'bg-gradient-to-b from-cyan-300 to-teal-400 text-slate-950 border border-white shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-110 z-10 font-black ring-1 ring-white'
-            : 'bg-[#171b29] border border-slate-700/70 text-slate-300 hover:bg-cyan-500/15 hover:border-cyan-400/60 hover:text-white active:scale-90'
+            ? 'is-selected bg-gradient-to-b from-cyan-300 to-teal-400 text-slate-950 border border-white shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-110 z-10 font-black ring-1 ring-white'
+            : 'is-available bg-[#171b29] border border-slate-700/70 text-slate-300 hover:bg-cyan-500/15 hover:border-cyan-400/60 hover:text-white active:scale-90'
         }`}
       >
         {/* Realistic Stadium Seat Backrest Curve (shown when zoomed or on desktop) */}
@@ -594,7 +594,7 @@ export default function ZoneSelectPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07070b] px-4 py-6 sm:py-7 pb-24 xl:pb-7 text-white sm:px-6 lg:px-8">
+    <div className="zone-select-page min-h-screen bg-[#07070b] px-4 py-6 sm:py-7 pb-24 xl:pb-7 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         {/* Navigation Breadcrumb */}
         <Link
@@ -770,30 +770,30 @@ export default function ZoneSelectPage() {
                       type="button"
                       disabled={disabled}
                       onClick={() => selectZone(z)}
-                      className={`flex items-center justify-between rounded-2xl border p-3.5 text-left transition-all cursor-pointer ${
+                      className={`zone-selection-card flex items-center justify-between rounded-2xl border p-3.5 text-left transition-all cursor-pointer ${
                         disabled
                           ? 'border-white/5 bg-white/[0.01] opacity-40 cursor-not-allowed'
                           : active
-                          ? 'border-cyan-400 bg-cyan-400/15 ring-2 ring-cyan-400/40 shadow-lg'
+                          ? 'border-cyan-400 bg-cyan-400/15 ring-2 ring-cyan-400/40 shadow-lg is-active'
                           : 'border-white/10 bg-white/[0.03] hover:border-cyan-400/40 hover:bg-white/[0.06]'
                       }`}
                     >
                       <div>
-                        <p className="text-xs font-black text-white flex items-center gap-1.5">
+                        <p className="zone-name text-xs font-black text-white flex items-center gap-1.5">
                           <span
                             className="h-2.5 w-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: z.colorCode || '#00f0ff' }}
                           />
                           <span>{trData(z.name)}</span>
                         </p>
-                        <p className="mt-0.5 text-[10px] text-gray-400">
+                        <p className="zone-info mt-0.5 text-[10px] text-gray-400">
                           {zStanding ? t('บัตรยืน (Standing)', 'Standing Pit') : t('บัตรนั่งระบุที่ (Seated)', 'Reserved Seating')} ·{' '}
                           {z.available > 0 ? t(`ว่าง ${z.available} ที่`, `${z.available} left`) : 'SOLD OUT'}
                         </p>
                       </div>
                       <div className="text-right">
-                        <span className="text-sm font-black text-cyan-300 font-mono">฿{z.price.toLocaleString()}</span>
-                        <span className="block text-[10px] text-cyan-200 font-bold">
+                        <span className="zone-price text-sm font-black text-cyan-300 font-mono">฿{z.price.toLocaleString()}</span>
+                        <span className="zone-action block text-[10px] text-cyan-200 font-bold">
                           {active ? t('✓ เลือกอยู่', '✓ Active') : t('แตะเลือกโซนนี้ →', 'Select →')}
                         </span>
                       </div>
@@ -805,7 +805,7 @@ export default function ZoneSelectPage() {
 
             {/* Prompt when no zone is selected yet */}
             {!selectedZone && (
-              <div className="rounded-3xl border-2 border-dashed border-cyan-400/35 bg-cyan-400/5 p-8 text-center">
+              <div className="zone-empty-prompt rounded-3xl border-2 border-dashed border-cyan-400/35 bg-cyan-400/5 p-8 text-center">
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/15 text-cyan-300">
                   <Armchair size={24} />
                 </div>
@@ -1203,7 +1203,7 @@ export default function ZoneSelectPage() {
             </div>
 
             {/* Zone & Seats Summary Box */}
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+            <div className="zone-summary-box rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Selected zone</p>
@@ -1283,7 +1283,7 @@ export default function ZoneSelectPage() {
 
             {/* Buyer Info Form */}
             <form onSubmit={handleBookingSubmit} className="space-y-3.5">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+              <div className="buyer-info-box rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white">{t('ข้อมูลผู้ซื้อบัตร', 'Buyer Information')}</span>
                   {customerName && (

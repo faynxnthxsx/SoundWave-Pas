@@ -199,15 +199,14 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════════
           HERO — Modern, Premium Dark Aesthetic
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[80vh] sm:min-h-[85vh] flex flex-col items-center justify-center overflow-hidden px-4 w-full max-w-full">
+      <section className="hero-banner-section relative min-h-[80vh] sm:min-h-[85vh] flex flex-col items-center justify-center overflow-hidden px-4 w-full max-w-full">
         <div
-          className="absolute inset-0 bg-cover bg-center"
+          className="hero-bg-image absolute inset-0 bg-cover bg-center transition-all duration-500"
           style={{
             backgroundImage: `url(${selectedConcert?.bannerUrl || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1600&q=80'})`,
-            filter: 'brightness(0.22) contrast(1.1)',
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#07070b] via-[#07070b]/60 to-transparent" />
+        <div className="hero-bg-overlay absolute inset-0 bg-gradient-to-t from-[#07070b] via-[#07070b]/60 to-transparent transition-all duration-500" />
 
         <div className="relative z-10 w-full max-w-3xl mx-auto flex flex-col items-center text-center pt-8 sm:pt-12 pb-6 px-4 sm:px-6">
           {/* Top Venue & Date Pill */}
@@ -407,7 +406,7 @@ export default function HomePage() {
         {currentArtists.length > 0 && featured ? (
           <>
             {/* Highlight Banner Card of Active Artist */}
-            <div className="relative rounded-3xl overflow-hidden border border-white/15 bg-[#12121a] shadow-2xl mb-8 transition-all">
+            <div className="featured-artist-card relative rounded-3xl overflow-hidden border border-white/15 bg-[#12121a] shadow-2xl mb-8 transition-all">
               <div className="grid grid-cols-1 lg:grid-cols-12">
                 {/* Artist Photo Column */}
                 <div className="lg:col-span-7 relative h-72 sm:h-96 lg:h-[420px] overflow-hidden bg-black/40">
@@ -416,11 +415,11 @@ export default function HomePage() {
                     alt={featured.name}
                     className="w-full h-full object-cover object-center transition-all duration-700 hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#12121a] via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-[#12121a]" />
+                  <div className="artist-photo-gradient absolute inset-0 bg-gradient-to-t from-[#12121a] via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-[#12121a]" />
 
                   {/* Floating Stage Badge */}
                   <div className="absolute top-4 left-4">
-                    <span className="px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-black/70 backdrop-blur border border-white/20 text-white">
+                    <span className="featured-stage-badge px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-black/70 backdrop-blur border border-white/20 text-white">
                       🎪 {trData(featured.stage)}
                     </span>
                   </div>
@@ -464,7 +463,7 @@ export default function HomePage() {
 
                     <Link
                       to={selectedConcert ? `/booking/zone-select?concertId=${selectedConcert.id}` : '/booking/zone-select'}
-                      className="w-full py-3 px-4 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors mt-2 min-w-0 text-center"
+                      className="featured-artist-book-btn w-full py-3 px-4 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors mt-2 min-w-0 text-center cursor-pointer"
                     >
                       <span className="truncate">{t(`จองบัตรดู ${featured.name}`, `Book Tickets for ${featured.name}`)}</span>
                       <ArrowRight className="w-3.5 h-3.5 shrink-0" />
@@ -483,9 +482,9 @@ export default function HomePage() {
                     key={`${artist.name}-${i}`}
                     type="button"
                     onClick={() => setFeaturedIdx(i)}
-                    className={`relative rounded-2xl overflow-hidden border p-2 text-left transition-all min-w-0 w-full ${
+                    className={`artist-selector-card relative rounded-2xl overflow-hidden border p-2 text-left transition-all min-w-0 w-full ${
                       isSelected
-                        ? 'border-cyan-400 bg-white/10 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-400/20'
+                        ? 'border-cyan-400 bg-white/10 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-400/20 is-selected'
                         : 'border-white/10 bg-[#101018] hover:border-white/20'
                     }`}
                   >
@@ -493,12 +492,12 @@ export default function HomePage() {
                       <img
                         src={optimizeImageUrl(artist.image, 200, 75)} loading="lazy" decoding="async"
                         alt={artist.name}
-                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover shrink-0 bg-white/5"
+                        className="artist-thumb w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover shrink-0 bg-white/5 transition-transform"
                       />
                       <div className="min-w-0 flex-1 overflow-hidden">
-                        <p className="text-xs font-bold text-white truncate">{artist.name}</p>
-                        <p className="text-[10px] text-cyan-300 font-mono mt-0.5 truncate">{artist.time.split('–')[0]} น.</p>
-                        <p className="text-[9px] text-gray-400 truncate">{artist.stage}</p>
+                        <p className="artist-name text-xs font-bold text-white truncate">{artist.name}</p>
+                        <p className="artist-time text-[10px] text-cyan-300 font-mono mt-0.5 truncate">{artist.time.split('–')[0]} น.</p>
+                        <p className="artist-stage text-[9px] text-gray-400 truncate">{artist.stage}</p>
                       </div>
                     </div>
                   </button>
@@ -523,7 +522,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════════
           FESTIVAL TIMELINE SCHEDULE
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="py-12 px-4 max-w-3xl mx-auto">
+      <section className="timetable-section py-12 px-4 max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Timetable</span>
           <h3 className="text-2xl font-black text-white mt-1">{t('กำหนดการกิจกรรมเทศกาล', 'Festival Timetable & Schedule')}</h3>
@@ -534,7 +533,7 @@ export default function HomePage() {
           {(selectedConcert?.schedule?.length ? selectedConcert.schedule : DEFAULT_SCHEDULE).map((s, i) => (
             <div
               key={i}
-              className="flex items-center justify-between p-4 rounded-xl bg-[#12121a] border border-white/10 text-xs sm:text-sm"
+              className="timetable-row flex items-center justify-between p-4 rounded-xl bg-[#12121a] border border-white/10 text-xs sm:text-sm transition-all"
             >
               <div className="flex items-center gap-3">
                 <span className="text-lg">{s.icon || '🎵'}</span>
@@ -568,7 +567,7 @@ export default function HomePage() {
                 setFeaturedIdx(0);
                 document.getElementById('artists-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="group cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-[#111119] transition hover:-translate-y-1 hover:border-cyan-300/40"
+              className="live-event-card group cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-[#111119] transition hover:-translate-y-1 hover:border-cyan-300/40"
             >
               <div className="h-44 bg-[#191925] relative">
                 {event.bannerUrl && (
@@ -609,8 +608,8 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════════
           TICKET CALL TO ACTION
       ══════════════════════════════════════════════════════════════════ */}
-      <section className="py-16 px-4 max-w-4xl mx-auto">
-        <div className="rounded-3xl border border-white/15 bg-gradient-to-b from-[#141420] to-[#0d0d16] p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden">
+      <section className="cta-banner-section py-16 px-4 max-w-4xl mx-auto">
+        <div className="cta-banner-card rounded-3xl border border-white/15 bg-gradient-to-b from-[#141420] to-[#0d0d16] p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 text-xs font-semibold uppercase tracking-wider mb-4">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             {t('เปิดจำหน่ายบัตรอย่างเป็นทางการ', 'Official Ticket Sales Open')}
@@ -630,7 +629,7 @@ export default function HomePage() {
           <div className="mt-8">
             <Link
               to={selectedConcert ? `/booking/zone-select?concertId=${selectedConcert.id}` : '/booking/zone-select'}
-              className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-bold text-black text-sm uppercase tracking-wider bg-white hover:bg-gray-200 transition-all shadow-md hover:scale-105"
+              className="cta-book-btn inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl font-bold text-black text-sm uppercase tracking-wider bg-white hover:bg-gray-200 transition-all shadow-md hover:scale-105"
             >
               {t('เลือกโซนและซื้อบัตรเลย', 'Select Zone & Book Now')}
               <ArrowRight className="w-4 h-4" />
