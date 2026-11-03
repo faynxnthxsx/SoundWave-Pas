@@ -22,13 +22,13 @@ export default function LineConnectCard({
             {t('รับตั๋วคอนเสิร์ตเข้าแอป LINE โดยตรง', 'Receive Digital Tickets Directly on LINE')}
           </span>
         </div>
-        <span className="text-[10px] bg-[#06c755]/20 text-[#06c755] font-black px-2 py-0.5 rounded-full border border-[#06c755]/30">
+        <span className="line-badge-recommended text-[10px] bg-[#06c755]/20 text-[#06c755] font-black px-2 py-0.5 rounded-full border border-[#06c755]/30">
           {t('แนะนำ', 'Recommended')}
         </span>
       </div>
 
       {lineUser || customerLineId ? (
-        <div className="flex items-center justify-between bg-black/40 border border-[#06c755]/40 rounded-xl p-3">
+        <div className="line-connected-box flex items-center justify-between bg-black/40 border border-[#06c755]/40 rounded-xl p-3">
           <div className="flex items-center gap-3">
             <img
               src={
@@ -54,7 +54,7 @@ export default function LineConnectCard({
           <button
             type="button"
             onClick={onDisconnectLine}
-            className="text-[10px] text-gray-400 hover:text-rose-400 px-2.5 py-1.5 rounded-lg border border-white/10 hover:border-rose-400/40 transition-colors cursor-pointer"
+            className="line-disconnect-btn text-[10px] text-gray-400 hover:text-rose-400 px-2.5 py-1.5 rounded-lg border border-white/10 hover:border-rose-400/40 transition-colors cursor-pointer"
           >
             {t('ยกเลิก', 'Disconnect')}
           </button>
