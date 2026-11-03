@@ -80,7 +80,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
         role="dialog"
         aria-modal="true"
         aria-labelledby="discovery-modal-title"
-        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-cyan-400/30 bg-[#0f1017] shadow-2xl animate-in fade-in"
+        className="radar-modal-dialog flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-cyan-400/30 bg-[#0f1017] shadow-2xl animate-in fade-in"
       >
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-5">

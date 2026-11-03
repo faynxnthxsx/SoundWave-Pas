@@ -792,7 +792,7 @@ export default function GateScannerPage() {
             )}
 
             {!cameraActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#0d0d15]/95">
+              <div className="scanner-camera-ready absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#0d0d15]/95">
                 <div className="w-16 h-16 rounded-3xl bg-cyan-400/10 border border-cyan-400/30 flex items-center justify-center text-cyan-300 mb-3 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
                   <Camera className="w-8 h-8" />
                 </div>

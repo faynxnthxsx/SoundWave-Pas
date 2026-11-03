@@ -1110,7 +1110,7 @@ export default function AdminPage() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             {/* Concert Sales Status Toggle Switch */}
-                            <div className="flex items-center rounded-xl bg-black/40 p-1 border border-white/15">
+                            <div className="concert-sales-toggle flex items-center rounded-xl bg-black/40 p-1 border border-white/15">
                               <button
                                 type="button"
                                 onClick={() => handleToggleConcertStatus(c.id, 'ON_SALE')}
@@ -1271,7 +1271,7 @@ export default function AdminPage() {
                                         <button
                                           type="button"
                                           onClick={() => handleToggleZoneActive(z.id, isActive)}
-                                          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+                                          className={`zone-sales-toggle-btn flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
                                             isActive
                                               ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 hover:bg-emerald-400/30'
                                               : 'bg-amber-400/20 text-amber-300 border border-amber-400/40 hover:bg-amber-400/30'

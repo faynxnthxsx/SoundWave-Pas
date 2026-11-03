@@ -464,7 +464,7 @@ export default function AdminSeatMapModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="zone-seat-map-title"
-        className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#0f1017] shadow-2xl"
+        className="admin-seatmap-modal flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#0f1017] shadow-2xl"
       >
         {/* ── Modal Header ── */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-5">
