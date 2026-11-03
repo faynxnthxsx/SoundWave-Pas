@@ -2,13 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CalendarDays, Clock3, MapPin, Music2, Ticket } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { optimizeImageUrl } from '../../utils/imageUrl';
+
+const concertDetailCache = new Map();
 
 export default function ConcertDetailPage() {
   const { id } = useParams();
   const { lang, t, trData } = useLanguage();
 
-  const [concert, setConcert] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [concert, setConcert] = useState(() => concertDetailCache.get(id) || null);
+  const [loading, setLoading] = useState(() => !concertDetailCache.has(id));
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -17,6 +20,7 @@ export default function ConcertDetailPage() {
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.message || 'ไม่พบคอนเสิร์ตนี้');
+        concertDetailCache.set(id, data.data);
         if (!cancelled) setConcert(data.data);
       })
       .catch((err) => {
@@ -88,7 +92,7 @@ export default function ConcertDetailPage() {
       <div className="relative h-[34vh] min-h-64 max-h-[460px] bg-[#161622]">
         {concert.bannerUrl && (
           <img
-            src={concert.bannerUrl}
+            src={optimizeImageUrl(concert.bannerUrl, 1200, 80)} decoding="async"
             alt={t(`โปสเตอร์ ${concert.name}`, `Poster ${concert.name}`)}
             className="h-full w-full object-cover opacity-70"
           />

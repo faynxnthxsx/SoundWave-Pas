@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Sparkles, Clock, ArrowRight, Star, Users, Zap, CheckCircle2, Music, Mic2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { optimizeImageUrl } from '../../utils/imageUrl';
 
 // ─── Default Fallback Artist Data with Photos, Date & Performance Time ───────
 const DEFAULT_ARTISTS = [
@@ -96,11 +97,13 @@ const DEFAULT_SCHEDULE = [
   { time: '24:00', label: 'After Party DJ Set โซน Camping ลานกว้าง', icon: '🎧' },
 ];
 
+let cachedConcerts = null;
+
 export default function HomePage() {
   const { lang, t, trData } = useLanguage();
-  const [concerts, setConcerts] = useState([]);
-  const [selectedConcertId, setSelectedConcertId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [concerts, setConcerts] = useState(() => cachedConcerts || []);
+  const [selectedConcertId, setSelectedConcertId] = useState(() => cachedConcerts?.[0]?.id || null);
+  const [loading, setLoading] = useState(() => !cachedConcerts || cachedConcerts.length === 0);
   const [featuredIdx, setFeaturedIdx] = useState(0);
 
   useEffect(() => {
@@ -108,8 +111,9 @@ export default function HomePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data.length > 0) {
+          cachedConcerts = data.data;
           setConcerts(data.data);
-          setSelectedConcertId(data.data[0].id);
+          setSelectedConcertId((prev) => prev || data.data[0].id);
         }
         setLoading(false);
       })
@@ -346,7 +350,7 @@ export default function HomePage() {
                 >
                   <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
                     {c.bannerUrl ? (
-                      <img src={c.bannerUrl} alt={c.name} className="h-full w-full object-cover" />
+                      <img src={optimizeImageUrl(c.bannerUrl, 400, 75)} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-cyan-300">
                         <Sparkles size={18} />
@@ -408,7 +412,7 @@ export default function HomePage() {
                 {/* Artist Photo Column */}
                 <div className="lg:col-span-7 relative h-72 sm:h-96 lg:h-[420px] overflow-hidden bg-black/40">
                   <img
-                    src={featured.image}
+                    src={optimizeImageUrl(featured.image, 1000, 80)} loading="lazy" decoding="async"
                     alt={featured.name}
                     className="w-full h-full object-cover object-center transition-all duration-700 hover:scale-105"
                   />
@@ -487,7 +491,7 @@ export default function HomePage() {
                   >
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0 w-full">
                       <img
-                        src={artist.image}
+                        src={optimizeImageUrl(artist.image, 200, 75)} loading="lazy" decoding="async"
                         alt={artist.name}
                         className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover shrink-0 bg-white/5"
                       />
@@ -569,7 +573,7 @@ export default function HomePage() {
               <div className="h-44 bg-[#191925] relative">
                 {event.bannerUrl && (
                   <img
-                    src={event.bannerUrl}
+                    src={optimizeImageUrl(event.bannerUrl, 800, 75)} loading="lazy" decoding="async"
                     alt={`โปสเตอร์ ${event.name}`}
                     className="h-full w-full object-cover transition group-hover:scale-[1.02]"
                   />

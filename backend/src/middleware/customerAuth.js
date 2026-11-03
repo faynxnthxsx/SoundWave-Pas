@@ -1,6 +1,5 @@
 const crypto = require('crypto');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const tokenHash = (token) => crypto.createHash('sha256').update(token).digest('hex');
 

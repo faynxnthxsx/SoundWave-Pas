@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // Verified upcoming Thailand events checked on 27 October 2026.
 // Dates are stored at noon UTC so the Thai calendar date remains stable in the UI.

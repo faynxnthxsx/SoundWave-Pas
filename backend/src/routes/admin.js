@@ -1,13 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const { requireOrganizer } = require('../middleware/organizerAuth');
 const { sendTicketsToLineUser } = require('../services/lineService');
 const { getDiscoveredConcerts, importDiscoveredConcert } = require('../services/concertDiscoveryService');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // Organizer dashboard accounts are separate from gate staff accounts.
 router.use(requireOrganizer);

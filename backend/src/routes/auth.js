@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { promisify } = require('util');
-const { PrismaClient } = require('@prisma/client');
 const { getLineBotInfo } = require('../services/lineService');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const scrypt = promisify(crypto.scrypt);
 
 const publicUser = ({ id, username, email, googleId, avatarUrl, lineUserId, createdAt }) => ({

@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // Load fallback data from shared-data.json if database connection fails (e.g. on serverless Vercel without active DB)
 function getFallbackConcerts() {
@@ -35,6 +34,7 @@ function getFallbackConcerts() {
 
 // GET all concerts with zones
 router.get('/', async (req, res) => {
+  res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
   try {
     const concerts = await prisma.concert.findMany({
       include: {
@@ -69,6 +69,7 @@ router.get('/', async (req, res) => {
 
 // GET single concert by ID or slug
 router.get('/:idOrSlug', async (req, res) => {
+  res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
   try {
     const { idOrSlug } = req.params;
     const isId = !isNaN(Number(idOrSlug));

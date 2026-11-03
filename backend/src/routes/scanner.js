@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { promisify } = require('util');
-const { PrismaClient } = require('@prisma/client');
 const { hashToken, requireStaff } = require('../middleware/staffAuth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const scrypt = promisify(crypto.scrypt);
 const hashPassword = async (password) => {
   const salt = crypto.randomBytes(16).toString('hex');

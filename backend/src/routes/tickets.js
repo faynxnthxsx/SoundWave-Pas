@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // GET /api/tickets/:ticketCode - Get ticket detail for display & print
 router.get('/:ticketCode', async (req, res) => {
