@@ -337,9 +337,9 @@ export default function PaymentPage() {
           type="button"
           disabled={paying}
           onClick={handleSimulatePayment}
-          className="w-full py-3.5 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
+          className="payment-confirm-btn w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 to-sky-400 hover:from-cyan-300 hover:to-sky-300 text-black font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg shadow-cyan-400/25 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <CheckCircle2 className="w-4 h-4 text-emerald-800 shrink-0" />
           {paying
             ? t('กำลังตรวจสอบยอดเงิน...', 'Verifying payment...')
             : t('ยืนยันการโอนเงินเรียบร้อยแล้ว', 'Confirm Payment Completed')}

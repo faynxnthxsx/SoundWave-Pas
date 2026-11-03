@@ -39,11 +39,11 @@ export default function LineConnectCard({
               className="w-10 h-10 rounded-full border border-[#06c755] object-cover"
             />
             <div>
-              <p className="text-xs font-bold text-white flex items-center gap-1.5">
+              <p className="line-connected-user text-xs font-bold text-white flex items-center gap-1.5">
                 {lineUser?.displayName || customerName || 'LINE User'}
                 <CheckCircle2 size={13} className="text-[#06c755]" />
               </p>
-              <p className="text-[10px] text-[#06c755] font-semibold">
+              <p className="line-connected-status text-[10px] text-[#06c755] font-semibold">
                 {t(
                   '✓ เชื่อมต่อบัญชี LINE สำเร็จ ตั๋วจะถูกส่งเข้าแชทอัตโนมัติ',
                   '✓ LINE Connected — tickets will be delivered to chat'

@@ -288,7 +288,7 @@ export default function Navbar() {
                   onClick={logout}
                   aria-label={t('ออกจากระบบ', 'Logout')}
                   title={t('ออกจากระบบ', 'Logout')}
-                  className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
+                  className="nav-logout-btn ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
                 >
                   <LogOut size={11} className="text-rose-400 shrink-0" />
                   <span className="text-[10px] font-bold tracking-tight text-rose-200">

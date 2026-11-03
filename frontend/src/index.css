@@ -735,7 +735,7 @@ html.light body {
 [data-theme="light"] .nav-logout-btn {
   background-color: #fee2e2 !important;
   border-color: #fca5a5 !important;
-  color: #b91c1c !important;
+  color: #000000 !important;
 }
 
 [data-theme="light"] .nav-logout-btn:hover {
@@ -744,7 +744,8 @@ html.light body {
 
 [data-theme="light"] .nav-logout-btn span,
 [data-theme="light"] .nav-logout-btn svg {
-  color: #b91c1c !important;
+  color: #000000 !important;
+  font-weight: 800 !important;
 }
 
 /* Booking summary box & Buyer info box */
@@ -764,7 +765,9 @@ html.light body {
 [data-theme="light"] .zone-summary-box p.text-gray-500,
 [data-theme="light"] .zone-summary-box span.text-gray-400,
 [data-theme="light"] .zone-summary-box span.text-gray-500,
-[data-theme="light"] .zone-summary-box span.text-gray-300 {
+[data-theme="light"] .zone-summary-box span.text-gray-300,
+[data-theme="light"] .zone-summary-box .zone-selected-name,
+[data-theme="light"] .zone-selected-name {
   color: #000000 !important;
   font-weight: 800 !important;
 }
@@ -825,8 +828,35 @@ html.light body {
   border-color: #86efac !important;
 }
 
-[data-theme="light"] .line-connected-box p.text-white {
-  color: #0f172a !important;
+[data-theme="light"] .line-connected-box p,
+[data-theme="light"] .line-connected-box span,
+[data-theme="light"] .line-connected-box p.text-white,
+[data-theme="light"] .line-connected-user,
+[data-theme="light"] .line-connected-status {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+/* Payment Confirm Button: Vibrant Cyan / Sky Blue */
+.payment-confirm-btn,
+[data-theme="light"] .payment-confirm-btn {
+  background-image: linear-gradient(135deg, #00c6ff, #0072ff) !important;
+  background-color: #00c6ff !important;
+  color: #000000 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 10px 25px -3px rgba(0, 198, 255, 0.45) !important;
+  border: 1px solid #0099ff !important;
+}
+
+.payment-confirm-btn:hover,
+[data-theme="light"] .payment-confirm-btn:hover {
+  background-image: linear-gradient(135deg, #38d5ff, #1a8cff) !important;
+}
+
+.payment-confirm-btn *,
+[data-theme="light"] .payment-confirm-btn * {
+  color: #000000 !important;
+  font-weight: 900 !important;
 }
 
 [data-theme="light"] .line-login-btn {
