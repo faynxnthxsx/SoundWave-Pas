@@ -171,53 +171,17 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* MOBILE TOP RIGHT (md:hidden): Only Logo & User Profile / Sign In */}
-          <div className="flex md:hidden items-center gap-2 shrink-0">
-            {authUser ? (
-              <div className="flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 shrink-0">
-                {authUser.avatarUrl ? (
-                  <img
-                    src={authUser.avatarUrl}
-                    alt={authUser.username}
-                    className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/50 shrink-0"
-                  />
-                ) : (
-                  <UserRound size={13} className="text-emerald-300 shrink-0" />
-                )}
-                <span className="max-w-[85px] xs:max-w-[110px] text-left text-[11px] font-bold text-white truncate shrink-0">
-                  {authUser.username}
-                </span>
-                <button
-                  type="button"
-                  onClick={logout}
-                  aria-label={t('ออกจากระบบ', 'Logout')}
-                  title={t('ออกจากระบบ', 'Logout')}
-                  className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
-                >
-                  <LogOut size={11} className="text-rose-400 shrink-0" />
-                  <span className="text-[10px] font-bold tracking-tight text-rose-200">
-                    {t('ออก', 'Exit')}
-                  </span>
-                </button>
-              </div>
-            ) : (
-              <Button
-                variant="cyanOutline"
-                size="sm"
-                onClick={() => setAuthOpen(true)}
-                className="px-2.5 py-1 text-xs whitespace-nowrap shrink-0"
-              >
-                {t('เข้าสู่ระบบ', 'Sign In')}
-              </Button>
-            )}
+          {/* MOBILE TOP RIGHT (md:hidden): Language Switcher on Top */}
+          <div className="flex md:hidden items-center shrink-0">
+            <LanguageSwitch />
           </div>
         </div>
       </nav>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (md:hidden) */}
+      {/* MOBILE BOTTOM NAVIGATION BAR (md:hidden): Home, Tickets, Profile & Logout */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#07070b]/95 backdrop-blur-xl border-t border-white/10 px-4 py-1.5 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#07070b]/95 backdrop-blur-xl border-t border-white/10 px-3 py-1.5 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]"
       >
         <div className="flex items-center justify-around max-w-md mx-auto">
           {/* Home */}
@@ -237,7 +201,7 @@ export default function Navbar() {
           <button
             type="button"
             onClick={authUser ? openHistoryModal : () => setAuthOpen(true)}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
               showHistory
                 ? 'text-cyan-400 font-bold'
                 : 'text-gray-400 hover:text-white font-medium'
@@ -247,22 +211,56 @@ export default function Navbar() {
             <span className="text-[10px] mt-0.5 tracking-tight">{t('ประวัติบัตร', 'My Tickets')}</span>
           </button>
 
-          {/* Language Switch */}
-          <div className="flex flex-col items-center justify-center py-0.5">
-            <LanguageSwitch className="scale-95" />
-          </div>
+          {/* Profile & Logout / Sign In */}
+          {authUser ? (
+            <div className="flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 shrink-0">
+              {authUser.avatarUrl ? (
+                <img
+                  src={authUser.avatarUrl}
+                  alt={authUser.username}
+                  className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/50 shrink-0"
+                />
+              ) : (
+                <UserRound size={13} className="text-emerald-300 shrink-0" />
+              )}
+              <span className="max-w-[70px] xs:max-w-[85px] text-left text-[11px] font-bold text-white truncate shrink-0">
+                {authUser.username}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                aria-label={t('ออกจากระบบ', 'Logout')}
+                title={t('ออกจากระบบ', 'Logout')}
+                className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
+              >
+                <LogOut size={11} className="text-rose-400 shrink-0" />
+                <span className="text-[10px] font-bold tracking-tight text-rose-200">
+                  {t('ออก', 'Exit')}
+                </span>
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAuthOpen(true)}
+              className="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-cyan-400 hover:text-white transition-all font-semibold cursor-pointer"
+            >
+              <UserRound size={19} />
+              <span className="text-[10px] mt-0.5 tracking-tight">{t('เข้าสู่ระบบ', 'Sign In')}</span>
+            </button>
+          )}
 
           {/* If Team Surface */}
           {isTeamSurface && (
             <Link
               to="/team"
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
                 isActive('/team')
                   ? 'text-cyan-400 font-bold'
                   : 'text-gray-400 hover:text-white font-medium'
               }`}
             >
-              <Users size={19} />
+              <Users size={18} />
               <span className="text-[10px] mt-0.5 tracking-tight">{t('ทีมงาน', 'Team')}</span>
             </Link>
           )}

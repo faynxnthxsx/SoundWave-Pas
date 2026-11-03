@@ -95,10 +95,36 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       return;
     }
 
-    // 1. First priority: Google 1-Click Account Chooser (Presents list of existing accounts with pictures, no typing password!)
-    if (tokenClientRef.current) {
-      tokenClientRef.current.requestAccessToken({ prompt: 'select_account' });
+    const isMobile =
+      typeof navigator !== 'undefined' &&
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // On mobile devices, Google GIS popup opens as an orphaned tab which mobile browsers block from closing,
+    // leaving a blank white screen. Direct redirect solves this cleanly in the same tab with zero popup issues!
+    if (isMobile) {
+      try {
+        sessionStorage.setItem('sw_google_auth_state', window.location.pathname + window.location.search);
+      } catch {}
+
+      const redirectUri = window.location.origin;
+      const scope = encodeURIComponent('openid email profile');
+      const state = encodeURIComponent(window.location.pathname + window.location.search);
+      const nonce = Math.random().toString(36).substring(2);
+
+      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&response_type=token%20id_token&scope=${scope}&state=${state}&nonce=${nonce}&prompt=select_account`;
       return;
+    }
+
+    // On desktop: use Google 1-Click Account Chooser if available
+    if (tokenClientRef.current) {
+      try {
+        tokenClientRef.current.requestAccessToken({ prompt: 'select_account' });
+        return;
+      } catch (err) {
+        console.warn('Google popup error, falling back to redirect:', err);
+      }
     }
 
     if (window.google?.accounts?.oauth2) {
@@ -120,7 +146,7 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       }
     }
 
-    // 2. Fallback: Full-page redirect if GSI script was blocked by browser extension
+    // Fallback: Full-page redirect if GSI script was blocked
     try {
       sessionStorage.setItem('sw_google_auth_state', window.location.pathname + window.location.search);
     } catch {}

@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -28,12 +28,21 @@ function PageLoader() {
 }
 
 export default function App() {
+  const [googleProcessing, setGoogleProcessing] = useState(() => {
+    return Boolean(
+      typeof window !== 'undefined' &&
+        window.location.hash &&
+        (window.location.hash.includes('access_token=') || window.location.hash.includes('id_token='))
+    );
+  });
+
   // Listen for Google OAuth standard redirect callback in URL hash
   useEffect(() => {
     if (
       window.location.hash &&
       (window.location.hash.includes('access_token=') || window.location.hash.includes('id_token='))
     ) {
+      setGoogleProcessing(true);
       const hash = window.location.hash.replace(/^#/, '');
       const params = new URLSearchParams(hash);
       const accessToken = params.get('access_token');
@@ -63,9 +72,16 @@ export default function App() {
                 }
               } catch {}
               window.location.reload();
+            } else {
+              setGoogleProcessing(false);
             }
           })
-          .catch((err) => console.error('Google OAuth callback failed:', err));
+          .catch((err) => {
+            console.error('Google OAuth callback failed:', err);
+            setGoogleProcessing(false);
+          });
+      } else {
+        setGoogleProcessing(false);
       }
     }
   }, []);
@@ -75,6 +91,15 @@ export default function App() {
       <LanguageProvider>
         <ToastProvider>
           <div className="min-h-screen flex flex-col bg-[#07070b] text-gray-100 selection:bg-[#00f0ff] selection:text-black overflow-x-hidden w-full max-w-full">
+            {/* Google Login Overlay (Dark themed, prevents white screen) */}
+            {googleProcessing && (
+              <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#07070b]/95 backdrop-blur-md">
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent mb-4" />
+                <p className="text-sm font-semibold text-white">กำลังเข้าสู่ระบบด้วย Google…</p>
+                <p className="text-xs text-gray-400 mt-1">กรุณารอสักครู่ ระบบกำลังนำท่านเข้าใช้งาน</p>
+              </div>
+            )}
+
             {/* Navigation Bar */}
             <Navbar />
 
