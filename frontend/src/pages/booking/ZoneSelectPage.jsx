@@ -1208,7 +1208,7 @@ export default function ZoneSelectPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Selected zone</p>
-                  <p className="zone-selected-name mt-1 font-bold text-white">
+                  <p className="zone-selected-name mt-1 font-bold text-black dark:text-white">
                     {selectedZone
                       ? trData(selectedZone.name)
                       : t('ยังไม่ได้เลือกโซน (คลิกเลือกโซนบนผัง)', 'No zone selected yet')}

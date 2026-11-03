@@ -12,6 +12,9 @@ export function ThemeProvider({ children }) {
     try {
       const saved = localStorage.getItem('soundwave_theme');
       if (saved === 'light' || saved === 'dark') return saved;
+      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        return 'light';
+      }
       return 'dark';
     } catch {
       return 'dark';

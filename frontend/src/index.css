@@ -1073,17 +1073,11 @@ html.light body {
 /* Maintain crisp white text inside solid colored badges, overlays, and buttons */
 [data-theme="light"] .line-login-btn,
 [data-theme="light"] .line-login-btn *,
-[data-theme="light"] [class*="bg-[#06c755]"],
-[data-theme="light"] [class*="bg-[#06c755]"] *,
 [data-theme="light"] .featured-stage-badge,
-[data-theme="light"] [class*="bg-black/"]:not(.theme-pill),
-[data-theme="light"] [class*="bg-black/"]:not(.theme-pill) *,
 [data-theme="light"] .bg-black,
 [data-theme="light"] .bg-black *,
 [data-theme="light"] .bg-slate-900,
 [data-theme="light"] .bg-slate-900 *,
-[data-theme="light"] .bg-rose-500,
-[data-theme="light"] .bg-rose-500 *,
 [data-theme="light"] .bg-rose-600,
 [data-theme="light"] .bg-rose-600 *,
 [data-theme="light"] .bg-emerald-600,
@@ -1213,4 +1207,64 @@ html.light body {
 
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HIGH-SPECIFICITY OVERRIDES FOR BOOKING SUMMARY, LINE & MOBILE LOGOUT
+   ══════════════════════════════════════════════════════════════════════ */
+[data-theme="light"] .zone-summary-box,
+[data-theme="light"] .zone-summary-box *,
+[data-theme="light"] .zone-selected-name,
+html.light .zone-summary-box,
+html.light .zone-summary-box *,
+html.light .zone-selected-name {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .zone-summary-box p,
+[data-theme="light"] .zone-summary-box span,
+[data-theme="light"] .zone-summary-box .zone-selected-name,
+html.light .zone-summary-box p,
+html.light .zone-summary-box span,
+html.light .zone-summary-box .zone-selected-name {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+/* LINE Connected Card in Light Mode */
+[data-theme="light"] .line-connected-box,
+[data-theme="light"] .line-connected-box *,
+[data-theme="light"] .line-connected-user,
+[data-theme="light"] .line-connected-status,
+html.light .line-connected-box,
+html.light .line-connected-box *,
+html.light .line-connected-user,
+html.light .line-connected-status {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .line-connected-user,
+html.light .line-connected-user {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .line-connected-status,
+html.light .line-connected-status {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+/* Mobile Logout Button in Light Mode */
+[data-theme="light"] .nav-logout-btn,
+[data-theme="light"] .nav-logout-btn *,
+[data-theme="light"] .nav-logout-btn span,
+[data-theme="light"] .nav-logout-btn svg,
+html.light .nav-logout-btn,
+html.light .nav-logout-btn *,
+html.light .nav-logout-btn span,
+html.light .nav-logout-btn svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  font-weight: 800 !important;
 }
