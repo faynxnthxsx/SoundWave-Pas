@@ -208,7 +208,7 @@ export default function AuthModal({ onClose, onAuthenticated }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-title"
-        className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0f1118] p-5 sm:p-6 shadow-2xl transition-all"
+        className="auth-modal-dialog w-full max-w-sm rounded-2xl border border-white/10 bg-[#0f1118] p-5 sm:p-6 shadow-2xl transition-all"
         style={{ fontFamily: "'Prompt', system-ui, sans-serif" }}
       >
         <header className="mb-4 flex items-start justify-between">

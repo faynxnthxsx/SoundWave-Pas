@@ -1268,3 +1268,271 @@ html.light .nav-logout-btn svg {
   stroke: #000000 !important;
   font-weight: 800 !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT MODE: TEAM PORTAL, ADMIN, GATE SCANNER & AUTH MODAL (ALL 3 ROLES)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* 1. Team Portal Page */
+[data-theme="light"] .team-portal-page,
+html.light .team-portal-page {
+  background-color: #f8fafc !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .team-portal-page h1,
+[data-theme="light"] .team-portal-page h2,
+[data-theme="light"] .team-portal-page p,
+[data-theme="light"] .team-portal-page span,
+html.light .team-portal-page h1,
+html.light .team-portal-page h2,
+html.light .team-portal-page p,
+html.light .team-portal-page span {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .team-portal-page p.text-gray-400,
+html.light .team-portal-page p.text-gray-400 {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .team-portal-page .team-card,
+html.light .team-portal-page .team-card {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme="light"] .team-portal-page .team-card:hover,
+html.light .team-portal-page .team-card:hover {
+  border-color: #06b6d4 !important;
+  box-shadow: 0 20px 30px -5px rgba(6, 182, 212, 0.15) !important;
+}
+
+[data-theme="light"] .team-portal-page .team-card h2,
+html.light .team-portal-page .team-card h2 {
+  color: #000000 !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="light"] .team-portal-page .team-card p,
+html.light .team-portal-page .team-card p {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .team-portal-page .team-card span.text-white,
+html.light .team-portal-page .team-card span.text-white {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+/* 2. Admin Login & Dashboard */
+[data-theme="light"] .admin-login-screen,
+html.light .admin-login-screen,
+[data-theme="light"] .admin-dashboard-screen,
+html.light .admin-dashboard-screen {
+  background-color: #f8fafc !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .admin-login-card,
+html.light .admin-login-card {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 20px 35px -5px rgba(15, 23, 42, 0.1) !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .admin-login-card h1,
+[data-theme="light"] .admin-login-card label span,
+html.light .admin-login-card h1,
+html.light .admin-login-card label span {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .admin-login-card input,
+html.light .admin-login-card input {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .admin-login-card p.text-gray-400,
+html.light .admin-login-card p.text-gray-400 {
+  color: #475569 !important;
+}
+
+/* Admin Dashboard Cards, Tables & Elements */
+[data-theme="light"] .admin-dashboard-screen article,
+[data-theme="light"] .admin-dashboard-screen section,
+html.light .admin-dashboard-screen article,
+html.light .admin-dashboard-screen section {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 15px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="light"] .admin-dashboard-screen h1,
+[data-theme="light"] .admin-dashboard-screen h2,
+[data-theme="light"] .admin-dashboard-screen h3,
+[data-theme="light"] .admin-dashboard-screen strong,
+[data-theme="light"] .admin-dashboard-screen td,
+[data-theme="light"] .admin-dashboard-screen th,
+html.light .admin-dashboard-screen h1,
+html.light .admin-dashboard-screen h2,
+html.light .admin-dashboard-screen h3,
+html.light .admin-dashboard-screen strong,
+html.light .admin-dashboard-screen td,
+html.light .admin-dashboard-screen th {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .admin-dashboard-screen input,
+[data-theme="light"] .admin-dashboard-screen textarea,
+[data-theme="light"] .admin-dashboard-screen select,
+html.light .admin-dashboard-screen input,
+html.light .admin-dashboard-screen textarea,
+html.light .admin-dashboard-screen select {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .admin-dashboard-screen .text-white,
+html.light .admin-dashboard-screen .text-white {
+  color: #000000 !important;
+}
+
+/* 3. Gate Scanner (Staff Login & Scanning Terminal) */
+[data-theme="light"] .scanner-page-container,
+html.light .scanner-page-container {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .scanner-card,
+html.light .scanner-card {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 20px 35px -5px rgba(15, 23, 42, 0.1) !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .scanner-card h1,
+[data-theme="light"] .scanner-card h2,
+[data-theme="light"] .scanner-card label,
+html.light .scanner-card h1,
+html.light .scanner-card h2,
+html.light .scanner-card label {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .scanner-card input,
+html.light .scanner-card input {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .scanner-card p.text-gray-400,
+html.light .scanner-card p.text-gray-400 {
+  color: #475569 !important;
+}
+
+/* Quick demo account login buttons */
+[data-theme="light"] .scanner-card button.bg-\[\#1e1e32\],
+html.light .scanner-card button.bg-\[\#1e1e32\] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .scanner-card button.bg-\[\#1e1e32\]:hover,
+html.light .scanner-card button.bg-\[\#1e1e32\]:hover {
+  background-color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Scanner staff banner */
+[data-theme="light"] .scanner-page-container .bg-\[\#121220\],
+html.light .scanner-page-container .bg-\[\#121220\] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 15px -2px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme="light"] .scanner-page-container .bg-\[\#121220\] p,
+[data-theme="light"] .scanner-page-container .bg-\[\#121220\] span,
+html.light .scanner-page-container .bg-\[\#121220\] p,
+html.light .scanner-page-container .bg-\[\#121220\] span {
+  color: #000000 !important;
+}
+
+/* 4. Auth Modal (Attendee / Customer / All Roles Login) */
+[data-theme="light"] .auth-modal-dialog,
+html.light .auth-modal-dialog {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .auth-modal-dialog h2,
+[data-theme="light"] .auth-modal-dialog label span,
+html.light .auth-modal-dialog h2,
+html.light .auth-modal-dialog label span {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .auth-modal-dialog p.text-gray-400,
+html.light .auth-modal-dialog p.text-gray-400 {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .auth-modal-dialog input,
+html.light .auth-modal-dialog input {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .auth-modal-dialog input::placeholder,
+html.light .auth-modal-dialog input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Google Sign In button in Auth Modal */
+[data-theme="light"] .auth-modal-dialog button.bg-white\/5,
+html.light .auth-modal-dialog button.bg-white\/5 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #000000 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .auth-modal-dialog button.bg-white\/5:hover,
+html.light .auth-modal-dialog button.bg-white\/5:hover {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+}
+
+[data-theme="light"] .auth-modal-dialog button.bg-white\/5 span,
+html.light .auth-modal-dialog button.bg-white\/5 span {
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .auth-modal-dialog .border-white\/10,
+html.light .auth-modal-dialog .border-white\/10 {
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .auth-modal-dialog span.bg-\[\#0f1118\],
+html.light .auth-modal-dialog span.bg-\[\#0f1118\] {
+  background-color: #ffffff !important;
+  color: #64748b !important;
+}

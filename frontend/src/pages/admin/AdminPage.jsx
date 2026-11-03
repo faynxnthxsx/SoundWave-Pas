@@ -717,8 +717,8 @@ export default function AdminPage() {
 
   if (!organizer?.sessionToken) {
     return (
-      <div className="min-h-screen bg-[#07070c] px-4 py-12 text-white sm:px-6">
-        <section className="mx-auto max-w-md rounded-3xl border border-white/15 bg-[#101018] p-6 shadow-2xl sm:p-8">
+      <div className="admin-login-screen min-h-screen bg-[#07070c] px-4 py-12 text-white sm:px-6">
+        <section className="admin-login-card mx-auto max-w-md rounded-3xl border border-white/15 bg-[#101018] p-6 shadow-2xl sm:p-8">
           <div className="mb-6 text-center">
             <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-200">
               <Lock size={20} />
@@ -795,7 +795,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07070c] px-4 py-8 text-white sm:px-6 lg:px-8">
+    <div className="admin-dashboard-screen min-h-screen bg-[#07070c] px-4 py-8 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         {/* ── Top Header & Tab Navigation Bar ── */}
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">

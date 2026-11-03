@@ -466,8 +466,8 @@ export default function GateScannerPage() {
   // ==========================================
   if (!staff) {
     return (
-      <div className="max-w-md mx-auto px-4 py-12">
-        <div className="bg-[#12121e] border border-[#27273e] rounded-3xl p-6 sm:p-8 shadow-2xl">
+      <div className="scanner-page-container max-w-md mx-auto px-4 py-12">
+        <div className="scanner-card bg-[#12121e] border border-[#27273e] rounded-3xl p-6 sm:p-8 shadow-2xl">
           <div className="flex justify-end mb-2">
             <LanguageSwitch />
           </div>
@@ -594,7 +594,7 @@ export default function GateScannerPage() {
   // VIEW 2: Staff Scanner Console
   // ==========================================
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
+    <div className="scanner-page-container max-w-2xl mx-auto px-4 py-6 sm:py-8">
       <div id="reader-hidden" className="hidden"></div>
       <input
         ref={fileInputRef}
@@ -756,7 +756,7 @@ export default function GateScannerPage() {
 
       {/* Camera Viewport */}
       {(!scanResult || continuousMode) && (
-        <div className="bg-[#12121e] border border-[#27273e] rounded-3xl p-4 sm:p-6 text-center shadow-xl">
+        <div className="scanner-card bg-[#12121e] border border-[#27273e] rounded-3xl p-4 sm:p-6 text-center shadow-xl">
           <div className="relative max-w-sm mx-auto overflow-hidden rounded-3xl bg-black aspect-square flex items-center justify-center border-2 border-cyan-400/40 shadow-[0_0_30px_rgba(0,240,255,0.15)]">
             <div id="reader" className="w-full h-full"></div>
 

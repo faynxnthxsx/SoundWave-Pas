@@ -81,7 +81,7 @@ export default function AdminInsightPage() {
       : Ticket;
 
   return (
-    <main className="min-h-screen bg-[#09090f] px-4 py-8 text-white sm:px-8">
+    <main className="admin-dashboard-screen min-h-screen bg-[#09090f] px-4 py-8 text-white sm:px-8">
       <div className="mx-auto max-w-6xl">
         <Link to="/admin" className="inline-flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-white">
           <ArrowLeft size={15} /> {t('กลับแดชบอร์ด', 'Back to Dashboard')}

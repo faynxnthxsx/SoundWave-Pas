@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 export default function TeamPortalPage() {
   const { t } = useLanguage();
   return (
-    <main className="flex min-h-[78vh] items-center justify-center bg-[#080a10] px-4 py-12 text-white">
+    <main className="team-portal-page flex min-h-[78vh] items-center justify-center bg-[#080a10] px-4 py-12 text-white">
       <div className="w-full max-w-4xl">
         <header className="mb-8 text-center">
           <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-cyan-200/20 bg-cyan-200/10 text-cyan-100">
@@ -19,7 +19,7 @@ export default function TeamPortalPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Link
             to="/admin"
-            className="group rounded-[26px] border border-white/10 bg-gradient-to-br from-[#141a25] to-[#101018] p-6 transition hover:-translate-y-1 hover:border-cyan-200/40 sm:p-8"
+            className="team-card group rounded-[26px] border border-white/10 bg-gradient-to-br from-[#141a25] to-[#101018] p-6 transition hover:-translate-y-1 hover:border-cyan-200/40 sm:p-8"
           >
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-200/10 text-cyan-100">
               <ChartNoAxesColumnIncreasing size={23} />
@@ -39,7 +39,7 @@ export default function TeamPortalPage() {
           </Link>
           <Link
             to="/scanner"
-            className="group rounded-[26px] border border-white/10 bg-gradient-to-br from-[#141a20] to-[#101018] p-6 transition hover:-translate-y-1 hover:border-emerald-200/40 sm:p-8"
+            className="team-card group rounded-[26px] border border-white/10 bg-gradient-to-br from-[#141a20] to-[#101018] p-6 transition hover:-translate-y-1 hover:border-emerald-200/40 sm:p-8"
           >
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-200/10 text-emerald-100">
               <QrCode size={23} />
