@@ -33,12 +33,14 @@ export default function Button({
 }) {
   const variantClass = VARIANT_STYLES[variant] || VARIANT_STYLES.primary;
   const sizeClass = SIZE_STYLES[size] || SIZE_STYLES.sm;
+  const hasDisplayClass = /(?:^|\s)(hidden|inline-block|inline-flex|inline|block|flex|grid)\b/.test(className);
+  const displayClass = hasDisplayClass ? '' : 'inline-flex';
 
   return (
     <button
       type={type}
       disabled={disabled}
-      className={`inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${variantClass} ${sizeClass} ${className}`}
+      className={`${displayClass} items-center justify-center gap-1.5 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${variantClass} ${sizeClass} ${className}`.trim()}
       {...props}
     >
       {children}

@@ -39,32 +39,32 @@ export default function LanguageSwitch({ className = '' }) {
     <div
       role="group"
       aria-label="Language Switcher (i18n)"
-      className={`theme-pill inline-flex items-center rounded-full border border-white/15 bg-black/60 p-0.5 shadow-inner backdrop-blur-md ${className}`}
+      className={`theme-pill inline-flex items-center rounded-full border border-white/15 bg-black/60 p-0.5 shadow-inner backdrop-blur-md shrink-0 ${className}`}
     >
       <button
         type="button"
         onClick={() => handleSelectLanguage('th')}
         title="ภาษาไทย (Thai - i18n)"
-        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black tracking-wide transition-all cursor-pointer ${
+        className={`flex items-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-black tracking-wide transition-all cursor-pointer ${
           lang === 'th'
             ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-black shadow-[0_0_12px_rgba(34,211,238,0.45)]'
             : 'text-gray-400 hover:text-white'
         }`}
       >
-        <FlagTH />
+        <FlagTH className="w-3.5 h-2.5 sm:w-4 sm:h-3" />
         <span>TH</span>
       </button>
       <button
         type="button"
         onClick={() => handleSelectLanguage('en')}
         title="English (EN - i18n)"
-        className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black tracking-wide transition-all cursor-pointer ${
+        className={`flex items-center gap-1 sm:gap-1.5 rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-black tracking-wide transition-all cursor-pointer ${
           lang === 'en'
             ? 'bg-gradient-to-r from-cyan-400 to-teal-300 text-black shadow-[0_0_12px_rgba(34,211,238,0.45)]'
             : 'text-gray-400 hover:text-white'
         }`}
       >
-        <FlagEN />
+        <FlagEN className="w-3.5 h-2.5 sm:w-4 sm:h-3" />
         <span>EN</span>
       </button>
     </div>
