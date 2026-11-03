@@ -72,53 +72,51 @@ export default function SouvenirPrintPage() {
   const artistNames = artists.slice(0, 4).map((artist) => artist.name).join(' · ');
 
   return (
-    <div className="min-h-screen bg-[#09090f] py-8 px-4">
+    <div className="min-h-screen bg-[#09090f] py-4 sm:py-8 px-2 sm:px-4">
       {/* Control Bar (Hidden on print) */}
-      <div className="no-print max-w-5xl mx-auto mb-6 bg-[#14141e] border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="no-print max-w-5xl mx-auto mb-4 bg-[#14141e] border border-white/10 rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Link
             to={`/tickets/${ticket.ticketCode}`}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div>
-            <h1 className="text-xs font-bold text-white">
+          <div className="min-w-0">
+            <h1 className="text-xs sm:text-sm font-bold text-white truncate">
               {t('A4 Souvenir Ticket — บัตรที่ระลึกคอนเสิร์ต', 'A4 Souvenir Ticket — Commemorative Pass')}
             </h1>
-            <p className="text-[10px] text-gray-400">
-              {t(
-                'กระดาษ A4 แนวนอน · พร้อมเส้นปรุ บาร์โค้ด และ QR Code · กดปุ่มพิมพ์หรือ Ctrl+P',
-                'A4 Landscape · Perforated Tear-off Stub, Barcode & QR Code · Click Print or press Ctrl+P'
-              )}
-            </p>
           </div>
         </div>
         <button
           onClick={() => window.print()}
-          className="px-5 py-2.5 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center gap-2 hover:bg-gray-200 transition-colors cursor-pointer shadow"
+          className="px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-white text-black font-bold text-xs uppercase flex items-center gap-1.5 sm:gap-2 hover:bg-gray-200 transition-colors cursor-pointer shadow shrink-0"
         >
-          <Printer className="w-4 h-4" />
-          {t('พิมพ์บัตรทันที', 'Print Ticket Now')}
+          <Printer className="w-4 h-4 text-black shrink-0" />
+          <span className="whitespace-nowrap">{t('พิมพ์บัตรทันที', 'Print Ticket Now')}</span>
         </button>
       </div>
 
       {/* Preview wrapper */}
-      <div className="no-print max-w-5xl mx-auto mb-3 text-center">
-        <span className="text-[10px] text-gray-500 uppercase tracking-wider">
+      <div className="no-print max-w-5xl mx-auto mb-3 flex items-center justify-between px-1 text-[10px] text-gray-500 uppercase tracking-wider">
+        <span>
           {t(
-            'ตัวอย่างการพิมพ์ (Preview) — จะพิมพ์บนกระดาษ A4 แนวนอน',
-            'Print Preview — Formatted for A4 Landscape Paper'
+            'ตัวอย่างการพิมพ์ (Print Preview)',
+            'Print Preview'
           )}
+        </span>
+        <span className="sm:hidden text-cyan-400 font-normal">
+          {t('← เลื่อนเพื่อดูบัตรเต็มใบ →', '← Swipe to view pass →')}
         </span>
       </div>
 
       {/* PRINTABLE AREA */}
-      <div
-        id="souvenir-print-area"
-        className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl"
-        style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", width: 'min(100%, 220mm)' }}
-      >
+      <div className="w-full overflow-x-auto pb-4">
+        <div
+          id="souvenir-print-area"
+          className="mx-auto overflow-hidden rounded-2xl bg-white shadow-2xl"
+          style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", width: '220mm', minWidth: '780px' }}
+        >
         <div className="flex items-center justify-between px-6 py-2 bg-white border-b-2 border-dashed border-gray-300">
           <span className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono uppercase tracking-wider">
             <Scissors className="w-3 h-3 text-gray-400" />
@@ -372,6 +370,7 @@ export default function SouvenirPrintPage() {
             )}
           </span>
         </div>
+      </div>
       </div>
     </div>
   );

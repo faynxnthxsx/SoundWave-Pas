@@ -311,50 +311,107 @@ export default function StadiumZoneMap({
           </text>
         </g>
 
-        {/* Left Standing Pit (STANDING AL / Zone 1) */}
-        {leftStanding && (
+        {/* Arena Standing Pit: If 1 standing zone, render a unified balanced pit */}
+        {standing.length === 1 ? (
           <g {...zoneProps(leftStanding)}>
             <path
-              d="M 235 110 L 368 110 L 368 202 L 334 202 L 334 256 L 235 256 Q 218 185 235 110 Z"
+              d="M 238 112 L 366 112 L 366 200 L 336 200 L 336 250 L 238 250 Q 222 185 238 112 Z"
               fill={getZoneFill(leftStanding, '#06b6d4')}
               fillOpacity={getZoneOpacity(leftStanding, 0.9)}
               stroke={getZoneStroke(leftStanding)}
               strokeWidth={leftStanding.id === selectedZoneId ? 3.5 : 1.8}
               className="transition-all duration-150 hover:brightness-115"
             />
-            <text x="296" y="158" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
-              {standing.length > 1 ? 'STANDING A' : truncate(leftStanding.name, 14)}
+            <path
+              d="M 434 112 L 562 112 Q 578 185 562 250 L 464 250 L 464 200 L 434 200 Z"
+              fill={getZoneFill(leftStanding, '#06b6d4')}
+              fillOpacity={getZoneOpacity(leftStanding, 0.9)}
+              stroke={getZoneStroke(leftStanding)}
+              strokeWidth={leftStanding.id === selectedZoneId ? 3.5 : 1.8}
+              className="transition-all duration-150 hover:brightness-115"
+            />
+            {/* Center Floor Bridge connecting Left & Right around walkway */}
+            <rect
+              x="336"
+              y="246"
+              width="128"
+              height="16"
+              rx="4"
+              fill={getZoneFill(leftStanding, '#06b6d4')}
+              fillOpacity={getZoneOpacity(leftStanding, 0.9)}
+              stroke={getZoneStroke(leftStanding)}
+              strokeWidth={leftStanding.id === selectedZoneId ? 3.5 : 1.8}
+              className="transition-all duration-150 hover:brightness-115"
+            />
+            {/* Left Pit Label */}
+            <text x="300" y="160" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
+              {truncate(leftStanding.name, 16)}
             </text>
-            <text x="296" y="175" textAnchor="middle" fill="#fef08a" fontSize="10" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
+            <text x="300" y="177" textAnchor="middle" fill="#fef08a" fontSize="10" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
               ฿{leftStanding.price?.toLocaleString()}
             </text>
-            <text x="296" y="191" textAnchor="middle" fill="#e2e8f0" fontSize="8" fontWeight="700" pointerEvents="none">
+            <text x="300" y="193" textAnchor="middle" fill="#e2e8f0" fontSize="8" fontWeight="700" pointerEvents="none">
+              {leftStanding.available <= 0 ? 'SOLD OUT' : t(`ว่าง ${leftStanding.available}`, `${leftStanding.available} left`)}
+            </text>
+            {/* Right Pit Label */}
+            <text x="500" y="160" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
+              {truncate(leftStanding.name, 16)}
+            </text>
+            <text x="500" y="177" textAnchor="middle" fill="#fef08a" fontSize="10" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
+              ฿{leftStanding.price?.toLocaleString()}
+            </text>
+            <text x="500" y="193" textAnchor="middle" fill="#e2e8f0" fontSize="8" fontWeight="700" pointerEvents="none">
               {leftStanding.available <= 0 ? 'SOLD OUT' : t(`ว่าง ${leftStanding.available}`, `${leftStanding.available} left`)}
             </text>
           </g>
-        )}
+        ) : (
+          <>
+            {/* Left Standing Pit (STANDING A) */}
+            {leftStanding && (
+              <g {...zoneProps(leftStanding)}>
+                <path
+                  d="M 238 112 L 366 112 L 366 200 L 336 200 L 336 250 L 238 250 Q 222 185 238 112 Z"
+                  fill={getZoneFill(leftStanding, '#06b6d4')}
+                  fillOpacity={getZoneOpacity(leftStanding, 0.9)}
+                  stroke={getZoneStroke(leftStanding)}
+                  strokeWidth={leftStanding.id === selectedZoneId ? 3.5 : 1.8}
+                  className="transition-all duration-150 hover:brightness-115"
+                />
+                <text x="300" y="160" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
+                  STANDING A
+                </text>
+                <text x="300" y="177" textAnchor="middle" fill="#fef08a" fontSize="10" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
+                  ฿{leftStanding.price?.toLocaleString()}
+                </text>
+                <text x="300" y="193" textAnchor="middle" fill="#e2e8f0" fontSize="8" fontWeight="700" pointerEvents="none">
+                  {leftStanding.available <= 0 ? 'SOLD OUT' : t(`ว่าง ${leftStanding.available}`, `${leftStanding.available} left`)}
+                </text>
+              </g>
+            )}
 
-        {/* Right Standing Pit (STANDING AR / Zone 2) */}
-        {rightStanding && (
-          <g {...zoneProps(rightStanding)}>
-            <path
-              d="M 432 110 L 565 110 Q 582 185 565 256 L 466 256 L 466 202 L 432 202 Z"
-              fill={getZoneFill(rightStanding, '#a855f7')}
-              fillOpacity={getZoneOpacity(rightStanding, 0.9)}
-              stroke={getZoneStroke(rightStanding)}
-              strokeWidth={rightStanding.id === selectedZoneId ? 3.5 : 1.8}
-              className="transition-all duration-150 hover:brightness-115"
-            />
-            <text x="504" y="158" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
-              {standing.length > 1 ? 'STANDING B' : truncate(rightStanding.name, 14)}
-            </text>
-            <text x="504" y="175" textAnchor="middle" fill="#fef08a" fontSize="10" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
-              ฿{rightStanding.price?.toLocaleString()}
-            </text>
-            <text x="504" y="191" textAnchor="middle" fill="#e2e8f0" fontSize="8" fontWeight="700" pointerEvents="none">
-              {rightStanding.available <= 0 ? 'SOLD OUT' : t(`ว่าง ${rightStanding.available}`, `${rightStanding.available} left`)}
-            </text>
-          </g>
+            {/* Right Standing Pit (STANDING B) */}
+            {rightStanding && (
+              <g {...zoneProps(rightStanding)}>
+                <path
+                  d="M 434 112 L 562 112 Q 578 185 562 250 L 464 250 L 464 200 L 434 200 Z"
+                  fill={getZoneFill(rightStanding, '#a855f7')}
+                  fillOpacity={getZoneOpacity(rightStanding, 0.9)}
+                  stroke={getZoneStroke(rightStanding)}
+                  strokeWidth={rightStanding.id === selectedZoneId ? 3.5 : 1.8}
+                  className="transition-all duration-150 hover:brightness-115"
+                />
+                <text x="500" y="160" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
+                  STANDING B
+                </text>
+                <text x="500" y="177" textAnchor="middle" fill="#fef08a" fontSize="10" fontWeight="900" pointerEvents="none" style={{ paintOrder: 'stroke', stroke: '#090d16', strokeWidth: '3px' }}>
+                  ฿{rightStanding.price?.toLocaleString()}
+                </text>
+                <text x="500" y="193" textAnchor="middle" fill="#e2e8f0" fontSize="8" fontWeight="700" pointerEvents="none">
+                  {rightStanding.available <= 0 ? 'SOLD OUT' : t(`ว่าง ${rightStanding.available}`, `${rightStanding.available} left`)}
+                </text>
+              </g>
+            )}
+          </>
         )}
 
         {/* Additional Floor Zones if more than 2 standing zones exist */}

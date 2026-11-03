@@ -930,15 +930,15 @@ export default function ZoneSelectPage() {
 
                 {/* ── MODE A: STANDING PIT SELECTOR (โซนบัตรยืน) ── */}
                 {isStanding ? (
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div
-                      className="relative mx-auto max-w-xl rounded-3xl border-2 p-6 text-center transition-all overflow-hidden"
+                      className="relative mx-auto max-w-lg rounded-3xl border-2 p-5 sm:p-6 text-center transition-all overflow-hidden"
                       style={{
                         borderColor: `${zoneColor}88`,
                         background: `radial-gradient(circle at 50% 0%, ${zoneColor}28, rgba(15,15,24,0.92) 75%)`,
                       }}
                     >
-                      <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/50 px-3.5 py-1 text-xs font-black text-white mb-3">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/50 px-3.5 py-1 text-xs font-black text-white mb-2.5">
                         <Users size={14} style={{ color: zoneColor }} />
                         <span>{trData(selectedZone.name)} — STANDING PIT</span>
                       </div>
@@ -951,20 +951,20 @@ export default function ZoneSelectPage() {
                       </p>
 
                       {/* Quantity Stepper inside Standing Pit */}
-                      <div className="mt-5 flex items-center justify-center gap-4">
+                      <div className="mt-4 flex items-center justify-center gap-3 sm:gap-4">
                         <button
                           type="button"
                           onClick={() => handleQuantityChange(selectedSeats.length - 1)}
                           disabled={selectedSeats.length <= 0}
-                          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-black/50 text-white hover:bg-white/10 disabled:opacity-30 cursor-pointer"
+                          className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl border border-white/15 bg-black/50 text-white hover:bg-white/10 disabled:opacity-30 cursor-pointer"
                         >
-                          <Minus size={18} />
+                          <Minus size={16} />
                         </button>
-                        <div className="min-w-36 rounded-2xl border border-white/15 bg-black/60 px-5 py-2.5">
-                          <span className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        <div className="min-w-32 sm:min-w-36 rounded-2xl border border-white/15 bg-black/60 px-4 py-2 sm:px-5 sm:py-2.5">
+                          <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">
                             {t('จำนวนบัตรยืนที่เลือก', 'Standing Tickets')}
                           </span>
-                          <span className="text-2xl font-black text-cyan-300 font-mono">
+                          <span className="text-xl sm:text-2xl font-black text-cyan-300 font-mono">
                             {selectedSeats.length} <span className="text-xs font-normal text-gray-400">/ 6</span>
                           </span>
                         </div>
@@ -972,14 +972,14 @@ export default function ZoneSelectPage() {
                           type="button"
                           onClick={() => handleQuantityChange(selectedSeats.length + 1)}
                           disabled={selectedSeats.length >= Math.min(6, selectedZone.available || 6)}
-                          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-400/40 bg-cyan-400/20 text-cyan-200 hover:bg-cyan-400/30 disabled:opacity-30 cursor-pointer"
+                          className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl border border-cyan-400/40 bg-cyan-400/20 text-cyan-200 hover:bg-cyan-400/30 disabled:opacity-30 cursor-pointer"
                         >
-                          <Plus size={18} />
+                          <Plus size={16} />
                         </button>
                       </div>
 
                       {/* Assigned Queue Badges */}
-                      <div className="mt-5">
+                      <div className="mt-4">
                         {selectedSeats.length > 0 ? (
                           <div className="flex flex-wrap items-center justify-center gap-2">
                             {selectedSeats.map((qCode, i) => (
