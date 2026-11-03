@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Ticket, Music, LogOut, UserRound, Home, Users } from 'lucide-react';
+import { Ticket, Music, LogOut, UserRound, Home, Users, Store, QrCode, ShieldCheck } from 'lucide-react';
 import AuthModal from './AuthModal';
 import PurchaseHistoryModal from './PurchaseHistoryModal';
 import LanguageSwitch from './ui/LanguageSwitch';
@@ -178,93 +178,132 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (md:hidden): Home, Tickets, Profile & Logout */}
+      {/* MOBILE BOTTOM NAVIGATION BAR (md:hidden) */}
       <nav
         aria-label="Mobile Bottom Navigation"
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#07070b]/95 backdrop-blur-xl border-t border-white/10 px-3 py-1.5 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]"
       >
-        <div className="flex items-center justify-around max-w-md mx-auto">
-          {/* Home */}
-          <Link
-            to="/"
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
-              isActive('/')
-                ? 'text-cyan-400 font-bold'
-                : 'text-gray-400 hover:text-white font-medium'
-            }`}
-          >
-            <Home size={19} className={isActive('/') ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
-            <span className="text-[10px] mt-0.5 tracking-tight">{t('หน้าแรก', 'Home')}</span>
-          </Link>
-
-          {/* Tickets / Purchase History */}
-          <button
-            type="button"
-            onClick={authUser ? openHistoryModal : () => setAuthOpen(true)}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              showHistory
-                ? 'text-cyan-400 font-bold'
-                : 'text-gray-400 hover:text-white font-medium'
-            }`}
-          >
-            <Ticket size={19} className={showHistory ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
-            <span className="text-[10px] mt-0.5 tracking-tight">{t('ประวัติบัตร', 'My Tickets')}</span>
-          </button>
-
-          {/* Profile & Logout / Sign In */}
-          {authUser ? (
-            <div className="flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 shrink-0">
-              {authUser.avatarUrl ? (
-                <img
-                  src={authUser.avatarUrl}
-                  alt={authUser.username}
-                  className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/50 shrink-0"
-                />
-              ) : (
-                <UserRound size={13} className="text-emerald-300 shrink-0" />
-              )}
-              <span className="max-w-[70px] xs:max-w-[85px] text-left text-[11px] font-bold text-white truncate shrink-0">
-                {authUser.username}
-              </span>
-              <button
-                type="button"
-                onClick={logout}
-                aria-label={t('ออกจากระบบ', 'Logout')}
-                title={t('ออกจากระบบ', 'Logout')}
-                className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
-              >
-                <LogOut size={11} className="text-rose-400 shrink-0" />
-                <span className="text-[10px] font-bold tracking-tight text-rose-200">
-                  {t('ออก', 'Exit')}
-                </span>
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setAuthOpen(true)}
-              className="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-cyan-400 hover:text-white transition-all font-semibold cursor-pointer"
+        {isTeamSurface ? (
+          /* Team Surface Mobile Bar: Strictly NO regular customer profile or tickets */
+          <div className="flex items-center justify-around max-w-md mx-auto">
+            {/* Storefront */}
+            <Link
+              to="/"
+              className="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-gray-400 hover:text-white transition-all font-medium"
             >
-              <UserRound size={19} />
-              <span className="text-[10px] mt-0.5 tracking-tight">{t('เข้าสู่ระบบ', 'Sign In')}</span>
-            </button>
-          )}
+              <Store size={19} />
+              <span className="text-[10px] mt-0.5 tracking-tight">{t('กลับหน้าร้าน', 'Store')}</span>
+            </Link>
 
-          {/* If Team Surface */}
-          {isTeamSurface && (
+            {/* Team Portal */}
             <Link
               to="/team"
-              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
                 isActive('/team')
                   ? 'text-cyan-400 font-bold'
                   : 'text-gray-400 hover:text-white font-medium'
               }`}
             >
-              <Users size={18} />
+              <Users size={19} className={isActive('/team') ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
               <span className="text-[10px] mt-0.5 tracking-tight">{t('ทีมงาน', 'Team')}</span>
             </Link>
-          )}
-        </div>
+
+            {/* Scanner */}
+            <Link
+              to="/scanner"
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+                isActive('/scanner')
+                  ? 'text-cyan-400 font-bold'
+                  : 'text-gray-400 hover:text-white font-medium'
+              }`}
+            >
+              <QrCode size={19} className={isActive('/scanner') ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
+              <span className="text-[10px] mt-0.5 tracking-tight">{t('สแกนบัตร', 'Scanner')}</span>
+            </Link>
+
+            {/* Admin */}
+            <Link
+              to="/admin"
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+                location.pathname.startsWith('/admin')
+                  ? 'text-cyan-400 font-bold'
+                  : 'text-gray-400 hover:text-white font-medium'
+              }`}
+            >
+              <ShieldCheck size={19} className={location.pathname.startsWith('/admin') ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
+              <span className="text-[10px] mt-0.5 tracking-tight">{t('ผู้จัดงาน', 'Organizer')}</span>
+            </Link>
+          </div>
+        ) : (
+          /* Customer Storefront Mobile Bar */
+          <div className="flex items-center justify-around max-w-md mx-auto">
+            {/* Home */}
+            <Link
+              to="/"
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+                isActive('/')
+                  ? 'text-cyan-400 font-bold'
+                  : 'text-gray-400 hover:text-white font-medium'
+              }`}
+            >
+              <Home size={19} className={isActive('/') ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
+              <span className="text-[10px] mt-0.5 tracking-tight">{t('หน้าแรก', 'Home')}</span>
+            </Link>
+
+            {/* Tickets / Purchase History */}
+            <button
+              type="button"
+              onClick={authUser ? openHistoryModal : () => setAuthOpen(true)}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
+                showHistory
+                  ? 'text-cyan-400 font-bold'
+                  : 'text-gray-400 hover:text-white font-medium'
+              }`}
+            >
+              <Ticket size={19} className={showHistory ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
+              <span className="text-[10px] mt-0.5 tracking-tight">{t('ประวัติบัตร', 'My Tickets')}</span>
+            </button>
+
+            {/* Profile & Logout / Sign In */}
+            {authUser ? (
+              <div className="flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 shrink-0">
+                {authUser.avatarUrl ? (
+                  <img
+                    src={authUser.avatarUrl}
+                    alt={authUser.username}
+                    className="h-5 w-5 rounded-full object-cover ring-1 ring-emerald-400/50 shrink-0"
+                  />
+                ) : (
+                  <UserRound size={13} className="text-emerald-300 shrink-0" />
+                )}
+                <span className="max-w-[70px] xs:max-w-[85px] text-left text-[11px] font-bold text-white truncate shrink-0">
+                  {authUser.username}
+                </span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  aria-label={t('ออกจากระบบ', 'Logout')}
+                  title={t('ออกจากระบบ', 'Logout')}
+                  className="ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-rose-300 cursor-pointer shrink-0 transition-all"
+                >
+                  <LogOut size={11} className="text-rose-400 shrink-0" />
+                  <span className="text-[10px] font-bold tracking-tight text-rose-200">
+                    {t('ออก', 'Exit')}
+                  </span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAuthOpen(true)}
+                className="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-cyan-400 hover:text-white transition-all font-semibold cursor-pointer"
+              >
+                <UserRound size={19} />
+                <span className="text-[10px] mt-0.5 tracking-tight">{t('เข้าสู่ระบบ', 'Sign In')}</span>
+              </button>
+            )}
+          </div>
+        )}
       </nav>
 
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onAuthenticated={finishLogin} />}

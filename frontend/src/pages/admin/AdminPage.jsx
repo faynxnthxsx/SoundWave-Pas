@@ -22,6 +22,7 @@ import {
   X,
   PenLine,
   Lock,
+  ShieldAlert,
   Eye,
   EyeOff,
   Search,
@@ -689,6 +690,12 @@ export default function AdminPage() {
             <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-200">Organizer Portal</p>
             <h1 className="mt-1 text-2xl font-black">เข้าสู่ระบบเจ้าของงาน</h1>
             <p className="mt-2 text-xs text-gray-400">บัญชีเจ้าของงานแยกจากบัญชีพนักงานสแกนบัตร</p>
+          </div>
+          <div className="mb-5 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-2.5 text-center">
+            <p className="text-[11px] font-bold text-amber-300 flex items-center justify-center gap-1.5">
+              <ShieldAlert size={14} className="shrink-0 text-amber-400" />
+              <span>พื้นที่เฉพาะผู้จัดงาน (บัญชีลูกค้าทั่วไปไม่สามารถเข้าถึงได้)</span>
+            </p>
           </div>
           {loginError && (
             <div role="alert" className="mb-4 rounded-xl border border-rose-400/30 bg-rose-400/10 p-3">
