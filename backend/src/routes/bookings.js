@@ -131,49 +131,6 @@ router.post('/', requireCustomer, async (req, res) => {
           message: 'พบที่นั่งซ้ำกันในรายการที่เลือก กรุณาเลือกที่นั่งที่ไม่ซ้ำกัน'
         });
       }
-
-      // Check conflict with already issued or reserved tickets in this zone
-      const conflictTicket = await prisma.ticket.findFirst({
-        where: {
-          zoneId: zone.id,
-          status: { in: ['VALID', 'USED', 'RESERVED'] },
-          seatNumber: { in: seatsToReserve }
-        }
-      });
-
-      if (conflictTicket) {
-        return res.status(409).json({
-          success: false,
-          message: `ขออภัย ที่นั่ง ${conflictTicket.seatNumber} มีผู้จองไปแล้ว กรุณาเลือกที่นั่งอื่น`
-        });
-      }
-
-      // Check conflict with other users' active pending or reserved bookings
-      const activePending = await prisma.booking.findMany({
-        where: {
-          status: { in: ['PENDING', 'RESERVED'] },
-          expiresAt: { gt: new Date() },
-          items: { some: { zoneId: zone.id } }
-        },
-        select: { selectedSeats: true }
-      });
-
-      for (const b of activePending) {
-        if (b.selectedSeats) {
-          try {
-            const taken = JSON.parse(b.selectedSeats);
-            if (Array.isArray(taken)) {
-              const conflict = seatsToReserve.find((s) => taken.includes(s));
-              if (conflict) {
-                return res.status(409).json({
-                  success: false,
-                  message: `ขออภัย ที่นั่ง ${conflict} กำลังมีผู้ทำรายการจองอยู่ กรุณาเลือกที่นั่งอื่น`
-                });
-              }
-            }
-          } catch (e) {}
-        }
-      }
     }
 
     // Generate Booking Code: SW-YEAR-RANDOM
@@ -184,40 +141,104 @@ router.post('/', requireCustomer, async (req, res) => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const totalAmount = zone.price * qty;
 
-    // Use transaction to hold quota and create booking
-    const booking = await prisma.$transaction(async (tx) => {
-      // Atomically reserve inventory so simultaneous checkouts cannot oversell.
-      const reserved = await tx.zone.updateMany({
-        where: { id: zone.id, available: { gte: qty } },
-        data: { available: { decrement: qty } }
-      });
-      if (reserved.count !== 1) return null;
+    // Use transaction to hold quota and atomically validate seat reservation (Prevents Race Condition)
+    let booking;
+    try {
+      booking = await prisma.$transaction(async (tx) => {
+        // 1. Atomically reserve inventory so simultaneous checkouts cannot oversell.
+        const reserved = await tx.zone.updateMany({
+          where: { id: zone.id, available: { gte: qty } },
+          data: { available: { decrement: qty } }
+        });
+        if (reserved.count !== 1) {
+          throw new Error('CAPACITY_EXCEEDED');
+        }
 
-      return await tx.booking.create({
-        data: {
-          bookingCode,
-          customerName,
-          customerPhone,
-          customerLineId: customerLineId || req.customer?.lineUserId || null,
-          selectedSeats: seatsToReserve.length > 0 ? JSON.stringify(seatsToReserve) : null,
-          totalAmount,
-          expiresAt,
-          status: 'PENDING',
-          items: {
-            create: {
+        // 2. Atomically check and lock seats inside the transaction
+        if (seatsToReserve.length > 0) {
+          // Check conflict with already issued or reserved tickets in this zone
+          const conflictTicket = await tx.ticket.findFirst({
+            where: {
               zoneId: zone.id,
-              quantity: qty,
-              pricePerUnit: zone.price
+              status: { in: ['VALID', 'USED', 'RESERVED'] },
+              seatNumber: { in: seatsToReserve }
+            }
+          });
+
+          if (conflictTicket) {
+            throw new Error(`SEAT_TAKEN:${conflictTicket.seatNumber}`);
+          }
+
+          // Check conflict with other users' active pending or reserved bookings
+          const activePending = await tx.booking.findMany({
+            where: {
+              status: { in: ['PENDING', 'RESERVED'] },
+              expiresAt: { gt: new Date() },
+              items: { some: { zoneId: zone.id } }
+            },
+            select: { selectedSeats: true }
+          });
+
+          for (const b of activePending) {
+            if (b.selectedSeats) {
+              try {
+                const taken = JSON.parse(b.selectedSeats);
+                if (Array.isArray(taken)) {
+                  const conflict = seatsToReserve.find((s) => taken.includes(s));
+                  if (conflict) {
+                    throw new Error(`SEAT_HOLD:${conflict}`);
+                  }
+                }
+              } catch (e) {}
             }
           }
-        },
-        include: {
-          items: {
-            include: { zone: true }
-          }
         }
+
+        return await tx.booking.create({
+          data: {
+            bookingCode,
+            customerName,
+            customerPhone,
+            customerLineId: customerLineId || req.customer?.lineUserId || null,
+            selectedSeats: seatsToReserve.length > 0 ? JSON.stringify(seatsToReserve) : null,
+            totalAmount,
+            expiresAt,
+            status: 'PENDING',
+            items: {
+              create: {
+                zoneId: zone.id,
+                quantity: qty,
+                pricePerUnit: zone.price
+              }
+            }
+          },
+          include: {
+            items: {
+              include: { zone: true }
+            }
+          }
+        });
       });
-    });
+    } catch (txErr) {
+      if (txErr.message === 'CAPACITY_EXCEEDED') {
+        return res.status(409).json({ success: false, message: 'บัตรในโซนนี้เพิ่งหมด กรุณาเลือกจำนวนใหม่' });
+      }
+      if (txErr.message?.startsWith('SEAT_TAKEN:')) {
+        const seatName = txErr.message.split(':')[1];
+        return res.status(409).json({
+          success: false,
+          message: `ขออภัย ที่นั่ง ${seatName} มีผู้จองและออกตั๋วไปแล้ว กรุณาเลือกที่นั่งอื่น`
+        });
+      }
+      if (txErr.message?.startsWith('SEAT_HOLD:')) {
+        const seatName = txErr.message.split(':')[1];
+        return res.status(409).json({
+          success: false,
+          message: `ขออภัย ที่นั่ง ${seatName} เพิ่งถูกผู้ใช้อื่นทำรายการจองไปเมื่อสักครู่ กรุณาเลือกที่นั่งอื่น`
+        });
+      }
+      throw txErr;
+    }
 
     if (!booking) {
       return res.status(409).json({ success: false, message: 'บัตรในโซนนี้เพิ่งหมด กรุณาเลือกจำนวนใหม่' });
@@ -412,6 +433,21 @@ router.post('/:bookingCode/pay', async (req, res) => {
             const seat = bookingSeats[seatIndex] || fallbackSeat;
             seatIndex++;
 
+            // Double check no other ticket has claimed this seat
+            if (seat) {
+              const seatAlreadyClaimed = await tx.ticket.findFirst({
+                where: {
+                  zoneId: item.zoneId,
+                  status: { in: ['VALID', 'USED', 'RESERVED'] },
+                  seatNumber: seat,
+                  bookingId: { not: booking.id }
+                }
+              });
+              if (seatAlreadyClaimed) {
+                throw new Error(`SEAT_ALREADY_CLAIMED:${seat}`);
+              }
+            }
+
             const ticket = await tx.ticket.create({
               data: {
                 ticketCode,
@@ -428,6 +464,13 @@ router.post('/:bookingCode/pay', async (req, res) => {
         return ticketsList;
       });
     } catch (txError) {
+      if (txError.message?.startsWith('SEAT_ALREADY_CLAIMED:')) {
+        const seatName = txError.message.split(':')[1];
+        return res.status(409).json({
+          success: false,
+          message: `ไม่สามารถออกตั๋วได้ เนื่องจากที่นั่ง ${seatName} มีผู้ชำระเงินตัดหน้าไปก่อนแล้ว`
+        });
+      }
       if (txError.message === 'ALREADY_PAID_OR_EXPIRED' || txError.message === 'TICKETS_ALREADY_ISSUED') {
         const latestBooking = await prisma.booking.findUnique({
           where: { id: booking.id },

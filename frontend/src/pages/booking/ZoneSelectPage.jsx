@@ -251,7 +251,7 @@ export default function ZoneSelectPage() {
     [selectedZone?.id, bookingDraft?.selectedSeats, bookingDraft?.zoneId]
   );
 
-  // Fetch Occupied Seats on Zone change & Auto-poll every 18 seconds
+  // Fetch Occupied Seats on Zone change & Auto-poll Real-time (every 2.5s & on tab focus)
   useEffect(() => {
     if (!selectedZone) {
       setOccupiedSeats([]);
@@ -265,9 +265,22 @@ export default function ZoneSelectPage() {
       if (!document.hidden) {
         fetchOccupiedSeats(false);
       }
-    }, 18000);
+    }, 2500);
 
-    return () => clearInterval(interval);
+    const handleFocus = () => {
+      if (!document.hidden) {
+        fetchOccupiedSeats(false);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, [selectedZone?.id, fetchOccupiedSeats]);
 
   // Handle Zone Switching (Step 1 -> Step 2)
@@ -468,6 +481,24 @@ export default function ZoneSelectPage() {
     setErrorMsg('');
 
     try {
+      // 1. Instant Real-time Check: Verify seats right before submitting
+      const checkRes = await fetch(`/api/bookings/zones/${selectedZone.id}/occupied-seats`);
+      const checkData = await checkRes.json();
+      const freshOccupied = Array.isArray(checkData.occupiedSeats) ? checkData.occupiedSeats : [];
+      setOccupiedSeats(freshOccupied);
+
+      const conflictSeat = selectedSeats.find((s) => freshOccupied.includes(s));
+      if (conflictSeat) {
+        setSelectedSeats((prev) => prev.filter((s) => !freshOccupied.includes(s)));
+        setQuantity((prev) => Math.max(0, prev - 1));
+        throw new Error(
+          t(
+            `ขออภัย ที่นั่ง ${conflictSeat} เพิ่งถูกผู้ใช้อื่นทำรายการจองไปเมื่อสักครู่ กรุณาเลือกที่นั่งอื่น`,
+            `Sorry, seat ${conflictSeat} was just reserved by another user. Please choose another seat.`
+          )
+        );
+      }
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
@@ -500,14 +531,31 @@ export default function ZoneSelectPage() {
 
       navigate(`/booking/payment/${data.data.bookingCode}`);
     } catch (err) {
-      setErrorMsg(err.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ');
+      setErrorMsg(
+        err.message ||
+          t(
+            'ขออภัย ที่นั่งที่คุณเลือกถูกจองตัดหน้าไปแล้ว กรุณาเลือกหมายเลขที่นั่งใหม่บนผัง',
+            'Your selected seat was just reserved by another user. Please choose a new seat on the map.'
+          )
+      );
       if (selectedZone?.id) {
+        // Immediately fetch the latest occupied seats and purge taken seats from selection
         fetch(`/api/bookings/zones/${selectedZone.id}/occupied-seats`)
           .then((r) => r.json())
-          .then((d) => setOccupiedSeats(d.occupiedSeats || []))
+          .then((d) => {
+            const taken = Array.isArray(d.occupiedSeats) ? d.occupiedSeats : [];
+            setOccupiedSeats(taken);
+            setSelectedSeats((prev) => {
+              const remaining = prev.filter((s) => !taken.includes(s));
+              setQuantity(remaining.length);
+              return remaining;
+            });
+          })
           .catch(() => {});
       }
       setSubmitting(false);
+      // Strictly stay on zone page; DO NOT navigate to payment
+      return;
     }
   };
 

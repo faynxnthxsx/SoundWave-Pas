@@ -15,6 +15,7 @@ export default function PaymentPage() {
   const [paying, setPaying] = useState(false);
   const [paidSuccess, setPaidSuccess] = useState(false);
   const [tickets, setTickets] = useState([]);
+  const [paymentError, setPaymentError] = useState('');
 
   useEffect(() => {
     fetch(`/api/bookings/${bookingCode}`)
@@ -115,10 +116,10 @@ export default function PaymentPage() {
           console.error('Failed to save order history:', err);
         }
       } else {
-        alert(data.message || t('เกิดข้อผิดพลาดในการชำระเงิน', 'Payment failed'));
+        setPaymentError(data.message || t('เกิดข้อผิดพลาดในการชำระเงิน', 'Payment failed'));
       }
     } catch {
-      alert(t('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'Cannot connect to server'));
+      setPaymentError(t('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'Cannot connect to server'));
     } finally {
       setPaying(false);
     }
@@ -278,6 +279,22 @@ export default function PaymentPage() {
             <span className="font-mono text-white font-semibold">{booking.bookingCode}</span>
           </p>
         </div>
+
+        {paymentError && (
+          <div className="mt-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-center space-y-2.5">
+            <div className="flex items-center justify-center gap-2 text-rose-300 text-xs font-bold">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{paymentError}</span>
+            </div>
+            <Link
+              to={booking?.items?.[0]?.zone?.concert?.id ? `/booking/zones?concertId=${booking.items[0].zone.concert.id}` : '/booking/zone-select'}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white text-black font-bold text-xs uppercase px-4 py-2 hover:bg-gray-200 transition-colors shadow-md"
+            >
+              <span>{t('กลับไปเลือกหมายเลขที่นั่งใหม่', 'Pick New Seat Number')}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
 
         <div className="my-5 flex flex-col items-center">
           <div className="bg-white p-4 rounded-2xl shadow-md text-center max-w-[220px]">
