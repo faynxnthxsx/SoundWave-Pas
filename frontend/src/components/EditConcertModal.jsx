@@ -4,6 +4,7 @@ import { useToast } from './Toast';
 import ConcertDateTimePicker from './ConcertDateTimePicker';
 import LocationPicker from './LocationPicker';
 import { useLanguage } from '../context/LanguageContext';
+import { THAILAND_PROVINCES } from '../data/thailandProvinces';
 
 export default function EditConcertModal({ concert, onClose, api, onSaveSuccess }) {
   const toast = useToast();
@@ -12,8 +13,10 @@ export default function EditConcertModal({ concert, onClose, api, onSaveSuccess 
 
   // Format existing date to YYYY-MM-DDTHH:mm for datetime picker
   const initialDateStr = (() => {
+    if (!concert.eventDate) return '';
     try {
       const d = new Date(concert.eventDate);
+      if (Number.isNaN(d.getTime())) return '';
       const pad = (n) => String(n).padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     } catch {
@@ -21,12 +24,19 @@ export default function EditConcertModal({ concert, onClose, api, onSaveSuccess 
     }
   })();
 
+  // Match province from existing concert location if available
+  const initialProvince = (() => {
+    if (!concert.location) return '';
+    const match = THAILAND_PROVINCES.find((p) => concert.location.includes(p));
+    return match || '';
+  })();
+
   const [form, setForm] = useState({
     name: concert.name || '',
     description: concert.description || '',
     eventDate: initialDateStr,
     location: concert.location || '',
-    province: '',
+    province: initialProvince,
     venue: concert.venue || '',
     latitude: concert.latitude ?? null,
     longitude: concert.longitude ?? null,

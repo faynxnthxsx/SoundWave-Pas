@@ -356,24 +356,27 @@ export default function AdminPage() {
     const exportTickets = [];
     bookings.forEach((b) => {
       (b.tickets || []).forEach((t) => {
-        const item = b.items?.find((i) => i.zoneId === t.zoneId);
-        const concert = item?.zone?.concert;
-        if (!targetConcertId || concert?.id === targetConcertId) {
+        const item = b.items?.find((i) => (t.zoneId && i.zoneId === t.zoneId) || (t.zone?.id && i.zoneId === t.zone.id));
+        const zone = t.zone || item?.zone;
+        const concert = zone?.concert || item?.zone?.concert || b.items?.[0]?.zone?.concert;
+        const concertId = concert?.id;
+
+        if (!targetConcertId || concertId === targetConcertId) {
           exportTickets.push({
-            ticketCode: t.ticketCode,
+            ticketCode: t.ticketCode || '—',
             concertName: concert?.name || 'SoundWave Live',
-            zoneName: item?.zone?.name || '—',
-            category: item?.zone?.category || '—',
+            zoneName: zone?.name || '—',
+            category: zone?.category || '—',
             seatNumber: t.seatNumber || 'N/A',
-            attendeeName: t.attendeeName,
+            attendeeName: t.attendeeName || '—',
             customerPhone: b.customerPhone || '—',
-            bookingCode: b.bookingCode,
-            totalAmount: b.totalAmount,
-            bookingStatus: b.status,
-            ticketStatus: t.status,
+            bookingCode: b.bookingCode || '—',
+            totalAmount: b.totalAmount ?? 0,
+            bookingStatus: b.status || '—',
+            ticketStatus: t.status || '—',
             checkedIn: t.status === 'USED' ? 'YES' : 'NO',
             usedAt: t.usedAt ? new Date(t.usedAt).toLocaleString('th-TH') : '—',
-            createdAt: new Date(b.createdAt).toLocaleString('th-TH'),
+            createdAt: b.createdAt ? new Date(b.createdAt).toLocaleString('th-TH') : '—',
           });
         }
       });
@@ -403,20 +406,20 @@ export default function AdminPage() {
 
     const csvRows = exportTickets.map((row) =>
       [
-        `"${row.ticketCode}"`,
-        `"${row.concertName.replace(/"/g, '""')}"`,
-        `"${row.zoneName.replace(/"/g, '""')}"`,
-        `"${row.category}"`,
-        `"${row.seatNumber}"`,
-        `"${row.attendeeName.replace(/"/g, '""')}"`,
-        `"${row.customerPhone}"`,
-        `"${row.bookingCode}"`,
+        `"${String(row.ticketCode).replace(/"/g, '""')}"`,
+        `"${String(row.concertName).replace(/"/g, '""')}"`,
+        `"${String(row.zoneName).replace(/"/g, '""')}"`,
+        `"${String(row.category).replace(/"/g, '""')}"`,
+        `"${String(row.seatNumber).replace(/"/g, '""')}"`,
+        `"${String(row.attendeeName).replace(/"/g, '""')}"`,
+        `"${String(row.customerPhone).replace(/"/g, '""')}"`,
+        `"${String(row.bookingCode).replace(/"/g, '""')}"`,
         row.totalAmount,
-        `"${row.bookingStatus}"`,
-        `"${row.ticketStatus}"`,
-        `"${row.checkedIn}"`,
-        `"${row.usedAt}"`,
-        `"${row.createdAt}"`,
+        `"${String(row.bookingStatus).replace(/"/g, '""')}"`,
+        `"${String(row.ticketStatus).replace(/"/g, '""')}"`,
+        `"${String(row.checkedIn).replace(/"/g, '""')}"`,
+        `"${String(row.usedAt).replace(/"/g, '""')}"`,
+        `"${String(row.createdAt).replace(/"/g, '""')}"`,
       ].join(',')
     );
 

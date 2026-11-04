@@ -399,7 +399,7 @@ router.get('/bookings', async (req, res) => {
           include: { zone: { include: { concert: true } } },
         },
         tickets: {
-          select: { id: true, ticketCode: true, status: true, attendeeName: true, seatNumber: true, usedAt: true, zone: { select: { id: true, name: true, category: true, price: true, concert: { select: { id: true, name: true, eventDate: true, venue: true } } } } },
+          select: { id: true, ticketCode: true, zoneId: true, status: true, attendeeName: true, seatNumber: true, usedAt: true, zone: { select: { id: true, name: true, category: true, price: true, concert: { select: { id: true, name: true, eventDate: true, venue: true } } } } },
         },
         _count: { select: { tickets: true } },
       },
