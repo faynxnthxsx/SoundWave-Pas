@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -6,27 +6,17 @@ import { ToastProvider } from './components/Toast';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
 
-// Eager load critical home and booking page
+// Eager load all pages for instant 0ms page transitions
 import HomePage from './pages/booking/HomePage';
 import ZoneSelectPage from './pages/booking/ZoneSelectPage';
-
-// Lazy load secondary pages for blazing fast mobile performance
-const PaymentPage = lazy(() => import('./pages/booking/PaymentPage'));
-const ConcertDetailPage = lazy(() => import('./pages/booking/ConcertDetailPage'));
-const MyTicketPage = lazy(() => import('./pages/tickets/MyTicketPage'));
-const SouvenirPrintPage = lazy(() => import('./pages/tickets/SouvenirPrintPage'));
-const GateScannerPage = lazy(() => import('./pages/scanner/GateScannerPage'));
-const AdminPage = lazy(() => import('./pages/admin/AdminPage'));
-const AdminInsightPage = lazy(() => import('./pages/admin/AdminInsightPage'));
-const TeamPortalPage = lazy(() => import('./pages/TeamPortalPage'));
-
-function PageLoader() {
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent" />
-    </div>
-  );
-}
+import PaymentPage from './pages/booking/PaymentPage';
+import ConcertDetailPage from './pages/booking/ConcertDetailPage';
+import MyTicketPage from './pages/tickets/MyTicketPage';
+import SouvenirPrintPage from './pages/tickets/SouvenirPrintPage';
+import GateScannerPage from './pages/scanner/GateScannerPage';
+import AdminPage from './pages/admin/AdminPage';
+import AdminInsightPage from './pages/admin/AdminInsightPage';
+import TeamPortalPage from './pages/TeamPortalPage';
 
 export default function App() {
   const [googleProcessing, setGoogleProcessing] = useState(() => {
@@ -105,27 +95,25 @@ export default function App() {
               {/* Navigation Bar */}
               <Navbar />
 
-              {/* Dynamic Pages with Code Splitting */}
+              {/* Main App Content - Instant Navigation */}
               <main className="flex-1 w-full max-w-full overflow-x-hidden pb-16 md:pb-0">
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    {/* Booking Flow */}
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/concerts/:id" element={<ConcertDetailPage />} />
-                    <Route path="/booking/zone-select" element={<ZoneSelectPage />} />
-                    <Route path="/booking/payment/:bookingCode" element={<PaymentPage />} />
+                <Routes>
+                  {/* Booking Flow */}
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/concerts/:id" element={<ConcertDetailPage />} />
+                  <Route path="/booking/zone-select" element={<ZoneSelectPage />} />
+                  <Route path="/booking/payment/:bookingCode" element={<PaymentPage />} />
 
-                    {/* Ticket & Printing */}
-                    <Route path="/tickets/:ticketCode" element={<MyTicketPage />} />
-                    <Route path="/tickets/:ticketCode/print" element={<SouvenirPrintPage />} />
+                  {/* Ticket & Printing */}
+                  <Route path="/tickets/:ticketCode" element={<MyTicketPage />} />
+                  <Route path="/tickets/:ticketCode/print" element={<SouvenirPrintPage />} />
 
-                    {/* Gate Scanner & Admin */}
-                    <Route path="/scanner" element={<GateScannerPage />} />
-                    <Route path="/admin" element={<AdminPage />} />
-                    <Route path="/admin/insights/:type" element={<AdminInsightPage />} />
-                    <Route path="/team" element={<TeamPortalPage />} />
-                  </Routes>
-                </Suspense>
+                  {/* Gate Scanner & Admin */}
+                  <Route path="/scanner" element={<GateScannerPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/admin/insights/:type" element={<AdminInsightPage />} />
+                  <Route path="/team" element={<TeamPortalPage />} />
+                </Routes>
               </main>
 
               {/* Global Footer */}
