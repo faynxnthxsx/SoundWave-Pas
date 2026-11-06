@@ -75,7 +75,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
   };
 
   return (
-    <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/85 p-3 sm:p-5 backdrop-blur-md">
+    <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/85 p-2.5 sm:p-5 backdrop-blur-md">
       <section
         role="dialog"
         aria-modal="true"
@@ -83,24 +83,24 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
         className="radar-modal-dialog flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-cyan-400/30 bg-[#0f1017] shadow-2xl animate-in fade-in"
       >
         {/* Header */}
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-400/40 bg-cyan-400/10 text-cyan-300">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-3.5 sm:p-5">
+          <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-400/40 bg-cyan-400/10 text-cyan-300">
               <Radar size={22} className="animate-pulse" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <span className="rounded-full bg-cyan-400/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-200 border border-cyan-400/40">
                   Radar Auto-Discovery
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-[11px] sm:text-xs text-gray-400">
                   {t('ตรวจจับคอนเสิร์ตและเฟสติวัลจริงในไทย 2026', 'Thailand Live Concert & Festival Radar 2026')}
                 </span>
               </div>
-              <h2 id="discovery-modal-title" className="mt-0.5 text-xl font-black text-white flex items-center gap-2">
+              <h2 id="discovery-modal-title" className="mt-1 sm:mt-0.5 text-base sm:text-xl font-black text-white flex flex-wrap items-center gap-2">
                 <span>{t('ศูนย์ตรวจจับคอนเสิร์ตใหม่ในไทย', 'Thailand Live Concert Discovery Center')}</span>
                 {data.pendingCount > 0 && (
-                  <span className="rounded-full bg-rose-500/20 px-2.5 py-0.5 text-xs font-bold text-rose-300 border border-rose-500/40">
+                  <span className="rounded-full bg-rose-500/20 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold text-rose-300 border border-rose-500/40">
                     {t(`ค้นพบ ${data.pendingCount} งานใหม่`, `${data.pendingCount} New Found`)}
                   </span>
                 )}
@@ -108,13 +108,13 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
             <button
               type="button"
               disabled={loading}
               onClick={() => fetchDiscovery(true)}
               title={t('สแกนหาคอนเสิร์ตใหม่จากเว็บสด', 'Scan live web sources for new concerts')}
-              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
             >
               <RotateCcw size={13} className={loading ? 'animate-spin' : ''} />
               <span>{t('สแกนเรดาร์สด', 'Scan Live Radar')}</span>
@@ -124,7 +124,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
               type="button"
               onClick={onClose}
               aria-label={t('ปิด', 'Close')}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white"
             >
               <X size={18} />
             </button>
@@ -132,10 +132,10 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
         </header>
 
         {/* Content list */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4 text-xs text-cyan-100 flex items-start gap-3">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-5 space-y-4">
+          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-3.5 sm:p-4 text-xs text-cyan-100 flex items-start gap-3">
             <Zap size={18} className="text-cyan-300 shrink-0 mt-0.5" />
-            <div>
+            <div className="min-w-0">
               <p className="font-bold">
                 {t('ระบบเรดาร์ซิงก์ข้อมูลงานจริง (Live Concert Feeds)', 'Live Concert Auto-Discovery Feed (ThaiTicketMajor)')}
               </p>
@@ -193,12 +193,12 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                       return (
                         <article
                           key={c.externalId}
-                          className="rounded-3xl border border-cyan-400/30 bg-[#12131d] hover:border-cyan-400/60 ring-1 ring-cyan-400/20 p-4 sm:p-5 transition-all shadow-xl flex flex-col justify-between"
+                          className="min-w-0 w-full overflow-hidden rounded-3xl border border-cyan-400/30 bg-[#12131d] hover:border-cyan-400/60 ring-1 ring-cyan-400/20 p-3.5 sm:p-5 transition-all shadow-xl flex flex-col justify-between"
                         >
-                          <div>
+                          <div className="min-w-0">
                             {/* Banner + Header */}
-                            <div className="flex gap-4">
-                              <div className="h-24 w-20 rounded-2xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
+                            <div className="flex gap-3 sm:gap-4 min-w-0">
+                              <div className="h-20 w-16 sm:h-24 sm:w-20 rounded-2xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
                                 <img
                                   src={
                                     c.bannerUrl ||
@@ -214,7 +214,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
+                                <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
                                   <span className="inline-flex items-center gap-1 rounded-md bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold text-rose-300 border border-rose-500/40 animate-pulse">
                                     <Sparkles size={11} /> {t('งานใหม่พร้อมนำเข้า', 'Ready to Import')}
                                   </span>
@@ -235,14 +235,14 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                                   )}
                                 </div>
 
-                                <h3 className="mt-1 text-sm sm:text-base font-black text-white leading-tight">
+                                <h3 className="mt-1 text-sm sm:text-base font-black text-white leading-tight break-words">
                                   {c.name}
                                 </h3>
 
-                                <div className="mt-1 text-[11px] text-gray-400 space-y-0.5">
+                                <div className="mt-1 text-[11px] text-gray-400 space-y-0.5 min-w-0">
                                   <p className="flex items-center gap-1 text-cyan-200">
                                     <CalendarDays size={12} className="text-cyan-400 shrink-0" />
-                                    <span>
+                                    <span className="truncate">
                                       {new Date(c.eventDate).toLocaleDateString(lang === 'en' ? 'en-GB' : 'th-TH', {
                                         day: 'numeric',
                                         month: 'short',
@@ -250,7 +250,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                                       })}
                                     </span>
                                   </p>
-                                  <p className="flex items-center gap-1 truncate text-pink-200">
+                                  <p className="flex items-center gap-1 min-w-0 text-pink-200">
                                     <MapPin size={12} className="text-pink-400 shrink-0" />
                                     <span className="truncate">{trData(c.venue || c.location)}</span>
                                   </p>
@@ -259,8 +259,8 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                             </div>
 
                             {/* Lineup & Zones Preview */}
-                            <div className="mt-3.5 space-y-2 border-t border-white/5 pt-3 text-[11px]">
-                              <div>
+                            <div className="mt-3.5 space-y-2 border-t border-white/5 pt-3 text-[11px] min-w-0">
+                              <div className="break-words">
                                 <span className="text-gray-400 font-semibold">{t('ไฮไลท์ศิลปิน: ', 'Featured Artists: ')}</span>
                                 <span className="text-gray-200">
                                   {c.lineup
@@ -285,8 +285,8 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                           </div>
 
                           {/* Action button */}
-                          <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
-                            <span className="text-[10px] text-gray-500 font-mono">
+                          <div className="mt-4 pt-3 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                            <span className="text-[10px] text-gray-500 font-mono truncate">
                               ID: {c.externalId}
                             </span>
 
@@ -294,7 +294,7 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                               type="button"
                               disabled={isImporting}
                               onClick={() => handleImport(c.externalId, c.name)}
-                              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-300 to-blue-400 px-3.5 py-2 text-xs font-black text-black hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all shadow-md shadow-cyan-400/20 cursor-pointer"
+                              className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-300 to-blue-400 px-3.5 py-2 text-xs font-black text-black hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all shadow-md shadow-cyan-400/20 cursor-pointer shrink-0"
                             >
                               {isImporting ? <LoaderCircle size={13} className="animate-spin" /> : <Download size={13} />}
                               <span>

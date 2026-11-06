@@ -798,12 +798,12 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="admin-dashboard-screen min-h-screen bg-[#07070c] px-4 py-8 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <div className="admin-dashboard-screen min-h-screen w-full max-w-full overflow-x-hidden bg-[#07070c] px-3.5 py-6 text-white sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto max-w-7xl w-full">
         {/* ── Top Header & Tab Navigation Bar ── */}
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="flex h-6 items-center rounded-md bg-cyan-400/15 px-2 font-mono text-[10px] font-bold uppercase tracking-widest text-cyan-300 ring-1 ring-cyan-400/30">
                 Organizer Portal
               </span>
@@ -812,59 +812,59 @@ export default function AdminPage() {
             <h1 className="mt-1 text-2xl font-black sm:text-3xl">แผงควบคุมและสถิติคอนเสิร์ต</h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* ── 3 Main Navigation Tabs ── */}
-            <nav className="flex rounded-xl bg-white/5 p-1 border border-white/10">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            {/* ── Main Navigation Tabs (2x2 Grid on Mobile, Original Flex on Desktop) ── */}
+            <nav className="grid grid-cols-2 sm:flex rounded-xl bg-white/5 p-1 border border-white/10 gap-1 sm:gap-0 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setActiveTab('overview')}
-                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition-all ${
                   activeTab === 'overview'
                     ? 'bg-cyan-300 text-black shadow-md shadow-cyan-300/30'
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
-                <TrendingUp size={14} />
-                <span>📊 ภาพรวม & ยอดขาย</span>
+                <TrendingUp size={14} className="shrink-0" />
+                <span className="truncate">📊 ภาพรวม & ยอดขาย</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('events')}
-                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition-all ${
                   activeTab === 'events'
                     ? 'bg-cyan-300 text-black shadow-md shadow-cyan-300/30'
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
-                <Layers size={14} />
-                <span>🎸 คอนเสิร์ต & ผังที่นั่ง</span>
+                <Layers size={14} className="shrink-0" />
+                <span className="truncate">🎸 คอนเสิร์ต & ผังที่นั่ง</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('orders')}
-                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition-all ${
                   activeTab === 'orders'
                     ? 'bg-cyan-300 text-black shadow-md shadow-cyan-300/30'
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
-                <FileSpreadsheet size={14} />
-                <span>🧾 รายการจอง & ตั๋วลูกค้า</span>
+                <FileSpreadsheet size={14} className="shrink-0" />
+                <span className="truncate">🧾 รายการจอง & ตั๋วลูกค้า</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('create')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs font-bold transition-all ${
                   activeTab === 'create'
                     ? 'bg-cyan-300 text-black shadow-md shadow-cyan-300/30'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
-                <Plus size={14} />
-                <span>+ เพิ่มงานใหม่</span>
+                <Plus size={14} className="shrink-0" />
+                <span className="truncate">+ เพิ่มงานใหม่</span>
               </button>
             </nav>
 
@@ -984,12 +984,12 @@ export default function AdminPage() {
                 return (
                   <article
                     key={c.id}
-                    className="rounded-3xl border border-white/10 bg-[#101018] p-5 shadow-xl transition hover:border-cyan-400/30"
+                    className="min-w-0 w-full overflow-hidden rounded-3xl border border-white/10 bg-[#101018] p-4 sm:p-5 shadow-xl transition hover:border-cyan-400/30"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                    <div className="flex items-start justify-between gap-3 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span
-                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
+                          className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
                             c.status === 'ON_SALE'
                               ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-200'
                               : c.status === 'PAUSED'
@@ -1002,25 +1002,25 @@ export default function AdminPage() {
                           {c.status || 'UPCOMING'}
                         </span>
                         <h3 className="mt-2 text-base font-black text-white truncate">{c.name}</h3>
-                        <p className="text-xs text-gray-400 mt-0.5">{dateLabel(c.eventDate)}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">{dateLabel(c.eventDate)}</p>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleCopyStoreLink(c)}
                         title="คัดลอกลิงก์ร้าน"
-                        className="rounded-xl border border-white/10 p-2 text-gray-400 hover:text-cyan-300 hover:bg-white/5"
+                        className="shrink-0 rounded-xl border border-white/10 p-2 text-gray-400 hover:text-cyan-300 hover:bg-white/5"
                       >
                         <Copy size={14} />
                       </button>
                     </div>
 
                     <div className="mt-4 rounded-2xl bg-black/30 p-3.5 space-y-2">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-xs text-gray-400">รายได้รวม:</span>
-                        <span className="font-mono text-lg font-black text-emerald-300">{money(c.revenue)}</span>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-xs text-gray-400 shrink-0">รายได้รวม:</span>
+                        <span className="font-mono text-lg font-black text-emerald-300 truncate">{money(c.revenue)}</span>
                       </div>
-                      <div className="flex items-center justify-between text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                         <span className="text-gray-400">ตั๋วที่ขายแล้ว:</span>
                         <span className="font-mono font-bold text-white">
                           {sold.toLocaleString()} / {capacity.toLocaleString()} {t('ใบ', 'tickets')} ({percentSold}%)
@@ -1095,11 +1095,11 @@ export default function AdminPage() {
                 return (
                   <article
                     key={c.id}
-                    className="overflow-hidden rounded-3xl border border-white/10 bg-[#101018] shadow-2xl transition-all"
+                    className="min-w-0 w-full overflow-hidden rounded-3xl border border-white/10 bg-[#101018] shadow-2xl transition-all"
                   >
                     {/* Header Bar */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 bg-white/[0.02] p-5 sm:p-6">
-                      <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 bg-white/[0.02] p-4 sm:p-6">
+                      <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 w-full sm:w-auto sm:flex-1">
                         <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
                           {c.bannerUrl ? (
                             <img src={c.bannerUrl} alt={c.name} className="h-full w-full object-cover" />
@@ -1110,15 +1110,15 @@ export default function AdminPage() {
                           )}
                         </div>
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             {/* Concert Sales Status Toggle Switch */}
-                            <div className="concert-sales-toggle flex items-center rounded-xl bg-black/40 p-1 border border-white/15">
+                            <div className="concert-sales-toggle flex flex-wrap items-center rounded-xl bg-black/40 p-1 border border-white/15">
                               <button
                                 type="button"
                                 onClick={() => handleToggleConcertStatus(c.id, 'ON_SALE')}
                                 title="เปิดจำหน่ายบัตร"
-                                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all ${
+                                className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-[10px] font-bold transition-all ${
                                   c.status === 'ON_SALE'
                                     ? 'bg-emerald-400 text-black shadow-md'
                                     : 'text-gray-400 hover:text-emerald-300'
@@ -1132,7 +1132,7 @@ export default function AdminPage() {
                                 type="button"
                                 onClick={() => handleToggleConcertStatus(c.id, 'PAUSED')}
                                 title="พักการจำหน่ายชั่วคราว"
-                                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all ${
+                                className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-[10px] font-bold transition-all ${
                                   c.status === 'PAUSED'
                                     ? 'bg-amber-400 text-black shadow-md'
                                     : 'text-gray-400 hover:text-amber-300'
@@ -1146,7 +1146,7 @@ export default function AdminPage() {
                                 type="button"
                                 onClick={() => handleToggleConcertStatus(c.id, 'CLOSED')}
                                 title="ปิดการจำหน่าย"
-                                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all ${
+                                className={`flex items-center gap-1 rounded-lg px-2 sm:px-2.5 py-1 text-[10px] font-bold transition-all ${
                                   c.status === 'CLOSED'
                                     ? 'bg-rose-500 text-white shadow-md'
                                     : 'text-gray-400 hover:text-rose-400'
@@ -1157,30 +1157,30 @@ export default function AdminPage() {
                               </button>
                             </div>
 
-                            <span className="text-[11px] text-gray-400 font-mono">
+                            <span className="text-[11px] text-gray-400 font-mono truncate max-w-full">
                               #{c.id} · {c.slug}
                             </span>
                           </div>
 
-                          <h3 className="mt-1.5 text-lg sm:text-xl font-black text-white truncate">
+                          <h3 className="mt-1.5 text-base sm:text-xl font-black text-white truncate">
                             {c.name}
                           </h3>
 
                           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
                             <span className="flex items-center gap-1">
-                              <CalendarDays size={13} className="text-cyan-300" />
+                              <CalendarDays size={13} className="text-cyan-300 shrink-0" />
                               {dateLabel(c.eventDate)}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin size={13} className="text-pink-300" />
-                              {trData(c.venue || c.location)}
+                            <span className="flex items-center gap-1 min-w-0">
+                              <MapPin size={13} className="text-pink-300 shrink-0" />
+                              <span className="truncate">{trData(c.venue || c.location)}</span>
                             </span>
                           </div>
                         </div>
                       </div>
 
                       {/* Header Quick Actions */}
-                      <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto shrink-0">
                         {/* Edit Concert Button */}
                         <button
                           type="button"
@@ -1232,12 +1232,12 @@ export default function AdminPage() {
                     </div>
 
                     {isExpanded && (
-                      <div className="p-5 sm:p-6 space-y-6">
+                      <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
                         {/* Zone Table with Sales Switch and Seat Map Button */}
                         <div>
-                          <div className="flex items-center justify-between mb-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-                              <Layers size={14} className="text-cyan-300" />
+                              <Layers size={14} className="text-cyan-300 shrink-0" />
                               <span>{t(`โซนบัตร และผังที่นั่งจำลอง (${c.zones?.length || 0} โซน)`, `Ticket Zones & Seat Maps (${c.zones?.length || 0} zones)`)}</span>
                             </h4>
                             <span className="text-[11px] text-gray-500">
@@ -1245,7 +1245,80 @@ export default function AdminPage() {
                             </span>
                           </div>
 
-                          <div className="overflow-x-auto rounded-2xl border border-white/10">
+                          {/* ── Mobile Card View for Zones (Visible on Mobile < md) ── */}
+                          <div className="grid gap-3 md:hidden">
+                            {(c.zoneStats || c.zones || []).map((z) => {
+                              const zoneSold = z.sold ?? z._count?.tickets ?? 0;
+                              const zoneCap = z.totalCapacity || 1;
+                              const zoneAvail = z.available ?? (zoneCap - zoneSold);
+                              const zoneRevenue = z.revenue ?? zoneSold * z.price;
+                              const isActive = z.isActive !== false;
+
+                              return (
+                                <div
+                                  key={z.id}
+                                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 space-y-3"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-black text-white truncate">{trData(z.name)}</p>
+                                      <span className="mt-1 inline-block rounded-md bg-white/5 px-2 py-0.5 text-[10px] text-gray-300 border border-white/10">
+                                        {categoryLabel(z.category)}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleZoneActive(z.id, isActive)}
+                                      className={`zone-sales-toggle-btn shrink-0 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
+                                        isActive
+                                          ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/40'
+                                          : 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
+                                      }`}
+                                    >
+                                      <span
+                                        className={`h-2 w-2 rounded-full ${
+                                          isActive ? 'bg-emerald-400' : 'bg-amber-400'
+                                        }`}
+                                      />
+                                      <span>{isActive ? 'เปิดขาย' : 'พักการขาย'}</span>
+                                    </button>
+                                  </div>
+
+                                  <div className="grid grid-cols-3 gap-2 rounded-xl bg-black/30 p-2.5 text-center text-[11px]">
+                                    <div>
+                                      <p className="text-[10px] text-gray-400">ราคาบัตร</p>
+                                      <p className="mt-0.5 font-mono font-bold text-cyan-200">{money(z.price)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] text-gray-400">ขายแล้ว / เหลือ</p>
+                                      <p className="mt-0.5 font-mono font-bold text-white">
+                                        {zoneSold}/{zoneCap}{' '}
+                                        <span className={zoneAvail > 0 ? 'text-emerald-300' : 'text-rose-400'}>
+                                          ({zoneAvail > 0 ? zoneAvail : 0})
+                                        </span>
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] text-gray-400">รายได้โซน</p>
+                                      <p className="mt-0.5 font-mono font-bold text-emerald-300">{money(zoneRevenue)}</p>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => openZoneSeats(z.id)}
+                                    className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20 active:scale-[0.99] transition-all shadow-sm"
+                                  >
+                                    <Armchair size={14} className="text-cyan-300" />
+                                    <span>ผังที่นั่ง Interactive</span>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* ── Desktop Table View for Zones (Visible on md+) ── */}
+                          <div className="hidden md:block overflow-x-auto rounded-2xl border border-white/10">
                             <table className="w-full text-left text-xs">
                               <thead className="border-b border-white/10 bg-white/[0.04] text-[10px] uppercase font-bold text-gray-400">
                                 <tr>
@@ -1341,10 +1414,10 @@ export default function AdminPage() {
             TAB 3: 🧾 รายการจอง & ตั๋วลูกค้า (Orders & Attendees)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === 'orders' && (
-          <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-5 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-black text-white">รายการจองและข้อมูลผู้ถือตั๋ว (Orders & Attendees)</h2>
+                <h2 className="text-lg sm:text-xl font-black text-white">รายการจองและข้อมูลผู้ถือตั๋ว (Orders & Attendees)</h2>
                 <p className="mt-0.5 text-xs text-gray-400">
                   ค้นหาด่วนจากรหัสจอง รหัสตั๋ว เบอร์โทร หรือชื่อลูกค้า พร้อมส่งตั๋ว LINE ซ้ำและส่งออกไฟล์
                 </p>
@@ -1354,7 +1427,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => handleExportCSV()}
-                  className="flex items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3.5 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3.5 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20"
                 >
                   <Download size={14} />
                   <span>ส่งออก CSV รายชื่อผู้เข้างาน</span>
@@ -1363,16 +1436,16 @@ export default function AdminPage() {
             </div>
 
             {/* ── Universal Quick Search Bar ── */}
-            <div className="rounded-3xl border border-cyan-400/20 bg-[#101018] p-5 shadow-2xl">
-              <div className="flex flex-col sm:flex-row gap-3">
+            <div className="rounded-3xl border border-cyan-400/20 bg-[#101018] p-4 sm:p-5 shadow-2xl">
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-300" size={17} />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="พิมพ์ค้นหาได้ทันที: รหัสจอง (SW-...), รหัสตั๋ว (SWP-...), เบอร์โทรศัพท์ หรือชื่อลูกค้า..."
-                    className="w-full rounded-2xl border border-white/10 bg-black/40 pl-11 pr-10 py-3 text-xs sm:text-sm text-white placeholder:text-gray-500 outline-none focus:border-cyan-300 focus:ring-1 focus:ring-cyan-300 transition-all"
+                    placeholder="พิมพ์ค้นหา: รหัสจอง (SW-...), รหัสตั๋ว, เบอร์โทร หรือชื่อลูกค้า..."
+                    className="w-full rounded-2xl border border-white/10 bg-black/40 pl-10 pr-9 py-2.5 sm:py-3 text-xs sm:text-sm text-white placeholder:text-gray-500 outline-none focus:border-cyan-300 focus:ring-1 focus:ring-cyan-300 transition-all"
                   />
                   {searchQuery && (
                     <button
@@ -1385,26 +1458,150 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <select
                     value={bookingFilter}
                     onChange={(e) => setBookingFilter(e.target.value)}
-                    className="rounded-2xl border border-white/10 bg-black/40 px-3 py-3 text-xs text-gray-200 outline-none focus:border-cyan-300"
+                    className="flex-1 sm:flex-initial min-w-0 rounded-2xl border border-white/10 bg-black/40 px-3 py-2.5 sm:py-3 text-xs text-gray-200 outline-none focus:border-cyan-300"
                   >
                     <option value="all">ทุกสถานะการจอง</option>
                     <option value="paid">ชำระแล้ว / คืนเงินบางส่วน</option>
                     <option value="checked-in">สแกนเข้างานแล้ว (Check-in)</option>
                   </select>
 
-                  <span className="shrink-0 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs font-mono text-gray-300">
+                  <span className="shrink-0 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 sm:py-3 text-xs font-mono text-gray-300">
                     {t('พบ', 'Found')} {filteredBookings.length} / {bookings.length}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Bookings & Attendees Table */}
-            <div className="overflow-x-auto rounded-3xl border border-white/10 bg-[#101018] shadow-2xl">
+            {/* ── Mobile Card View for Bookings (Visible on Mobile < md) ── */}
+            <div className="grid gap-3 md:hidden">
+              {filteredBookings.map((booking) => {
+                const concertNames = [
+                  ...new Set((booking.items || []).map((item) => item.zone?.concert?.name).filter(Boolean)),
+                ];
+                const zoneNames = [
+                  ...new Set((booking.items || []).map((item) => item.zone?.name).filter(Boolean)),
+                ];
+                const isPaid = ['PAID', 'PARTIALLY_REFUNDED'].includes(booking.status);
+                const isResending = lineResendingId === booking.id;
+
+                return (
+                  <article
+                    key={booking.id}
+                    className="rounded-2xl border border-white/10 bg-[#101018] p-4 space-y-3 shadow-xl"
+                  >
+                    <div className="flex items-start justify-between gap-2 border-b border-white/5 pb-2.5">
+                      <div>
+                        <p className="font-mono text-sm font-bold text-cyan-200">{booking.bookingCode}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{dateLabel(booking.createdAt)}</p>
+                      </div>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                          isPaid
+                            ? 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20'
+                            : booking.status === 'PENDING'
+                            ? 'bg-amber-400/10 text-amber-300 border border-amber-400/20'
+                            : 'bg-white/5 text-gray-400'
+                        }`}
+                      >
+                        {booking.status}
+                      </span>
+                    </div>
+
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{booking.customerName}</p>
+                        <p className="text-xs font-mono text-gray-400">{booking.customerPhone}</p>
+                        {booking.customerLineId && (
+                          <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-emerald-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                            <span>
+                              ผูก LINE แล้ว (
+                              {booking.lineDeliveryStatus === 'SENT'
+                                ? '✓ ส่งแล้ว'
+                                : booking.lineDeliveryStatus === 'FAILED'
+                                ? 'ส่งไม่สำเร็จ'
+                                : 'รอส่ง'}
+                              )
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[10px] text-gray-400">ยอดชำระ</p>
+                        <p className="font-mono text-base font-black text-emerald-300">
+                          {money(booking.totalAmount - (booking.refundedAmount || 0))}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl bg-black/30 p-2.5 text-xs space-y-1">
+                      <p className="font-semibold text-gray-200 truncate">{concertNames.join(', ') || '—'}</p>
+                      <p className="text-[11px] text-gray-400">
+                        โซน: {zoneNames.map(trData).join(', ') || t('ไม่ระบุโซน', 'Unspecified Zone')} · ตั๋ว{' '}
+                        <strong className="text-cyan-200">{booking.tickets?.length || 0} ใบ</strong>
+                      </p>
+                      {booking.tickets?.length > 0 && (
+                        <div className="pt-1 flex flex-wrap gap-1">
+                          {booking.tickets.slice(0, 5).map((tk) => (
+                            <span
+                              key={tk.id}
+                              className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${
+                                tk.status === 'USED'
+                                  ? 'bg-purple-400/20 text-purple-300'
+                                  : 'bg-white/5 text-gray-300'
+                              }`}
+                            >
+                              {tk.seatNumber || tk.ticketCode.slice(-4)}
+                            </span>
+                          ))}
+                          {booking.tickets.length > 5 && (
+                            <span className="text-[10px] text-gray-400">+{booking.tickets.length - 5}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {(booking.tickets?.length > 0 || (isPaid && booking.customerLineId)) && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {booking.tickets?.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setViewBookingTickets(booking)}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20 transition-all"
+                          >
+                            <Ticket size={13} />
+                            <span>{t(`ดูตั๋ว (${booking.tickets.length})`, `View Tickets (${booking.tickets.length})`)}</span>
+                          </button>
+                        )}
+                        {isPaid && booking.customerLineId && (
+                          <button
+                            type="button"
+                            disabled={isResending}
+                            onClick={() => handleResendLineTicket(booking)}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20 disabled:opacity-50"
+                          >
+                            {isResending ? <LoaderCircle size={13} className="animate-spin" /> : <Send size={13} />}
+                            <span>ส่ง LINE ซ้ำ</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+              {!loading && filteredBookings.length === 0 && (
+                <div className="rounded-2xl border border-white/10 bg-[#101018] p-8 text-center text-xs text-gray-500">
+                  {searchQuery ? `ไม่พบรายการที่ตรงกับ "${searchQuery}"` : 'ยังไม่มีรายการจองในระบบ'}
+                </div>
+              )}
+            </div>
+
+            {/* ── Desktop Bookings & Attendees Table (Visible on md+) ── */}
+            <div className="hidden md:block overflow-x-auto rounded-3xl border border-white/10 bg-[#101018] shadow-2xl">
               <table className="w-full min-w-[900px] text-left text-xs">
                 <thead className="border-b border-white/10 bg-white/[0.04] text-[10px] font-bold uppercase text-gray-400">
                   <tr>
@@ -1580,10 +1777,10 @@ export default function AdminPage() {
             TAB 4 / VIEW: + เพิ่มคอนเสิร์ตใหม่ (CREATE NEW CONCERT)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === 'create' && (
-          <section className="rounded-3xl border border-white/15 bg-[#101018] p-6 sm:p-8 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+          <section className="rounded-3xl border border-white/15 bg-[#101018] p-4 sm:p-8 shadow-2xl">
+            <div className="mb-5 sm:mb-6 flex items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
               <div>
-                <h2 className="text-xl font-black text-white">สร้างคอนเสิร์ตและกำหนดโซนบัตรใหม่</h2>
+                <h2 className="text-lg sm:text-xl font-black text-white">สร้างคอนเสิร์ตและกำหนดโซนบัตรใหม่</h2>
                 <p className="text-xs text-gray-400 mt-0.5">
                   กรอกข้อมูลงาน วันเวลาแสดง แผนที่สถานที่จัดงาน และกำหนดราคาของแต่ละโซน
                 </p>
@@ -1592,17 +1789,17 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('events')}
-                className="text-xs text-gray-400 hover:text-white"
+                className="shrink-0 rounded-xl border border-white/10 px-2.5 py-1.5 text-xs text-gray-400 hover:text-white"
               >
                 ✕ ปิดฟอร์ม
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <form onSubmit={handleCreate} className="space-y-5 sm:space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8 items-start">
                 {/* ── LEFT COLUMN: Basic Info, Date & Map ── */}
-                <div className="space-y-5">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-4">
+                <div className="space-y-4 sm:space-y-5">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5 space-y-4">
                     <h3 className="text-sm font-bold text-cyan-300">1. ข้อมูลทั่วไปของคอนเสิร์ต</h3>
 
                     <Field label="ชื่อคอนเสิร์ต" required>
@@ -1635,7 +1832,7 @@ export default function AdminPage() {
                     </Field>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-3">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5 space-y-3">
                     <h3 className="text-sm font-bold text-cyan-300 flex items-center gap-2">
                       <span>2. วันที่และเวลาเริ่มแสดง</span>
                       <span className="text-rose-400">*</span>
@@ -1646,7 +1843,7 @@ export default function AdminPage() {
                     />
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-3">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5 space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <h3 className="text-sm font-bold text-cyan-300">ตารางเวลาแสดง</h3>
@@ -1665,9 +1862,12 @@ export default function AdminPage() {
                         + เพิ่มช่วงเวลา
                       </button>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {form.schedule.map((item, index) => (
-                        <div key={index} className="grid gap-2 sm:grid-cols-[120px_1fr_1fr_auto]">
+                        <div
+                          key={index}
+                          className="grid grid-cols-[1fr_auto] sm:grid-cols-[120px_1fr_1fr_auto] gap-2 rounded-xl border border-white/5 bg-black/20 p-2 sm:border-0 sm:bg-transparent sm:p-0"
+                        >
                           <input
                             type="time"
                             value={item.time}
@@ -1680,6 +1880,15 @@ export default function AdminPage() {
                             className={inputClass}
                             aria-label={`เวลาแสดง ${index + 1}`}
                           />
+                          <button
+                            type="button"
+                            disabled={form.schedule.length === 1}
+                            onClick={() => updateField('schedule', form.schedule.filter((_, i) => i !== index))}
+                            className="sm:order-last rounded-lg border border-white/10 px-3 py-2 text-gray-400 hover:text-rose-300 disabled:opacity-30"
+                            aria-label={`ลบช่วงเวลา ${index + 1}`}
+                          >
+                            <X size={15} />
+                          </button>
                           <input
                             value={item.artist}
                             onChange={(event) =>
@@ -1688,7 +1897,7 @@ export default function AdminPage() {
                                 form.schedule.map((row, i) => (i === index ? { ...row, artist: event.target.value } : row))
                               )
                             }
-                            className={inputClass}
+                            className={`${inputClass} col-span-2 sm:col-span-1`}
                             placeholder="ชื่อศิลปิน"
                           />
                           <input
@@ -1699,24 +1908,15 @@ export default function AdminPage() {
                                 form.schedule.map((row, i) => (i === index ? { ...row, stage: event.target.value } : row))
                               )
                             }
-                            className={inputClass}
+                            className={`${inputClass} col-span-2 sm:col-span-1`}
                             placeholder="เวที เช่น Main Stage"
                           />
-                          <button
-                            type="button"
-                            disabled={form.schedule.length === 1}
-                            onClick={() => updateField('schedule', form.schedule.filter((_, i) => i !== index))}
-                            className="rounded-lg border border-white/10 px-3 text-gray-400 hover:text-rose-300 disabled:opacity-30"
-                            aria-label={`ลบช่วงเวลา ${index + 1}`}
-                          >
-                            <X size={15} />
-                          </button>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-3">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5 space-y-3">
                     <h3 className="text-sm font-bold text-cyan-300 flex items-center gap-2">
                       <MapPin size={16} />
                       <span>3. สถานที่จัดงานและพิกัดแผนที่</span>
@@ -1738,20 +1938,20 @@ export default function AdminPage() {
                 </div>
 
                 {/* ── RIGHT COLUMN: Poster & Ticket Zones ── */}
-                <div className="space-y-5">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-4">
+                <div className="space-y-4 sm:space-y-5">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5 space-y-4">
                     <h3 className="text-sm font-bold text-cyan-300 flex items-center gap-2">
                       <span>4. รูปโปสเตอร์คอนเสิร์ต</span>
                       <span className="text-rose-400">*</span>
                     </h3>
 
-                    <label className="flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed border-white/20 bg-white/[0.02] p-4 hover:border-cyan-300/50 transition-all">
+                    <label className="flex cursor-pointer items-center gap-3 sm:gap-4 rounded-2xl border border-dashed border-white/20 bg-white/[0.02] p-3.5 sm:p-4 hover:border-cyan-300/50 transition-all">
                       {posterPreview ? (
                         <div className="relative shrink-0">
                           <img
                             src={posterPreview}
                             alt="ตัวอย่างโปสเตอร์"
-                            className="h-28 w-20 rounded-xl object-cover shadow-lg border border-white/10"
+                            className="h-24 w-16 sm:h-28 sm:w-20 rounded-xl object-cover shadow-lg border border-white/10"
                           />
                           <button
                             type="button"
@@ -1769,19 +1969,19 @@ export default function AdminPage() {
                           </button>
                         </div>
                       ) : (
-                        <span className="flex h-28 w-20 items-center justify-center rounded-xl bg-white/5 text-gray-500 border border-white/10">
+                        <span className="flex h-24 w-16 sm:h-28 sm:w-20 shrink-0 items-center justify-center rounded-xl bg-white/5 text-gray-500 border border-white/10">
                           {uploading ? <LoaderCircle className="animate-spin" size={20} /> : <ImagePlus size={22} />}
                         </span>
                       )}
-                      <div className="flex-1">
-                        <span className="block text-sm font-bold text-white">
+                      <div className="flex-1 min-w-0">
+                        <span className="block text-xs sm:text-sm font-bold text-white">
                           {uploading ? 'กำลังอัปโหลดรูปภาพ…' : posterPreview ? 'เปลี่ยนรูปโปสเตอร์' : 'เลือกรูปภาพโปสเตอร์งาน'}
                         </span>
-                        <span className="mt-1 block text-xs text-gray-400">
+                        <span className="mt-1 block text-[11px] sm:text-xs text-gray-400">
                           แนะนำขนาด 4:5 (1000×1250 px) — JPG, PNG, WebP ไม่เกิน 4 MB
                         </span>
                       </div>
-                      <Upload size={18} className="text-cyan-300 mr-2" />
+                      <Upload size={18} className="text-cyan-300 shrink-0" />
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
@@ -1795,7 +1995,7 @@ export default function AdminPage() {
                         <Link2 size={13} className="text-cyan-400" />
                         หรือวาง URL รูปภาพโดยตรง
                       </span>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <input
                           type="url"
                           value={posterUrlInput}
@@ -1813,7 +2013,7 @@ export default function AdminPage() {
                             setPosterPreview(url);
                             toast.success('ตั้งค่ารูปภาพจาก URL สำเร็จ');
                           }}
-                          className="rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-300/20 disabled:opacity-40"
+                          className="rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-3 py-2.5 sm:py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-300/20 disabled:opacity-40 shrink-0"
                         >
                           ใช้ URL นี้
                         </button>
@@ -1822,7 +2022,7 @@ export default function AdminPage() {
                   </div>
 
                   {/* Zones Setup */}
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-4">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5 space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-cyan-300">
                         <span>5. โซนบัตรและความจุ</span>
@@ -1841,7 +2041,7 @@ export default function AdminPage() {
 
                     <div className="space-y-3">
                       {form.zones.map((zone, index) => (
-                        <div key={index} className="rounded-xl border border-white/10 bg-[#0c0d14] p-3.5 space-y-2">
+                        <div key={index} className="rounded-xl border border-white/10 bg-[#0c0d14] p-3.5 space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-200">
                               {t(`โซนที่ ${index + 1}`, `Zone ${index + 1}`)}
@@ -1862,7 +2062,7 @@ export default function AdminPage() {
                             )}
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                               <span className="text-[10px] text-gray-400 block mb-1">ชื่อโซน</span>
                               <input
@@ -2104,7 +2304,7 @@ function StatCard({ label, value, detail, subTag, icon: Icon, color = 'text-cyan
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-2xl border border-white/10 bg-[#101018] p-5 text-left shadow-lg transition hover:border-white/20 hover:bg-[#14141e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+      className="w-full min-w-0 rounded-2xl border border-white/10 bg-[#101018] p-5 text-left shadow-lg transition hover:border-white/20 hover:bg-[#14141e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
     >
       <div className="flex items-start justify-between">
         <p className="text-xs font-semibold text-gray-400">{label}</p>
@@ -2113,7 +2313,7 @@ function StatCard({ label, value, detail, subTag, icon: Icon, color = 'text-cyan
         </div>
       </div>
       <p className="mt-2 text-2xl font-black text-white font-mono">{value}</p>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400 border-t border-white/5 pt-2">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] text-gray-400 border-t border-white/5 pt-2">
         <span>{detail}</span>
         {subTag && <span className="font-semibold text-cyan-200">{subTag}</span>}
       </div>
@@ -2124,53 +2324,77 @@ function StatCard({ label, value, detail, subTag, icon: Icon, color = 'text-cyan
 function ArtistEditorModal({ editor, onClose, onAdd, onRemove, onDeleteImage, onUpdate, onSave, saving, uploading, onPhoto }) {
   const { trData } = useLanguage();
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="artist-modal-title"
         className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#111119] shadow-2xl"
       >
-        <header className="flex items-start justify-between border-b border-white/10 p-5">
-          <div>
+        <header className="flex items-start justify-between gap-3 border-b border-white/10 p-4 sm:p-5">
+          <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-pink-300">Artist studio</p>
-            <h2 id="artist-modal-title" className="mt-1 text-xl font-black">
+            <h2 id="artist-modal-title" className="mt-1 text-base sm:text-xl font-black truncate">
               {trData('รายชื่อศิลปิน ·')} {editor.name}
             </h2>
             <p className="mt-1 text-xs text-gray-400">เพิ่มชื่อ เวที เวลา แนวเพลง และรูปภาพศิลปิน</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="ปิด" className="rounded-lg p-2 text-gray-400 hover:bg-white/10 hover:text-white">
+          <button type="button" onClick={onClose} aria-label="ปิด" className="shrink-0 rounded-lg p-2 text-gray-400 hover:bg-white/10 hover:text-white">
             ✕
           </button>
         </header>
 
-        <div className="flex-1 space-y-3 overflow-y-auto p-5">
+        <div className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
           {!editor.artists.length && (
             <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-xs text-gray-500">
               ยังไม่มีศิลปิน เพิ่มรายชื่อแรกได้เลย
             </div>
           )}
           {editor.artists.map((artist, index) => (
-            <article key={index} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <div className="flex flex-wrap items-start gap-3">
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-white/5 border border-white/10">
-                  {artist.image ? (
-                    <img src={artist.image} alt={`รูป ${artist.name || 'ศิลปิน'}`} className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="grid h-full place-items-center text-pink-200">
-                      <Mic2 size={21} />
-                    </span>
-                  )}
-                  {artist.image && (
+            <article key={index} className="rounded-2xl border border-white/10 bg-black/20 p-3.5 sm:p-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3">
+                <div className="flex items-center justify-between sm:block">
+                  <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-2xl bg-white/5 border border-white/10">
+                    {artist.image ? (
+                      <img src={artist.image} alt={`รูป ${artist.name || 'ศิลปิน'}`} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="grid h-full place-items-center text-pink-200">
+                        <Mic2 size={21} />
+                      </span>
+                    )}
+                    {artist.image && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteImage(index)}
+                        className="absolute right-1 top-1 rounded-full bg-rose-500/90 p-1 text-white shadow-lg hover:bg-rose-400"
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Mobile upload & delete row */}
+                  <div className="flex sm:hidden items-center gap-2">
+                    <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] font-semibold text-gray-300 hover:bg-white/5">
+                      <Upload size={12} />
+                      <span>อัปโหลดรูป</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => onPhoto(e, index)}
+                        className="sr-only"
+                      />
+                    </label>
                     <button
                       type="button"
-                      onClick={() => onDeleteImage(index)}
-                      className="absolute right-1 top-1 rounded-full bg-rose-500/90 p-1 text-white shadow-lg hover:bg-rose-400"
+                      onClick={() => onRemove(index)}
+                      className="grid h-9 w-9 place-items-center rounded-lg border border-rose-400/20 bg-rose-400/5 p-0 text-gray-500 hover:border-rose-400/50 hover:bg-rose-400/10 hover:text-rose-300"
                     >
-                      <X size={11} />
+                      <Trash2 size={14} />
                     </button>
-                  )}
+                  </div>
                 </div>
+
                 <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
                   <input
                     value={artist.name}
@@ -2219,7 +2443,7 @@ function ArtistEditorModal({ editor, onClose, onAdd, onRemove, onDeleteImage, on
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="hidden sm:flex flex-col gap-2">
                   <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 text-[10px] font-semibold text-gray-300 hover:bg-white/5">
                     <Upload size={12} />
                     <span>อัปโหลด</span>

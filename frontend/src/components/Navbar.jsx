@@ -174,8 +174,18 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* MOBILE TOP RIGHT (md:hidden): Theme & Language Switcher */}
+          {/* MOBILE TOP RIGHT (md:hidden): Subtle Team Portal Shield + Theme & Language Switcher */}
           <div className="flex md:hidden items-center gap-1.5 shrink-0">
+            {!isTeamSurface && (
+              <Link
+                to="/team"
+                aria-label={t('พื้นที่ทีมงาน', 'Team Portal')}
+                title={t('พื้นที่ทีมงาน', 'Team Portal')}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-gray-500 hover:text-cyan-300 hover:border-cyan-400/30 active:scale-95 transition-all"
+              >
+                <ShieldCheck size={15} />
+              </Link>
+            )}
             <ThemeToggle />
             <LanguageSwitch />
           </div>
