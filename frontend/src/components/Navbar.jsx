@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Ticket, Music, LogOut, UserRound, Home, Users, Store, QrCode, ShieldCheck } from 'lucide-react';
+import { Ticket, Music, LogOut, UserRound, Home, Users, Store, QrCode, ShieldCheck, Download } from 'lucide-react';
 import AuthModal from './AuthModal';
 import PurchaseHistoryModal from './PurchaseHistoryModal';
+import DownloadAppModal, { isRunningInsideApp } from './DownloadAppModal';
 import LanguageSwitch from './ui/LanguageSwitch';
 import ThemeToggle from './ui/ThemeToggle';
 import Button from './ui/Button';
@@ -22,6 +23,14 @@ export default function Navbar() {
     }
   });
   const [authOpen, setAuthOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const isInApp = isRunningInsideApp();
+
+  useEffect(() => {
+    const handleOpenDownload = () => setDownloadOpen(true);
+    window.addEventListener('open_soundwave_download', handleOpenDownload);
+    return () => window.removeEventListener('open_soundwave_download', handleOpenDownload);
+  }, []);
 
   const openHistoryModal = () => {
     try {
@@ -127,6 +136,17 @@ export default function Navbar() {
                 {t('หน้าแรก', 'Home')}
               </Link>
 
+              {!isInApp && (
+                <button
+                  type="button"
+                  onClick={() => setDownloadOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20 hover:border-cyan-400/50 transition-all cursor-pointer shrink-0"
+                >
+                  <Download size={13} className="shrink-0" />
+                  <span>{t('ดาวน์โหลดแอป', 'Download App')}</span>
+                </button>
+              )}
+
               {authUser && (
                 <Button
                   variant="outline"
@@ -174,8 +194,20 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* MOBILE TOP RIGHT (md:hidden): Subtle Team Portal Shield + Theme & Language Switcher */}
+          {/* MOBILE TOP RIGHT (md:hidden): Subtle Team Portal Shield + Download App + Theme & Language Switcher */}
           <div className="flex md:hidden items-center gap-1.5 shrink-0">
+            {!isInApp && !isTeamSurface && (
+              <button
+                type="button"
+                onClick={() => setDownloadOpen(true)}
+                aria-label={t('ดาวน์โหลดแอป', 'Download App')}
+                title={t('ดาวน์โหลดแอป', 'Download App')}
+                className="flex h-8 items-center gap-1 px-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20 active:scale-95 transition-all text-[10px] font-bold cursor-pointer"
+              >
+                <Download size={13} />
+                <span>{t('แอป', 'App')}</span>
+              </button>
+            )}
             {!isTeamSurface && (
               <Link
                 to="/team"
@@ -328,6 +360,8 @@ export default function Navbar() {
         purchaseHistory={purchaseHistory}
         setPurchaseHistory={setPurchaseHistory}
       />
+
+      <DownloadAppModal open={downloadOpen} onClose={() => setDownloadOpen(false)} />
     </>
   );
 }

@@ -1,0 +1,19 @@
+{
+  "name": "SoundWave Pass",
+  "short_name": "SoundWave",
+  "description": "ระบบจองตั๋วคอนเสิร์ต & เทศกาลดนตรีร็อกและอินดี้ พร้อมสแกนเข้างานอัจฉริยะ",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#07070b",
+  "theme_color": "#07070b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

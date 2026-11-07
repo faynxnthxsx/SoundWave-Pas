@@ -46,6 +46,13 @@ import BookingTicketsModal from '../../components/BookingTicketsModal';
 import { useToast } from '../../components/Toast';
 import { useLanguage } from '../../context/LanguageContext';
 import { getAdminCache, setAdminCache, clearAdminCache } from '../../utils/adminCache';
+import {
+  resolveImageUrl,
+  getConcertBannerUrl,
+  handleImageError,
+  FALLBACK_CONCERT_IMAGE,
+  FALLBACK_ARTIST_IMAGE,
+} from '../../utils/imageUrl';
 
 // ── Preset ticket categories ──────────────────────────────────────────────────
 const PRESET_CATEGORIES = [
@@ -1101,13 +1108,13 @@ export default function AdminPage() {
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 bg-white/[0.02] p-4 sm:p-6">
                       <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 w-full sm:w-auto sm:flex-1">
                         <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
-                          {c.bannerUrl ? (
-                            <img src={c.bannerUrl} alt={c.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-cyan-300 font-bold">
-                              LOGO
-                            </div>
-                          )}
+                          <img
+                            src={getConcertBannerUrl(c)}
+                            alt={c.name}
+                            referrerPolicy="no-referrer"
+                            onError={(e) => handleImageError(e, FALLBACK_CONCERT_IMAGE, c.slug || c.name)}
+                            className="h-full w-full object-cover"
+                          />
                         </div>
 
                         <div className="min-w-0 flex-1">
@@ -1949,8 +1956,10 @@ export default function AdminPage() {
                       {posterPreview ? (
                         <div className="relative shrink-0">
                           <img
-                            src={posterPreview}
+                            src={resolveImageUrl(posterPreview)}
                             alt="ตัวอย่างโปสเตอร์"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => handleImageError(e, FALLBACK_CONCERT_IMAGE, form.name)}
                             className="h-24 w-16 sm:h-28 sm:w-20 rounded-xl object-cover shadow-lg border border-white/10"
                           />
                           <button
@@ -2356,7 +2365,13 @@ function ArtistEditorModal({ editor, onClose, onAdd, onRemove, onDeleteImage, on
                 <div className="flex items-center justify-between sm:block">
                   <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-2xl bg-white/5 border border-white/10">
                     {artist.image ? (
-                      <img src={artist.image} alt={`รูป ${artist.name || 'ศิลปิน'}`} className="h-full w-full object-cover" />
+                      <img
+                        src={resolveImageUrl(artist.image)}
+                        alt={`รูป ${artist.name || 'ศิลปิน'}`}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => handleImageError(e, FALLBACK_ARTIST_IMAGE, artist.name)}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <span className="grid h-full place-items-center text-pink-200">
                         <Mic2 size={21} />

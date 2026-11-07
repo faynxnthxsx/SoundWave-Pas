@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Printer, Scissors, ArrowLeft, Calendar, MapPin, User } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { getConcertBannerUrl, handleImageError, FALLBACK_CONCERT_IMAGE } from '../../utils/imageUrl';
 
 function BarcodeStrips({ value = '' }) {
   const seed = value.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -135,11 +136,10 @@ export default function SouvenirPrintPage() {
           >
             <div className="absolute inset-0">
               <img
-                src={
-                  ticket.concert.bannerUrl ||
-                  'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1400&q=80'
-                }
+                src={getConcertBannerUrl(ticket.concert)}
                 alt=""
+                referrerPolicy="no-referrer"
+                onError={(e) => handleImageError(e, FALLBACK_CONCERT_IMAGE, ticket.concert?.slug || ticket.concert?.name)}
                 className="w-full h-full object-cover"
                 style={{ opacity: 0.18 }}
               />
@@ -191,7 +191,7 @@ export default function SouvenirPrintPage() {
                 style={{
                   minHeight: '27mm',
                   background: `linear-gradient(125deg,rgba(6,15,30,.28),rgba(7,9,18,.94)), url('${
-                    ticket.concert.bannerUrl || ''
+                    resolveImageUrl(ticket.concert.bannerUrl) || ''
                   }') center 42% / cover, linear-gradient(120deg,#123343,#29163b 58%,#10281f)`,
                 }}
               >

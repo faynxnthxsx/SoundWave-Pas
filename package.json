@@ -8,8 +8,13 @@
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "db:studio": "npm --prefix backend run db:studio",
-    "db:seed": "npm --prefix backend run db:seed"
+    "db:seed": "npm --prefix backend run db:seed",
+    "electron": "npm --prefix frontend run build && electron electron/main.cjs",
+    "electron:dev": "cross-env ELECTRON_START_URL=http://localhost:5173 electron electron/main.cjs",
+    "mobile:sync": "npm --prefix frontend run build && npm --prefix frontend run cap:sync",
+    "mobile:android": "npm --prefix frontend run cap:android"
   },
+  "main": "electron/main.cjs",
   "keywords": [
     "soundwave-pass",
     "concert",
@@ -27,5 +32,9 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "prisma": "^6.4.1"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^45.2.3"
   }
 }

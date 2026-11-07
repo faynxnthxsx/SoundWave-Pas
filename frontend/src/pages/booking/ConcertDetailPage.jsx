@@ -2,7 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CalendarDays, Clock3, MapPin, Music2, Ticket } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { optimizeImageUrl } from '../../utils/imageUrl';
+import {
+  optimizeImageUrl,
+  handleImageError,
+  getConcertBannerUrl,
+  FALLBACK_CONCERT_IMAGE,
+  FALLBACK_ARTIST_IMAGE,
+} from '../../utils/imageUrl';
 
 const concertDetailCache = new Map();
 
@@ -36,7 +42,7 @@ export default function ConcertDetailPage() {
 
   const artists = useMemo(() => {
     const stages = Array.isArray(concert?.lineup) ? concert.lineup : [];
-    return stages.flatMap((stage) => {
+    const parsed = stages.flatMap((stage) => {
       if (typeof stage === 'string') return [{ stage: 'ศิลปิน', name: stage, time: '' }];
       const bands = Array.isArray(stage.bands)
         ? stage.bands
@@ -47,14 +53,35 @@ export default function ConcertDetailPage() {
         .filter((band) => band?.name)
         .map((band) => ({ ...band, stage: band.stage || stage.stage || stage.name || 'เวทีหลัก' }));
     });
+    if (parsed.length > 0) return parsed;
+    if (!concert) return [];
+    const headlinerName = concert.name?.split(/[:\-–|]/)[0]?.trim() || concert.name;
+    return [
+      {
+        name: headlinerName,
+        stage: concert.venue || concert.location || 'Main Stage',
+        time: '19:00 – 21:30',
+        genre: 'World Tour / Live Concert',
+        image: getConcertBannerUrl(concert),
+      },
+    ];
   }, [concert]);
 
   const timetable = useMemo(() => {
     const schedule = Array.isArray(concert?.schedule) ? concert.schedule : [];
     if (schedule.length) return schedule;
-    return artists
-      .filter((artist) => artist.time)
-      .map((artist) => ({ time: artist.time, activity: artist.name, stage: artist.stage }));
+    if (artists.length > 1) {
+      return artists
+        .filter((artist) => artist.time)
+        .map((artist) => ({ time: artist.time, activity: artist.name, stage: artist.stage }));
+    }
+    if (!concert) return [];
+    return [
+      { time: '16:00', activity: 'เปิดจุดตรวจบัตรและบูธจำหน่ายสินค้าหน้างาน', stage: 'Main Gate' },
+      { time: '17:30', activity: `เปิดประตูเข้าสู่พื้นที่การแสดง (${concert.venue || 'Main Hall'})`, stage: 'Hall Doors' },
+      { time: '19:00', activity: `เริ่มการแสดงสด ${concert.name}`, stage: concert.venue || 'Main Stage' },
+      { time: '21:30', activity: 'ช่วง Encore & สิ้นสุดการแสดง', stage: concert.venue || 'Main Stage' },
+    ];
   }, [artists, concert]);
 
   if (loading)
@@ -90,13 +117,14 @@ export default function ConcertDetailPage() {
   return (
     <div className="min-h-screen bg-[#09090f] pb-16 text-white">
       <div className="relative h-[34vh] min-h-64 max-h-[460px] bg-[#161622]">
-        {concert.bannerUrl && (
-          <img
-            src={optimizeImageUrl(concert.bannerUrl, 1200, 80)} decoding="async"
-            alt={t(`โปสเตอร์ ${concert.name}`, `Poster ${concert.name}`)}
-            className="h-full w-full object-cover opacity-70"
-          />
-        )}
+        <img
+          src={optimizeImageUrl(getConcertBannerUrl(concert), 1200, 80)}
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={(e) => handleImageError(e, FALLBACK_CONCERT_IMAGE, concert.slug || concert.name)}
+          alt={t(`โปสเตอร์ ${concert.name}`, `Poster ${concert.name}`)}
+          className="h-full w-full object-cover opacity-70"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-[#09090f] via-[#09090f]/30 to-black/20" />
         <Link
           to="/"
@@ -206,8 +234,10 @@ export default function ConcertDetailPage() {
                   >
                     {artist.image ? (
                       <img
-                        src={artist.image}
+                        src={optimizeImageUrl(artist.image, 600, 75)}
                         alt={artist.name}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => handleImageError(e, FALLBACK_ARTIST_IMAGE, artist.name)}
                         className="h-40 w-full object-cover"
                         loading="lazy"
                       />

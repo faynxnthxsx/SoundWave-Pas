@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { useLanguage } from '../context/LanguageContext';
+import { getConcertBannerUrl, handleImageError, FALLBACK_CONCERT_IMAGE } from '../utils/imageUrl';
 
 export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess }) {
   const toast = useToast();
@@ -200,16 +201,11 @@ export default function ConcertDiscoveryModal({ onClose, api, onImportSuccess })
                             <div className="flex gap-3 sm:gap-4 min-w-0">
                               <div className="h-20 w-16 sm:h-24 sm:w-20 rounded-2xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
                                 <img
-                                  src={
-                                    c.bannerUrl ||
-                                    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&auto=format&fit=crop&q=80'
-                                  }
+                                  src={getConcertBannerUrl(c)}
                                   alt={c.name}
+                                  referrerPolicy="no-referrer"
                                   className="h-full w-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.src =
-                                      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&auto=format&fit=crop&q=80';
-                                  }}
+                                  onError={(e) => handleImageError(e, FALLBACK_CONCERT_IMAGE, c.externalId || c.name)}
                                 />
                               </div>
 

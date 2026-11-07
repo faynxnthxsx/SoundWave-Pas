@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Calendar, MapPin, Printer, CheckCircle2, XCircle, ArrowLeft, User, Armchair } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { getConcertBannerUrl, handleImageError, FALLBACK_CONCERT_IMAGE } from '../../utils/imageUrl';
 
 export default function MyTicketPage() {
   const { ticketCode } = useParams();
@@ -83,11 +84,10 @@ export default function MyTicketPage() {
       <div className="relative rounded-3xl overflow-hidden bg-[#12121a] border border-white/15 shadow-2xl">
         <div className="relative h-36 overflow-hidden">
           <img
-            src={
-              ticket.concert?.bannerUrl ||
-              'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=80'
-            }
+            src={getConcertBannerUrl(ticket.concert)}
             alt="Concert"
+            referrerPolicy="no-referrer"
+            onError={(e) => handleImageError(e, FALLBACK_CONCERT_IMAGE, ticket.concert?.slug || ticket.concert?.name)}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#12121a] via-[#12121a]/60 to-transparent" />

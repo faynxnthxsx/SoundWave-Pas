@@ -2,7 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Sparkles, Clock, ArrowRight, Star, Users, Zap, CheckCircle2, Music, Mic2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { optimizeImageUrl } from '../../utils/imageUrl';
+import {
+  optimizeImageUrl,
+  handleImageError,
+  getConcertBannerUrl,
+  getUniqueImageFromPool,
+  ARTIST_IMAGE_POOL,
+  FALLBACK_CONCERT_IMAGE,
+  FALLBACK_ARTIST_IMAGE,
+} from '../../utils/imageUrl';
 
 // ─── Default Fallback Artist Data with Photos, Date & Performance Time ───────
 const DEFAULT_ARTISTS = [
@@ -86,6 +94,36 @@ const DEFAULT_ARTISTS = [
     image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1000&q=80',
     description: 'อินดี้ร็อกจากเชียงใหม่ ซาวด์ไซคีเดลิกเฉพาะตัวที่หาฟังสดได้ยาก'
   },
+  {
+    name: 'The Yers',
+    genre: 'Post-Punk / Rock',
+    stage: 'Main Neon Stage',
+    date: 'เสาร์ 28 พ.ย. 2026',
+    time: '17:45 – 18:45 น.',
+    color: '#f43f5e',
+    image: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=1000&q=80',
+    description: 'ซาวด์โพสต์พังก์มืดมนและทรงพลัง พร้อมท่อนริฟฟ์กีตาร์สุดเข้มข้นบนเวทีใหญ่'
+  },
+  {
+    name: 'Dept',
+    genre: 'Indie Pop / Synth',
+    stage: 'Cyber Valley Stage',
+    date: 'เสาร์ 28 พ.ย. 2026',
+    time: '17:00 – 18:00 น.',
+    color: '#38bdf8',
+    image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1000&q=80',
+    description: 'ดูโอ้อินดี้ป๊อปซินธ์ขวัญใจวัยรุ่น กับเมโลดี้ชวนฝันและจังหวะดนตรีสดใส'
+  },
+  {
+    name: 'Freehand',
+    genre: 'Alternative Rock',
+    stage: 'Underground Tent Stage',
+    date: 'อาทิตย์ 29 พ.ย. 2026',
+    time: '18:00 – 19:00 น.',
+    color: '#fbbf24',
+    image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=1000&q=80',
+    description: 'บทเพลงอัลเทอร์เนทีฟร็อกที่เต็มไปด้วยความหมายลึกซึ้งและการบรรเลงสดสุดประทับใจ'
+  },
 ];
 
 const DEFAULT_SCHEDULE = [
@@ -95,6 +133,13 @@ const DEFAULT_SCHEDULE = [
   { time: '20:00', label: 'การแสดง แสง สี เสียง Neon Light & Pyro Show', icon: '🎆' },
   { time: '22:30', label: 'Headliner Stage — วง Slot Machine แสดงสด', icon: '⚡' },
   { time: '24:00', label: 'After Party DJ Set โซน Camping ลานกว้าง', icon: '🎧' },
+];
+
+const getSoloConcertSchedule = (concertName = '', venueName = '') => [
+  { time: '16:00', label: 'เปิดจุดตรวจบัตรและบูธจำหน่ายสินค้าหน้างาน (Ticket & Merch Booth)', icon: '🎫' },
+  { time: '17:30', label: `เปิดประตูฮอลล์เข้าสู่พื้นที่การแสดง (${venueName || 'Main Hall'})`, icon: '🚪' },
+  { time: '19:00', label: `เริ่มการแสดงสด ${concertName || 'Main Live Show'}`, icon: '🎸' },
+  { time: '21:30', label: 'ช่วง Encore & สิ้นสุดการแสดง', icon: '✨' },
 ];
 
 let cachedConcerts = null;
@@ -128,45 +173,79 @@ export default function HomePage() {
   const currentArtists = useMemo(() => {
     if (!selectedConcert) return DEFAULT_ARTISTS;
     const stages = Array.isArray(selectedConcert.lineup) ? selectedConcert.lineup : [];
+    const concertPoster = getConcertBannerUrl(selectedConcert);
+    const eventDateStr = selectedConcert.eventDate
+      ? new Date(selectedConcert.eventDate).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+      : 'วันแสดง';
 
     // Parse lineup from database
+    let bandIdx = 0;
+    const totalBandsInLineup = stages.reduce((sum, st) => {
+      if (typeof st === 'string') return sum + 1;
+      const b = Array.isArray(st?.bands) ? st.bands : Array.isArray(st?.artists) ? st.artists : [];
+      return sum + b.length;
+    }, 0);
+
     const artists = stages.flatMap((stage) => {
       if (typeof stage === 'string') {
+        const currentIdx = bandIdx++;
         return [{
           name: stage,
           genre: 'Live Act',
-          stage: 'เวทีหลัก',
-          date: selectedConcert.eventDate ? new Date(selectedConcert.eventDate).toLocaleDateString('th-TH', { dateStyle: 'medium' }) : 'วันแสดง',
+          stage: selectedConcert.venue || 'เวทีหลัก',
+          date: eventDateStr,
           time: '20:00 – 21:00 น.',
           color: '#00f0ff',
-          image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1000&q=80',
+          image: totalBandsInLineup === 1 ? concertPoster : getUniqueImageFromPool(`${selectedConcert.id}-${stage}-${currentIdx}`, ARTIST_IMAGE_POOL),
           description: `พบกับโชว์สุดพิเศษของ ${stage} ในงาน ${selectedConcert.name}`,
         }];
       }
 
       const bands = Array.isArray(stage?.bands) ? stage.bands : Array.isArray(stage?.artists) ? stage.artists : [];
       return bands.map((band) => {
+        const currentIdx = bandIdx++;
         const defaultMatch = DEFAULT_ARTISTS.find((a) => a.name.toLowerCase() === (band.name || '').toLowerCase());
-        const eventDateStr = selectedConcert.eventDate
-          ? new Date(selectedConcert.eventDate).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-          : 'วันแสดง';
+        const resolvedImage =
+          (band.image && band.image.trim()) ||
+          defaultMatch?.image ||
+          (totalBandsInLineup === 1
+            ? concertPoster
+            : getUniqueImageFromPool(`${selectedConcert.id}-${band.name}-${currentIdx}`, ARTIST_IMAGE_POOL));
 
         return {
           name: band.name || 'ไม่ระบุชื่อ',
           genre: band.genre || defaultMatch?.genre || 'Rock / Live',
-          stage: band.stage || stage.stage || stage.name || 'Main Stage',
+          stage: band.stage || stage.stage || stage.name || selectedConcert.venue || 'Main Stage',
           date: band.date || defaultMatch?.date || eventDateStr,
           time: band.time || defaultMatch?.time || '20:00 – 21:00 น.',
           color: band.color || defaultMatch?.color || '#00f0ff',
-          image: band.image || defaultMatch?.image || 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1000&q=80',
-          description: band.description || defaultMatch?.description || `เตรียมพบกับโชว์สดเต็มรูปแบบของ ${band.name} บนเวที ${band.stage || stage.stage || 'เวทีหลัก'}`
+          image: resolvedImage,
+          description: band.description || defaultMatch?.description || `เตรียมพบกับโชว์สดเต็มรูปแบบของ ${band.name} บนเวที ${band.stage || stage.stage || selectedConcert.venue || 'เวทีหลัก'}`
         };
       });
     });
 
     if (artists.length > 0) return artists;
-    // Fallback for default concert #1 if lineup is empty
-    return selectedConcert.id === 1 ? DEFAULT_ARTISTS : [];
+
+    // If this is the flagship SoundWave Festival and lineup is empty, use DEFAULT_ARTISTS
+    if ((selectedConcert.slug || '').includes('soundwave')) {
+      return DEFAULT_ARTISTS;
+    }
+
+    // For solo concerts with empty lineup (e.g. Yo-Sea, BIGBANG, LANY), showcase the concert's own headliner & poster
+    const headlinerName = selectedConcert.name.split(/[:\-–|]/)[0].trim() || selectedConcert.name;
+    return [
+      {
+        name: headlinerName,
+        genre: 'World Tour / Live Concert',
+        stage: selectedConcert.venue || selectedConcert.location || 'Main Stage',
+        date: eventDateStr,
+        time: '19:00 – 21:30 น.',
+        color: '#00f0ff',
+        image: concertPoster,
+        description: selectedConcert.description || `การแสดงสดเต็มรูปแบบของ ${headlinerName} ณ ${selectedConcert.venue || selectedConcert.location}`,
+      },
+    ];
   }, [selectedConcert]);
 
   // Auto-rotate featured artist
@@ -200,11 +279,12 @@ export default function HomePage() {
           HERO — Modern, Premium Dark Aesthetic
       ══════════════════════════════════════════════════════════════════ */}
       <section className="hero-banner-section relative min-h-[80vh] sm:min-h-[85vh] flex flex-col items-center justify-center overflow-hidden px-4 w-full max-w-full">
-        <div
-          className="hero-bg-image absolute inset-0 bg-cover bg-center transition-all duration-500"
-          style={{
-            backgroundImage: `url(${selectedConcert?.bannerUrl || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1600&q=80'})`,
-          }}
+        <img
+          src={getConcertBannerUrl(selectedConcert)}
+          alt={selectedConcert?.name || 'SoundWave Pass'}
+          referrerPolicy="no-referrer"
+          onError={(e) => handleImageError(e, FALLBACK_CONCERT_IMAGE, selectedConcert?.slug || selectedConcert?.name)}
+          className="hero-bg-image absolute inset-0 w-full h-full object-cover object-center transition-all duration-500 pointer-events-none select-none"
         />
         <div className="hero-bg-overlay absolute inset-0 bg-gradient-to-t from-[#07070b] via-[#07070b]/60 to-transparent transition-all duration-500" />
 
@@ -264,7 +344,11 @@ export default function HomePage() {
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-[11px] sm:text-xs text-gray-200 backdrop-blur">
               <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="font-medium">{t(`${currentArtists.length} ศิลปินในงาน`, `${currentArtists.length} Performing Artists`)}</span>
+              <span className="font-medium">
+                {currentArtists.length > 1
+                  ? t(`${currentArtists.length} ศิลปินในงาน`, `${currentArtists.length} Performing Artists`)
+                  : t('คอนเสิร์ตเดี่ยวเต็มรูปแบบ', 'Full-Scale Live Concert')}
+              </span>
             </div>
           </div>
 
@@ -292,7 +376,9 @@ export default function HomePage() {
               href="#artists-section"
               className="w-full sm:w-auto px-6 py-3 rounded-xl font-semibold text-gray-300 text-xs sm:text-sm border border-white/15 bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center text-center active:scale-95"
             >
-              {t('ดูทัพศิลปินแต่ละงาน ↓', 'View Lineup & Artists ↓')}
+              {currentArtists.length > 1
+                ? t('ดูทัพศิลปินแต่ละงาน ↓', 'View Lineup & Artists ↓')
+                : t('ดูข้อมูลศิลปินและรอบแสดง ↓', 'View Artist & Showtime ↓')}
             </a>
           </div>
         </div>
@@ -331,7 +417,10 @@ export default function HomePage() {
               } catch {
                 artistCount = 0;
               }
-              if (c.id === 1 && artistCount === 0) artistCount = DEFAULT_ARTISTS.length;
+              if (artistCount === 0) {
+                artistCount = (c.slug || '').includes('soundwave') ? DEFAULT_ARTISTS.length : 1;
+              }
+              const pillBanner = getConcertBannerUrl(c);
 
               return (
                 <button
@@ -348,8 +437,16 @@ export default function HomePage() {
                   }`}
                 >
                   <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-white/10 overflow-hidden shrink-0 border border-white/10">
-                    {c.bannerUrl ? (
-                      <img src={optimizeImageUrl(c.bannerUrl, 400, 75)} alt={c.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                    {pillBanner ? (
+                      <img
+                        src={optimizeImageUrl(pillBanner, 400, 75)}
+                        alt={c.name}
+                        loading="lazy"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => handleImageError(e, FALLBACK_CONCERT_IMAGE, c.slug || c.name)}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-cyan-300">
                         <Sparkles size={18} />
@@ -379,7 +476,11 @@ export default function HomePage() {
                       <Calendar size={12} className="text-pink-400" />
                       <span>{new Date(c.eventDate).toLocaleDateString(lang === 'en' ? 'en-US' : 'th-TH', { day: 'numeric', month: 'short' })}</span>
                       <span className="text-gray-600">·</span>
-                      <span className="text-cyan-300 font-bold">{t(`${artistCount} วง`, `${artistCount} Acts`)}</span>
+                      <span className="text-cyan-300 font-bold">
+                        {artistCount > 1
+                          ? t(`${artistCount} ศิลปิน`, `${artistCount} Artists`)
+                          : t('คอนเสิร์ตเดี่ยว', 'Live Concert')}
+                      </span>
                     </p>
                   </div>
                 </button>
@@ -393,13 +494,21 @@ export default function HomePage() {
           <div className="min-w-0 flex-1 max-w-full">
             <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1 min-w-0">
               <Star className="w-4 h-4 fill-cyan-400 shrink-0" />
-              <span className="truncate">Lineup & Schedule 2026 · {selectedConcert?.name}</span>
+              <span className="truncate">
+                {currentArtists.length > 1 ? 'Lineup & Schedule 2026' : 'Artist & Showtime'} · {selectedConcert?.name}
+              </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-white break-words">{t('ทัพศิลปินและวันเวลาแสดง', 'Performing Artists & Showtimes')}</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-white break-words">
+              {currentArtists.length > 1
+                ? t('ทัพศิลปินและวันเวลาแสดง', 'Performing Artists & Showtimes')
+                : t('ศิลปินและรอบการแสดง', 'Performing Artist & Showtime')}
+            </h2>
           </div>
-          <p className="text-xs text-gray-400 mt-1 sm:mt-0">
-            {t('คลิกที่การ์ดศิลปินเพื่อดูรายละเอียดและเวลาขึ้นแสดง', 'Click any artist card to view performance details and showtime')}
-          </p>
+          {currentArtists.length > 1 && (
+            <p className="text-xs text-gray-400 mt-1 sm:mt-0">
+              {t('คลิกที่การ์ดศิลปินเพื่อดูรายละเอียดและเวลาขึ้นแสดง', 'Click any artist card to view performance details and showtime')}
+            </p>
+          )}
         </div>
 
         {/* When Concert has artists */}
@@ -411,7 +520,11 @@ export default function HomePage() {
                 {/* Artist Photo Column */}
                 <div className="lg:col-span-7 relative h-72 sm:h-96 lg:h-[420px] overflow-hidden bg-black/40">
                   <img
-                    src={optimizeImageUrl(featured.image, 1000, 80)} loading="lazy" decoding="async"
+                    src={optimizeImageUrl(featured.image, 1000, 80)}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => handleImageError(e, FALLBACK_ARTIST_IMAGE, featured.name)}
                     alt={featured.name}
                     className="w-full h-full object-cover object-center transition-all duration-700 hover:scale-105"
                   />
@@ -473,37 +586,43 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Small Artists Carousel Selector Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full min-w-0">
-              {currentArtists.map((artist, i) => {
-                const isSelected = i === featuredIdx;
-                return (
-                  <button
-                    key={`${artist.name}-${i}`}
-                    type="button"
-                    onClick={() => setFeaturedIdx(i)}
-                    className={`artist-selector-card relative rounded-2xl overflow-hidden border p-2 text-left transition-all min-w-0 w-full ${
-                      isSelected
-                        ? 'border-cyan-400 bg-white/10 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-400/20 is-selected'
-                        : 'border-white/10 bg-[#101018] hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 w-full">
-                      <img
-                        src={optimizeImageUrl(artist.image, 200, 75)} loading="lazy" decoding="async"
-                        alt={artist.name}
-                        className="artist-thumb w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover shrink-0 bg-white/5 transition-transform"
-                      />
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <p className="artist-name text-xs font-bold text-white truncate">{artist.name}</p>
-                        <p className="artist-time text-[10px] text-cyan-300 font-mono mt-0.5 truncate">{artist.time.split('–')[0]} น.</p>
-                        <p className="artist-stage text-[9px] text-gray-400 truncate">{artist.stage}</p>
+            {/* Small Artists Carousel Selector Grid (Only for multi-artist events/festivals) */}
+            {currentArtists.length > 1 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full min-w-0">
+                {currentArtists.map((artist, i) => {
+                  const isSelected = i === featuredIdx;
+                  return (
+                    <button
+                      key={`${artist.name}-${i}`}
+                      type="button"
+                      onClick={() => setFeaturedIdx(i)}
+                      className={`artist-selector-card relative rounded-2xl overflow-hidden border p-2 text-left transition-all min-w-0 w-full ${
+                        isSelected
+                          ? 'border-cyan-400 bg-white/10 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-400/20 is-selected'
+                          : 'border-white/10 bg-[#101018] hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 w-full">
+                        <img
+                          src={optimizeImageUrl(artist.image, 200, 75)}
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => handleImageError(e, FALLBACK_ARTIST_IMAGE)}
+                          alt={artist.name}
+                          className="artist-thumb w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover shrink-0 bg-white/5 transition-transform"
+                        />
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <p className="artist-name text-xs font-bold text-white truncate">{artist.name}</p>
+                          <p className="artist-time text-[10px] text-cyan-300 font-mono mt-0.5 truncate">{artist.time.split('–')[0]} น.</p>
+                          <p className="artist-stage text-[9px] text-gray-400 truncate">{artist.stage}</p>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </>
         ) : (
           /* Empty Lineup Message */
@@ -520,17 +639,26 @@ export default function HomePage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          FESTIVAL TIMELINE SCHEDULE
+          FESTIVAL / CONCERT TIMELINE SCHEDULE
       ══════════════════════════════════════════════════════════════════ */}
       <section className="timetable-section py-12 px-4 max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Timetable</span>
-          <h3 className="text-2xl font-black text-white mt-1">{t('กำหนดการกิจกรรมเทศกาล', 'Festival Timetable & Schedule')}</h3>
+          <h3 className="text-2xl font-black text-white mt-1">
+            {currentArtists.length > 1
+              ? t('กำหนดการกิจกรรมเทศกาล', 'Festival Timetable & Schedule')
+              : t('กำหนดการเข้าชมคอนเสิร์ต', 'Concert Schedule & Gate Times')}
+          </h3>
           <p className="text-xs text-gray-500 mt-1">{selectedConcert?.name}</p>
         </div>
 
         <div className="space-y-3">
-          {(selectedConcert?.schedule?.length ? selectedConcert.schedule : DEFAULT_SCHEDULE).map((s, i) => (
+          {(selectedConcert?.schedule?.length
+            ? selectedConcert.schedule
+            : (selectedConcert?.slug || '').includes('soundwave') || currentArtists.length > 1
+            ? DEFAULT_SCHEDULE
+            : getSoloConcertSchedule(selectedConcert?.name, selectedConcert?.venue || selectedConcert?.location)
+          ).map((s, i) => (
             <div
               key={i}
               className="timetable-row flex items-center justify-between p-4 rounded-xl bg-[#12121a] border border-white/10 text-xs sm:text-sm transition-all"
@@ -570,13 +698,15 @@ export default function HomePage() {
               className="live-event-card group cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-[#111119] transition hover:-translate-y-1 hover:border-cyan-300/40"
             >
               <div className="h-44 bg-[#191925] relative">
-                {event.bannerUrl && (
-                  <img
-                    src={optimizeImageUrl(event.bannerUrl, 800, 75)} loading="lazy" decoding="async"
-                    alt={`โปสเตอร์ ${event.name}`}
-                    className="h-full w-full object-cover transition group-hover:scale-[1.02]"
-                  />
-                )}
+                <img
+                  src={optimizeImageUrl(getConcertBannerUrl(event), 800, 75)}
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => handleImageError(e, FALLBACK_CONCERT_IMAGE, event.slug || event.name)}
+                  alt={`โปสเตอร์ ${event.name}`}
+                  className="h-full w-full object-cover transition group-hover:scale-[1.02]"
+                />
                 <span className="absolute top-3 right-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-bold text-cyan-200">
                   {event.status}
                 </span>
