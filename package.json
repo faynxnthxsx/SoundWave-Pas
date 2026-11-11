@@ -12,7 +12,13 @@
     "electron": "npm --prefix frontend run build && electron electron/main.cjs",
     "electron:dev": "cross-env ELECTRON_START_URL=http://localhost:5173 electron electron/main.cjs",
     "mobile:sync": "npm --prefix frontend run build && npm --prefix frontend run cap:sync",
-    "mobile:android": "npm --prefix frontend run cap:android"
+    "mobile:android": "npm --prefix frontend run cap:android",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:studio": "start http://localhost:5555",
+    "docker:export": "docker exec soundwave-backend npm run db:export",
+    "docker:import": "docker exec soundwave-backend npm run db:import"
   },
   "main": "electron/main.cjs",
   "keywords": [

@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>คู่มือผู้ใช้งานระบบ SoundWave Pass (ฉบับสมบูรณ์พร้อมภาพประกอบทุกหน้าจอ)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0d14;
+      --panel: #121624;
+      --panel-soft: #171c2e;
+      --border: rgba(255, 255, 255, 0.11);
+      --cyan: #00f0ff;
+      --pink: #ff007f;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    /* Top Bar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 28px;
+      background: rgba(11, 13, 20, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, var(--cyan), var(--pink));
+      color: #000;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-input {
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 10px;
+      width: 260px;
+      font-family: inherit;
+      font-size: 13.5px;
+    }
+
+    .btn-print {
+      background: var(--cyan);
+      color: #05070d;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 13.5px;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .btn-print:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    /* Main Layout */
+    .layout {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      max-width: 1520px;
+      margin: 0 auto;
+    }
+
+    /* Sidebar TOC */
+    .sidebar {
+      position: sticky;
+      top: 61px;
+      height: calc(100vh - 61px);
+      overflow-y: auto;
+      padding: 24px 18px;
+      border-right: 1px solid var(--border);
+      background: rgba(18, 22, 36, 0.55);
+    }
+
+    .sidebar h3 {
+      margin: 0 0 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--cyan);
+    }
+
+    .toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .toc-list a {
+      display: block;
+      padding: 8px 12px;
+      border-radius: 9px;
+      color: #d1d5db;
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+
+    .toc-list a:hover {
+      background: rgba(0, 240, 255, 0.08);
+      border-color: rgba(0, 240, 255, 0.25);
+      color: #fff;
+    }
+
+    /* Content Area */
+    .content {
+      padding: 36px 44px 80px;
+      max-width: 1160px;
+    }
+
+    .hero-cover {
+      background: radial-gradient(circle at top right, rgba(255, 0, 127, 0.18), transparent 55%),
+                  radial-gradient(circle at bottom left, rgba(0, 240, 255, 0.16), transparent 55%),
+                  var(--panel);
+      border: 1px solid rgba(0, 240, 255, 0.28);
+      border-radius: 22px;
+      padding: 34px 38px;
+      margin-bottom: 36px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+
+    .hero-cover .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--cyan);
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+
+    .hero-cover h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
+      line-height: 1.25;
+      color: #fff;
+    }
+
+    .hero-cover p {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 15.5px;
+    }
+
+    .meta-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .meta-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      color: #e2e8f0;
+    }
+
+    /* Section Card */
+    .manual-section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 30px 32px;
+      margin-bottom: 32px;
+      page-break-inside: avoid;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chapter-badge {
+      background: rgba(0, 240, 255, 0.14);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      color: var(--cyan);
+      font-weight: 700;
+      font-size: 13px;
+      padding: 4px 12px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+
+    .section-header h2 {
+      margin: 0;
+      font-size: 22px;
+      color: #fff;
+    }
+
+    .screen-card {
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin: 22px 0;
+    }
+
+    .screen-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .screen-title h3 {
+      margin: 0;
+      font-size: 17px;
+      color: var(--cyan);
+    }
+
+    .route-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      background: rgba(255, 0, 127, 0.14);
+      border: 1px solid rgba(255, 0, 127, 0.35);
+      color: #ff80bf;
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+
+    .screenshot-frame {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: #07070b;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      margin-bottom: 16px;
+    }
+
+    .screenshot-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: rgba(0, 240, 255, 0.08);
+      color: var(--cyan);
+      font-weight: 700;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .btn-tag {
+      display: inline-block;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .callout-tip {
+      background: rgba(16, 185, 129, 0.1);
+      border-left: 4px solid var(--emerald);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 14px;
+      font-size: 13.5px;
+      color: #d1fae5;
+    }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .content {
+        padding: 20px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        color: #111827;
+      }
+      .topbar, .sidebar {
+        display: none !important;
+      }
+      .layout {
+        display: block;
+      }
+      .content {
+        max-width: 100%;
+        padding: 0;
+      }
+      .hero-cover, .manual-section, .screen-card {
+        background: #fff !important;
+        color: #111827 !important;
+        border: 1px solid #d1d5db !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+      }
+      .hero-cover h1, .section-header h2, .screen-title h3, .hero-cover p {
+        color: #111827 !important;
+      }
+      th {
+        background: #f3f4f6 !important;
+        color: #111827 !important;
+      }
+      td, th {
+        border-bottom: 1px solid #e5e7eb !important;
+        color: #1f2937 !important;
+      }
+      .btn-tag {
+        background: #f3f4f6 !important;
+        color: #111827 !important;
+        border-color: #9ca3af !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-badge">SOUNDWAVE PASS</span>
+      <span>คู่มือผู้ใช้งานฉบับสมบูรณ์ (Illustrated User Manual)</span>
+    </div>
+    <div class="topbar-actions">
+      <input
+        type="search"
+        id="manualSearch"
+        class="search-input"
+        placeholder="🔍 ค้นหาชื่อปุ่ม หรือฟีเจอร์ในคู่มือ..."
+        oninput="filterManual(this.value)"
+      />
+      <button class="btn-print" onclick="window.print()">🖨️ พิมพ์ / บันทึกเป็น PDF (A4)</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Left Sidebar Table of Contents -->
+    <aside class="sidebar">
+      <h3>สารบัญคู่มือ (Table of Contents)</h3>
+      <ul class="toc-list">
+        <li><a href="#ch1">บทที่ 1: ภาพรวมระบบ & บัญชีทดสอบ</a></li>
+        <li><a href="#ch2">บทที่ 2: แถบเมนูหลัก, ล็อกอิน & ตั๋วของฉัน</a></li>
+        <li><a href="#ch3">บทที่ 3: การค้นหางาน & เลือกโซน/ที่นั่ง (2 ขั้นตอน)</a></li>
+        <li><a href="#ch4">บทที่ 4: ชำระเงิน, ตั๋ว QR & พิมพ์บัตร A4</a></li>
+        <li><a href="#ch5">บทที่ 5: ระบบทีมงาน & เครื่องสแกนหน้าประตู</a></li>
+        <li><a href="#ch6">บทที่ 6: แดชบอร์ดผู้จัดงาน (Admin Portal)</a></li>
+        <li><a href="#ch7">บทที่ 7: คำถามที่พบบ่อย & การแก้ไขปัญหา</a></li>
+      </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Cover Hero -->
+      <section class="hero-cover">
+        <span class="eyebrow">OFFICIAL VISUAL USER MANUAL · VERSION 2026</span>
+        <h1>📘 คู่มือผู้ใช้งานระบบ SoundWave Pass</h1>
+        <p>
+          เอกสารคู่มืออธิบายการใช้งานแบบละเอียดทุกหน้าจอ พร้อมภาพหน้าจอจริงทั้ง 17 หน้าจอ
+          ระบุตำแหน่งปุ่มกด ช่องกรอกข้อมูล หน้าที่การทำงาน และผลลัพธ์ของระบบครบทุกบทบาทผู้ใช้งาน
+        </p>
+        <div class="meta-pills">
+          <span class="meta-pill">👥 3 บทบาท: ลูกค้าทั่วไป · สตาฟฟ์หน้าประตู · ผู้จัดงาน (Admin)</span>
+          <span class="meta-pill">🖼️ 17 ภาพหน้าจอจริงพร้อมตารางปุ่มกด</span>
+          <span class="meta-pill">🖨️ รองรับการพิมพ์และบันทึกเป็น PDF ขนาด A4</span>
+        </div>
+      </section>
+
+      <!-- CHAPTER 1 -->
+      <section id="ch1" class="manual-section">
+        <div class="section-header">
+          <span class="chapter-badge">บทที่ 1</span>
+          <h2>ภาพรวมระบบและบัญชีผู้ใช้งานสำหรับทดสอบ (System Roles & Demo Accounts)</h2>
+        </div>
+        <p>ระบบ <strong>SoundWave Pass</strong> แบ่งสิทธิ์และหน้าจอการใช้งานออกเป็น 3 ส่วนหลัก เพื่อให้เหมาะกับผู้ใช้งานแต่ละกลุ่ม ดังนี้:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>บทบาทผู้ใช้งาน (Role)</th>
+                <th>URL / หน้าจอที่ใช้งาน</th>
+                <th>Username ทดสอบ</th>
+                <th>Password</th>
+                <th>หน้าที่และขอบเขตการใช้งาน</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="btn-tag">1. ลูกค้าทั่วไป (Customer)</span></td>
+                <td><code>/</code>, <code>/concerts/:id</code>, <code>/booking/*</code>, <code>/tickets/*</code></td>
+                <td>สมัครใหม่ หรือ Google Login</td>
+                <td>ตามที่ตั้งไว้</td>
+                <td>ค้นหาคอนเสิร์ต เลือกโซนจากผังฮอลล์ เลือกเก้าอี้รายตัว ผูก LINE รับตั๋ว ชำระเงิน และพิมพ์บัตรที่ระลึก A4</td>
+              </tr>
+              <tr>
+                <td><span class="btn-tag">2. สตาฟฟ์หน้าประตู (Gate Staff)</span></td>
+                <td><code>/team</code>, <code>/scanner</code></td>
+                <td><code>nam</code>, <code>faye</code>, <code>gate01</code></td>
+                <td><code>1234</code></td>
+                <td>สแกน QR Code บัตรเข้างานด้วยกล้องมือถือ/เว็บแคม โหมดสแกนคิวต่อเนื่อง หรือยิงบาร์โค้ด USB</td>
+              </tr>
+              <tr>
+                <td><span class="btn-tag">3. ผู้จัดงาน (Organizer / Admin)</span></td>
+                <td><code>/team</code>, <code>/admin</code>, <code>/admin/insights/*</code></td>
+                <td><code>owner</code></td>
+                <td><code>1234</code></td>
+                <td>ดูสถิติรายได้ เปิด/พัก/ปิดการขาย ล็อกเก้าอี้ VIP คืนเงิน (Refund) ดึงงานจากเรดาร์คอนเสิร์ต และส่งตั๋ว LINE ซ้ำ</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- CHAPTER 2 -->
+      <section id="ch2" class="manual-section">
+        <div class="section-header">
+          <span class="chapter-badge">บทที่ 2</span>
+          <h2>แถบเมนูหลัก หน้าแรก การเข้าสู่ระบบ และประวัติตั๋วของฉัน</h2>
+        </div>
+
+        <!-- Screen 01 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>2.1 หน้าแรกและแถบเมนูนำทางด้านบน (HomePage & Global Navbar)</h3>
+            <span class="route-badge">URL: /</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/01-home-page.png" alt="หน้าแรก SoundWave Pass และแถบเมนู Navbar" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / ไอคอน</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">🎵 SOUNDWAVE PASS</span></td>
+                  <td>มุมซ้ายบนสุดของแถบเมนู</td>
+                  <td>ปุ่มกลับหน้าแรกหลักของเว็บไซต์</td>
+                  <td>เปลี่ยนหน้ากลับมายังหน้าแรก (<code>/</code>) ทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">🌙 / ☀️ สลับธีมสี</span></td>
+                  <td>แถบขวาบน (ข้างปุ่มภาษา)</td>
+                  <td>สลับโหมดหน้าจอมืด (Dark Mode) และสว่าง (Light Mode)</td>
+                  <td>เปลี่ยนโทนสีพื้นหลังและการ์ดทั่วทั้งเว็บไซต์ทันที และจดจำค่าไว้ในเบราว์เซอร์</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">🇹🇭 TH / 🇬🇧 EN</span></td>
+                  <td>แถบขวาบน</td>
+                  <td>สลับภาษาของระบบระหว่าง ภาษาไทย และ ภาษาอังกฤษ</td>
+                  <td>แปลข้อความปุ่ม เมนู และคำอธิบายทุกหน้าเป็นภาษาที่เลือกทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">⬇ ดาวน์โหลดแอป</span></td>
+                  <td>แถบขวาบน</td>
+                  <td>เปิดหน้าต่างดาวน์โหลดแอปมือถือ Android APK และโปรแกรม Desktop</td>
+                  <td>แสดงป๊อปอัพ QR Code และปุ่มดาวน์โหลดไฟล์ติดตั้งลงเครื่อง</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">เข้าสู่ระบบ</span></td>
+                  <td>มุมขวาบนสุด</td>
+                  <td>เปิดหน้าต่างเข้าสู่ระบบหรือสมัครสมาชิกสำหรับลูกค้า</td>
+                  <td>แสดงหน้าต่างป๊อปอัพเข้าสู่ระบบ (ดูภาพที่ 2.2)</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">⚡ เลือกโซนและจองบัตร →</span></td>
+                  <td>กลางแบนเนอร์คอนเสิร์ตเด่น (Hero Banner)</td>
+                  <td>เข้าสู่หน้าผังเลือกโซนที่นั่งของคอนเสิร์ตเด่นทันที</td>
+                  <td>นำทางไปยังหน้า <code>/booking/zone-select?concertId=...</code></td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ดูข้อมูลศิลปินและรอบแสดง ↓</span></td>
+                  <td>ข้างปุ่มจองบัตรบนแบนเนอร์</td>
+                  <td>ดูรายละเอียดคอนเสิร์ต ตารางเวลา และรายชื่อศิลปิน</td>
+                  <td>นำทางไปยังหน้ารายละเอียดคอนเสิร์ต (<code>/concerts/:id</code>)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 02 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>2.2 หน้าต่างเข้าสู่ระบบและสมัครสมาชิกสำหรับลูกค้า (Customer Auth Modal)</h3>
+            <span class="route-badge">Modal: AuthModal.jsx</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/02-auth-modal.png" alt="หน้าต่างเข้าสู่ระบบลูกค้า AuthModal" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / ช่องกรอก</th>
+                  <th>ตำแหน่งในหน้าต่าง</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">🇬 เข้าสู่ระบบด้วย Google</span></td>
+                  <td>ปุ่มด้านบนของฟอร์ม</td>
+                  <td>ล็อกอินหรือสมัครสมาชิกอัตโนมัติด้วยบัญชี Google</td>
+                  <td>เปิดป๊อปอัพยืนยันบัญชี Google และเข้าสู่ระบบทันทีโดยไม่ต้องจำรหัสผ่าน</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ช่องชื่อผู้ใช้ หรือ อีเมล</span></td>
+                  <td>กลางฟอร์ม</td>
+                  <td>กรอก Username หรืออีเมลที่ใช้สมัครสมาชิก</td>
+                  <td>รับข้อมูลสำหรับตรวจสอบสิทธิ์ผู้ใช้</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ช่องรหัสผ่าน + ปุ่มดวงตา 👁️</span></td>
+                  <td>ใต้ช่องอีเมล</td>
+                  <td>กรอกรหัสผ่าน (กดไอคอนดวงตาเพื่อดูตัวอักษรที่พิมพ์ได้)</td>
+                  <td>สลับการแสดงรหัสผ่านระหว่างจุดซ่อนรหัสกับตัวอักษรจริง</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ปุ่ม เข้าสู่ระบบ (สีฟ้า)</span></td>
+                  <td>ด้านล่างฟอร์ม</td>
+                  <td>ส่งข้อมูลยืนยันตัวตนเข้าสู่ระบบ</td>
+                  <td>ปิดหน้าต่างป๊อปอัพ แสดงชื่อผู้ใช้บนแถบเมนู และปลดล็อกการจองบัตร</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ลืมรหัสผ่าน? · สมัครสมาชิกใหม่</span></td>
+                  <td>ลิงก์ด้านล่างสุดของป๊อปอัพ</td>
+                  <td>สลับไปหน้าตั้งรหัสผ่านใหม่ หรือหน้าสร้างบัญชีลูกค้าใหม่</td>
+                  <td>เปลี่ยนแบบฟอร์มในป๊อปอัพตามโหมดที่เลือกทันที</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 03 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>2.3 หน้าต่างตั๋วของฉันและประวัติการสั่งซื้อ (My Tickets & Purchase History Modal)</h3>
+            <span class="route-badge">Modal: PurchaseHistoryModal.jsx</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/03-purchase-history-modal.png" alt="หน้าต่างตั๋วของฉันและประวัติการสั่งซื้อ" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / ช่องกรอก</th>
+                  <th>ตำแหน่งในหน้าต่าง</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">ช่องค้นหารหัสจอง + ปุ่ม 🔍 ค้นหา</span></td>
+                  <td>แถบด้านบนของป๊อปอัพ</td>
+                  <td>ค้นหาตั๋วด้วยรหัสใบจอง (เช่น <code>SW-2026-3F4VN</code>) หรือเบอร์โทรศัพท์</td>
+                  <td>ดึงข้อมูลตั๋วจากฐานข้อมูลกลางมาแสดงทันที (ใช้กู้คืนตั๋วเมื่อเปลี่ยนมือถือได้)</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ปุ่มรหัสตั๋ว 🎫 SWP-...</span></td>
+                  <td>ภายในการ์ดรายการจองแต่ละใบ</td>
+                  <td>เปิดดูตั๋วดิจิทัล QR Code ของที่นั่งใบนั้น</td>
+                  <td>นำทางไปยังหน้า <code>/tickets/:ticketCode</code> พร้อมแสดง QR Code เข้างาน</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">🗑️ ล้างประวัติในเบราว์เซอร์</span></td>
+                  <td>มุมซ้ายล่างของป๊อปอัพ</td>
+                  <td>ลบรายการที่จำไว้ในเครื่องสาธารณะ</td>
+                  <td>ล้างรายการในเครื่องนี้ (ข้อมูลตั๋วจริงในระบบยังอยู่ครบ)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHAPTER 3 -->
+      <section id="ch3" class="manual-section">
+        <div class="section-header">
+          <span class="chapter-badge">บทที่ 3</span>
+          <h2>ขั้นตอนการดูรายละเอียดคอนเสิร์ตและเลือกโซน/ที่นั่ง (2-Step Venue Booking)</h2>
+        </div>
+
+        <!-- Screen 04 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>3.1 หน้ารายละเอียดคอนเสิร์ต ตารางศิลปิน และรายการโซนบัตร (Concert Detail Page)</h3>
+            <span class="route-badge">URL: /concerts/:id</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/04-concert-detail.png" alt="หน้ารายละเอียดคอนเสิร์ต" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / องค์ประกอบ</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">📍 เปิดแผนที่นำทาง (Google Maps)</span></td>
+                  <td>ใต้ชื่อสถานที่จัดงาน</td>
+                  <td>ดูตำแหน่งฮอลล์จัดแสดงและเส้นทางเดินทาง</td>
+                  <td>เปิดแท็บ Google Maps ไปยังพิกัดสถานที่จัดงานโดยตรง</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">การ์ดโซนบัตร + ปุ่ม เลือกโซนนี้</span></td>
+                  <td>คอลัมน์ด้านขวา (รายการโซนและราคา)</td>
+                  <td>เลือกโซนที่ต้องการเพื่อเข้าสู่หน้าผังที่นั่ง</td>
+                  <td>นำทางไปยังหน้า <code>/booking/zone-select</code> พร้อมเลือกโซนนั้นให้ทันที</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 05 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>3.2 ขั้นตอนที่ 1 (Step 1): คลิกเลือกโซนจากผังสถานที่จัดงานจริง (Interactive Venue Map)</h3>
+            <span class="route-badge">URL: /booking/zone-select (Step 1)</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/05-zone-select-step1-map.png" alt="ผังเลือกโซนฮอลล์คอนเสิร์ต Step 1" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / บล็อกบนผัง</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">บล็อกโซนสีบนผังฮอลล์ (Standing / VIP / Bowl)</span></td>
+                  <td>กลางผังจำลองเวที (Stage &amp; Walkway)</td>
+                  <td>คลิกเลือกโซนที่ต้องการจากตำแหน่งจริงหน้าเวที</td>
+                  <td>เปลี่ยนเข้าสู่ <strong>ขั้นตอนที่ 2 (ผังเลือกเก้าอี้รายตัว)</strong> ทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ปุ่ม ① เลือกโซน / ② เลือกที่นั่ง</span></td>
+                  <td>มุมขวาบนเหนือผังงาน</td>
+                  <td>แสดงสถานะขั้นตอนปัจจุบันของการจองบัตร</td>
+                  <td>ช่วยให้ทราบว่ากำลังอยู่ในขั้นเลือกโซน หรือขั้นเลือกเก้าอี้</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 06 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>3.3 ขั้นตอนที่ 2 (Step 2): เลือกเก้าอี้รายตัว ผูก LINE และกรอกข้อมูลผู้ซื้อ</h3>
+            <span class="route-badge">URL: /booking/zone-select (Step 2)</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/06-zone-select-step2-seats.png" alt="ผังเลือกเก้าอี้รายตัว Step 2 และฟอร์มผู้ซื้อ" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / ช่องกรอก</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">← เปลี่ยนโซนที่นั่ง</span></td>
+                  <td>มุมซ้ายบนของกรอบผังเก้าอี้</td>
+                  <td>ย้อนกลับไปผังฮอลล์รวม (Step 1) เพื่อเปลี่ยนโซน</td>
+                  <td>ล้างที่นั่งที่เลือกไว้ชั่วคราวและแสดงผังฮอลล์รวม</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ปุ่มเก้าอี้ A-01 ถึง G-14 (3 ปีก: ซ้าย/กลาง/ขวา)</span></td>
+                  <td>กลางผังที่นั่ง</td>
+                  <td>คลิกเลือกเก้าอี้ที่ต้องการ (เลือกได้สูงสุด <strong>6 ที่นั่งต่อครั้ง</strong>)</td>
+                  <td>
+                    • <strong>เก้าอี้ว่าง</strong>: เปลี่ยนเป็นสีนีออนพร้อมเครื่องหมาย <code>✓</code> และคำนวณราคารวมอัตโนมัติ<br/>
+                    • <strong>เก้าอี้สีทึบ (<code>–</code>)</strong>: มีผู้จองแล้ว ไม่สามารถกดซ้ำได้
+                  </td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">💬 เข้าสู่ระบบด้วย LINE (LOG IN WITH LINE)</span></td>
+                  <td>การ์ดสีเขียวด้านขวา</td>
+                  <td>เชื่อมต่อบัญชี LINE ของลูกค้าเพื่อรับบัตรคอนเสิร์ตเข้าแชทอัตโนมัติ</td>
+                  <td>เมื่อชำระเงินสำเร็จ บอทจะส่งการ์ดตั๋ว Flex Message เข้าแอป LINE ทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ช่อง ชื่อ-นามสกุล * และ เบอร์โทรศัพท์ *</span></td>
+                  <td>การ์ดข้อมูลผู้ซื้อบัตรด้านขวา</td>
+                  <td>ระบุชื่อผู้ถือบัตรและเบอร์โทรศัพท์ 10 หลัก</td>
+                  <td>บันทึกชื่อลงบนหน้าตั๋วทุกใบและใช้เป็นรหัสค้นหาตั๋ว</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ยืนยันการจองและไปหน้าชำระเงิน →</span></td>
+                  <td>ปุ่มใหญ่ด้านล่างสุดของคอลัมน์ขวา</td>
+                  <td>ล็อกที่นั่งที่เลือกไว้เป็นเวลา 10 นาที และสร้างรายการจอง</td>
+                  <td>นำทางไปยังหน้าชำระเงิน <code>/booking/payment/:bookingCode</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHAPTER 4 -->
+      <section id="ch4" class="manual-section">
+        <div class="section-header">
+          <span class="chapter-badge">บทที่ 4</span>
+          <h2>การชำระเงิน ตั๋วดิจิทัล E-Ticket และการพิมพ์บัตรแข็งที่ระลึก A4</h2>
+        </div>
+
+        <!-- Screen 07 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>4.1 หน้าสแกนชำระเงิน PromptPay พร้อมนาฬิกานับถอยหลัง 10 นาที</h3>
+            <span class="route-badge">URL: /booking/payment/:bookingCode</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/07-payment-page.png" alt="หน้าชำระเงิน PromptPay และเวลานับถอยหลัง" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / องค์ประกอบ</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">🕒 โปรดชำระเงินภายใน 09:40 นาที</span></td>
+                  <td>แถบด้านบนสุดของการ์ดชำระเงิน</td>
+                  <td>แสดงเวลาล็อกที่นั่งคงเหลือ (เริ่มต้น 10:00 นาที)</td>
+                  <td>หากหมดเวลา <code>00:00</code> ระบบจะยกเลิกใบจองและคืนเก้าอี้ให้ผู้อื่นจองต่ออัตโนมัติ</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">✅ ยืนยันการโอนเงินเรียบร้อยแล้ว</span></td>
+                  <td>ปุ่มสีฟ้าขนาดใหญ่ด้านล่างการ์ด</td>
+                  <td>ยืนยันการชำระเงินเพื่อออกตั๋วจริงทันที</td>
+                  <td>เปลี่ยนสถานะใบจองเป็น <code>PAID</code> สร้างรหัสตั๋ว QR Code รายใบ และส่งตั๋วเข้า LINE</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">✕ ยกเลิกการจองและปล่อยที่นั่งว่าง</span></td>
+                  <td>ปุ่มด้านล่างสุด</td>
+                  <td>ยกเลิกรายการจองนี้ด้วยตนเองทันทีโดยไม่ต้องรอครบ 10 นาที</td>
+                  <td>คืนโควตาเก้าอี้กลับเข้าผังทันที และพากลับไปหน้าเลือกที่นั่ง</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 08 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>4.2 หน้าตั๋วดิจิทัล E-Ticket สำหรับแสดงหน้าประตูเข้างาน</h3>
+            <span class="route-badge">URL: /tickets/:ticketCode</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/08-my-ticket-page.png" alt="หน้าตั๋วดิจิทัล E-Ticket พร้อม QR Code" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / องค์ประกอบ</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">← ย้อนกลับ</span></td>
+                  <td>มุมซ้ายบนเหนือการ์ดตั๋ว</td>
+                  <td>กลับไปยังหน้าก่อนหน้า</td>
+                  <td>ย้อนกลับไปหน้าประวัติการจองหรือหน้าชำระเงิน</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">🖨️ พิมพ์บัตร A4 ที่ระลึก</span></td>
+                  <td>มุมขวาบนเหนือการ์ดตั๋ว</td>
+                  <td>เปิดหน้าแม่แบบบัตรแข็งที่ระลึกขนาด A4</td>
+                  <td>นำทางไปยังหน้า <code>/tickets/:ticketCode/print</code> (ดูภาพที่ 4.3)</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">QR Code กลางบัตร (SWP-...)</span></td>
+                  <td>กึ่งกลางการ์ดตั๋ว</td>
+                  <td>ใช้ให้สตาฟฟ์หน้าประตูสแกนเข้างาน</td>
+                  <td>เมื่อสตาฟฟ์สแกนแล้ว สถานะบนบัตรจะเปลี่ยนจาก <code>พร้อมเข้างาน (VALID)</code> เป็น <code>ใช้เข้างานแล้ว (USED)</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 09 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>4.3 หน้าพิมพ์บัตรที่ระลึกขนาด A4 (Collectible Souvenir Ticket Print)</h3>
+            <span class="route-badge">URL: /tickets/:ticketCode/print</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/09-souvenir-print-page.png" alt="หน้าพิมพ์บัตรที่ระลึกขนาด A4" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / องค์ประกอบ</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">🖨️ สั่งพิมพ์บัตร / บันทึก PDF</span></td>
+                  <td>มุมขวาบนของหน้าจอ</td>
+                  <td>สั่งพิมพ์บัตรที่ระลึกลงกระดาษ A4 หรือบันทึกเป็นไฟล์ PDF</td>
+                  <td>เปิดหน้าต่าง Print ของเครื่อง (ระบบจะซ่อนปุ่มเมนูด้านบนให้อัตโนมัติเพื่อให้ได้เฉพาะตัวบัตรสวยงาม)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHAPTER 5 -->
+      <section id="ch5" class="manual-section">
+        <div class="section-header">
+          <span class="chapter-badge">บทที่ 5</span>
+          <h2>คู่มือสำหรับทีมงานและสตาฟฟ์หน้าประตู (Team Portal &amp; Gate Scanner)</h2>
+        </div>
+
+        <!-- Screen 10 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>5.1 หน้าทางเข้าสำหรับทีมงานและผู้จัดงาน (Team Portal Page)</h3>
+            <span class="route-badge">URL: /team</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/10-team-portal-page.png" alt="หน้าทางเข้าทีมงาน TeamPortalPage" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / การ์ด</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">การ์ด เจ้าหน้าที่หน้าประตู (Gate Scanner)</span></td>
+                  <td>ฝั่งซ้ายของหน้า <code>/team</code></td>
+                  <td>เข้าสู่ระบบเครื่องสแกนตรวจบัตรหน้าประตูฮอลล์</td>
+                  <td>นำทางไปยังหน้า <code>/scanner</code></td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">การ์ด ผู้จัดงานและแอดมิน (Organizer Portal)</span></td>
+                  <td>ฝั่งขวาของหน้า <code>/team</code></td>
+                  <td>เข้าสู่ระบบแดชบอร์ดจัดการคอนเสิร์ตและยอดขาย</td>
+                  <td>นำทางไปยังหน้า <code>/admin</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 11 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>5.2 หน้าเครื่องสแกนตรวจตั๋วหน้าประตู (Gate Scanner &amp; Instant Verification)</h3>
+            <span class="route-badge">URL: /scanner</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/11-gate-scanner-page.png" alt="หน้าเครื่องสแกนตรวจตั๋วหน้าประตู GateScannerPage" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / สวิตช์</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">☑️ โหมดสแกนคิวต่อเนื่อง (ตรวจคนถัดไปอัตโนมัติ)</span></td>
+                  <td>แถบด้านซ้ายบนเหนือกรอบกล้อง</td>
+                  <td>เปิดโหมดสแกนรัวสำหรับช่วงเวลาที่ผู้ชมต่อคิวเข้าฮอลล์จำนวนมาก</td>
+                  <td>หลังจากสแกนผ่าน 1 ใบ ระบบจะแสดงผลลัพธ์ชั่วครู่แล้วเปิดกล้องพร้อมสแกนคนถัดไปทันทีโดยไม่ต้องกดปุ่มซ้ำ</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">🔄 สลับกล้อง</span></td>
+                  <td>มุมขวาบนเหนือกรอบกล้อง</td>
+                  <td>สลับระหว่างกล้องหลังและกล้องหน้าของสมาร์ตโฟน/แท็บเล็ต</td>
+                  <td>เปลี่ยนเลนส์กล้องที่ใช้ส่อง QR Code ทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">📷 เปิดกล้องสแกนเนอร์</span></td>
+                  <td>ปุ่มสีฟ้ากลางกรอบสแกน</td>
+                  <td>เปิดใช้งานกล้องเพื่อส่อง QR Code จากมือถือลูกค้าหรือบัตรกระดาษ A4</td>
+                  <td>เมื่อตรวจพบ QR Code ระบบจะส่งตรวจสอบและส่งเสียงแจ้งเตือนทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">🖼️ เลือกรูปภาพ QR จากเครื่อง / LINE</span></td>
+                  <td>ใต้กรอบกล้อง</td>
+                  <td>อัปโหลดภาพแคปหน้าจอ QR Code เพื่อตรวจบัตรแทนการใช้กล้องสด</td>
+                  <td>อ่านรหัสตั๋วจากไฟล์รูปภาพและแสดงผลการตรวจทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ช่องพิมพ์รหัสตั๋ว (SWP-...) + ปุ่ม ตรวจตั๋ว</span></td>
+                  <td>ด้านล่างของหน้า <code>/scanner</code></td>
+                  <td>พิมพ์รหัสตั๋วด้วยมือ หรือใช้งานร่วมกับปืนยิงบาร์โค้ด USB</td>
+                  <td>
+                    แสดงป้ายผลลัพธ์ขนาดใหญ่ชัดเจน:<br/>
+                    • 🟢 <strong>สีเขียว (VALID)</strong>: ตั๋วถูกต้อง อนุญาตให้เข้างานได้<br/>
+                    • 🟡 <strong>สีเหลือง (USED)</strong>: ตั๋วใบนี้ถูกสแกนเข้างานไปแล้ว (ป้องกันการวนบัตรซ้ำ)<br/>
+                    • 🔴 <strong>สีแดง (INVALID)</strong>: รหัสไม่ถูกต้อง หรือบัตรถูกยกเลิก/คืนเงินแล้ว
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHAPTER 6 -->
+      <section id="ch6" class="manual-section">
+        <div class="section-header">
+          <span class="chapter-badge">บทที่ 6</span>
+          <h2>คู่มือสำหรับผู้จัดงานและผู้ดูแลระบบ (Organizer &amp; Admin Dashboard)</h2>
+        </div>
+
+        <!-- Screen 12 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>6.1 แท็บที่ 1: ภาพรวมระบบ ยอดขาย และการ์ด KPI ทั้ง 4 ใบ</h3>
+            <span class="route-badge">URL: /admin (Tab: ภาพรวม &amp; ยอดขาย)</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/12-admin-overview-tab.png" alt="แดชบอร์ดผู้จัดงาน แท็บภาพรวมและยอดขาย" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / การ์ด</th>
+                  <th>ตำแหน่งบนหน้าจอ</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">แถบ 4 แท็บหลัก (ภาพรวม / คอนเสิร์ต / รายการจอง / + เพิ่มงานใหม่)</span></td>
+                  <td>ใต้หัวข้อ แผงควบคุมและสถิติคอนเสิร์ต</td>
+                  <td>สลับหมวดการทำงานหลักของผู้จัดงาน</td>
+                  <td>เปลี่ยนหน้าจอการทำงานตามแท็บที่เลือกทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">📡 เรดาร์คอนเสิร์ต 🔔 58</span></td>
+                  <td>ถัดจากแถบแท็บด้านขวาบน</td>
+                  <td>เปิดระบบเรดาร์ค้นหาคอนเสิร์ตใหม่ในไทยอัตโนมัติ</td>
+                  <td>เปิดหน้าต่างป๊อปอัพเรดาร์คอนเสิร์ต (ดูภาพที่ 6.4)</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">การ์ด KPI ทั้ง 4 ใบ (ตั๋วที่ขายแล้ว, รายได้รวม, สแกนเข้างานแล้ว, คอนเสิร์ตในระบบ)</span></td>
+                  <td>แถวบนของแดชบอร์ด</td>
+                  <td>แสดงสถิติสำคัญแบบเรียลไทม์ (สามารถคลิกที่การ์ดแต่ละใบได้)</td>
+                  <td>คลิกแล้วนำทางไปยังหน้าเจาะลึกสถิติ <code>/admin/insights/:type</code></td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">⬇ ส่งออก CSV ทั้งหมด / รีเฟรชข้อมูล</span></td>
+                  <td>มุมขวาเหนือการ์ดสรุปการเงิน</td>
+                  <td>ดาวน์โหลดรายงานผู้เข้างานทั้งหมดเป็นไฟล์ Excel CSV หรืออัปเดตตัวเลขล่าสุด</td>
+                  <td>ดาวน์โหลดไฟล์ <code>.csv</code> ลงเครื่อง หรือดึงข้อมูลใหม่จากเซิร์ฟเวอร์</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 13 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>6.2 แท็บที่ 2: จัดการคอนเสิร์ต สวิตช์เปิด-ปิดการขาย และตารางโซนบัตร</h3>
+            <span class="route-badge">URL: /admin (Tab: คอนเสิร์ต &amp; ผังที่นั่ง)</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/13-admin-concerts-tab.png" alt="แท็บจัดการคอนเสิร์ตและผังที่นั่ง" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / สวิตช์</th>
+                  <th>ตำแหน่งบนการ์ดคอนเสิร์ต</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">▶ เปิดขาย · ⏸ พักการขาย · ⏺ ปิดขาย</span></td>
+                  <td>มุมซ้ายบนของแต่ละคอนเสิร์ต</td>
+                  <td>ควบคุมสถานะการจำหน่ายบัตรของคอนเสิร์ตนั้นทั้งงานในคลิกเดียว</td>
+                  <td>อัปเดตสถานะหน้าร้านทันที (หากเลือกพักหรือปิดขาย ลูกค้าจะกดจองไม่ได้)</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">✏️ แก้ไขข้อมูล · 📋 คัดลอกลิงก์ร้าน · ⬇ ส่งออก CSV · 🎤 จัดการศิลปิน</span></td>
+                  <td>มุมขวาบนของการ์ดคอนเสิร์ต</td>
+                  <td>แก้ไขรายละเอียดงาน คัดลอกลิงก์หน้าขายบัตร ดาวน์โหลดรายชื่อผู้ชมของงานนั้น หรือจัด Lineup ศิลปิน</td>
+                  <td>เปิดหน้าต่างแก้ไขข้อมูล หรือดาวน์โหลดไฟล์ CSV เฉพาะงานนั้น</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">🪑 ผังที่นั่ง Interactive</span></td>
+                  <td>คอลัมน์ขวาสุดของแต่ละโซนที่นั่ง</td>
+                  <td>เปิดหน้าต่างควบคุมเก้าอี้รายตัว ล็อกแถว VIP และคืนเงินตั๋ว</td>
+                  <td>เปิดป๊อปอัพผังที่นั่งแอดมิน (ดูภาพที่ 6.3)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 14 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>6.3 หน้าต่างผังที่นั่งแอดมิน: ล็อกเก้าอี้ VIP ล็อกทั้งแถว และคืนเงิน (Admin Seat Map Modal)</h3>
+            <span class="route-badge">Modal: AdminSeatMapModal.jsx</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/14-admin-seatmap-modal.png" alt="หน้าต่างผังที่นั่งแอดมิน AdminSeatMapModal" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / องค์ประกอบ</th>
+                  <th>ตำแหน่งในหน้าต่างผังที่นั่ง</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">แท็บมุมมอง: ผังเก้าอี้รายตัว · ผังฮอลล์รวม · ตารางรายชื่อ</span></td>
+                  <td>แถบเครื่องมือด้านบน</td>
+                  <td>สลับรูปแบบการดูข้อมูลที่นั่งในโซนนั้น</td>
+                  <td>แสดงผังเก้าอี้ A–G, ผังเวทีรวม หรือตารางรายชื่อผู้ถือบัตร</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ช่อง ความจุรวม + ราคาบัตร + ปุ่ม บันทึก</span></td>
+                  <td>แถบตั้งค่าโซนด้านบน</td>
+                  <td>ปรับเพิ่ม/ลดจำนวนที่นั่งทั้งหมด หรือเปลี่ยนราคาบัตรของโซน</td>
+                  <td>บันทึกความจุและราคาใหม่ลงฐานข้อมูลทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ปุ่ม 🔒 ล็อกแถว / 🔓 ปลดล็อกแถว</span></td>
+                  <td>ด้านขวาสุดของแต่ละแถวเก้าอี้ (A–G)</td>
+                  <td>ล็อกที่นั่งว่างทั้งแถวให้เป็นโควตา VIP / สปอนเซอร์ในคลิกเดียว</td>
+                  <td>เก้าอี้ว่างทั้งแถวเปลี่ยนเป็นสถานะ <code>สำรองโดยแอดมิน (RESERVED)</code> ทันที</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">ปุ่มเก้าอี้รายตัว + แผงจัดการด้านขวา</span></td>
+                  <td>กลางผังที่นั่งและคอลัมน์ขวา</td>
+                  <td>คลิกที่เก้าอี้ตัวใดก็ได้เพื่อดูชื่อผู้ซื้อ รหัสตั๋ว หรือสั่งล็อก/คืนเงิน</td>
+                  <td>
+                    • กรณี <strong>เก้าอี้ว่าง</strong>: กดปุ่ม <code>🔒 ล็อกที่นั่งนี้</code> เพื่อกันที่นั่งให้แขก VIP<br/>
+                    • กรณี <strong>ขายแล้ว (VALID)</strong>: กดปุ่ม <code>💸 คืนเงินและยกเลิกตั๋ว (Refund)</code> เพื่อยกเลิกบัตรและคืนเก้าอี้กลับมาขายใหม่
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 15 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>6.4 หน้าต่างเรดาร์ค้นหาคอนเสิร์ตใหม่และนำเข้าอัตโนมัติใน 1 คลิก (Concert Discovery Radar)</h3>
+            <span class="route-badge">Modal: ConcertDiscoveryModal.jsx</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/15-admin-radar-modal.png" alt="หน้าต่างเรดาร์ค้นหาคอนเสิร์ตใหม่ ConcertDiscoveryModal" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / องค์ประกอบ</th>
+                  <th>ตำแหน่งในหน้าต่างเรดาร์</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">🔄 สแกนสดเดี๋ยวนี้ (Live Scan)</span></td>
+                  <td>มุมขวาบนของป๊อปอัพเรดาร์</td>
+                  <td>สั่งกวาดข้อมูลคอนเสิร์ตใหม่ล่าสุดจากแหล่งข้อมูลภายนอก (เช่น ThaiTicketMajor)</td>
+                  <td>อัปเดตรายการคอนเสิร์ตมาใหม่พร้อมแสดงจำนวนงานที่ยังไม่ได้นำเข้า</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">⬇ นำเข้าและเปิดขายทันที (1-Click Import)</span></td>
+                  <td>ด้านล่างของการ์ดคอนเสิร์ตแต่ละรายการ</td>
+                  <td>ดึงชื่อคอนเสิร์ต โปสเตอร์ วันเวลา สถานที่ และสร้างโซนที่นั่งมาตรฐานให้อัตโนมัติ</td>
+                  <td>คอนเสิร์ตถูกสร้างเข้าสู่ระบบและขึ้นแสดงบนหน้าแรกให้ลูกค้าจองบัตรได้ทันที</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 16 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>6.5 แท็บที่ 3: รายการจอง ข้อมูลผู้ถือตั๋ว และปุ่มส่งตั๋วเข้า LINE ซ้ำ</h3>
+            <span class="route-badge">URL: /admin (Tab: รายการจอง &amp; ตั๋วลูกค้า)</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/16-admin-bookings-tab.png" alt="แท็บรายการจองและข้อมูลผู้ถือตั๋ว" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / ช่องค้นหา</th>
+                  <th>ตำแหน่งในแท็บรายการจอง</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">🔍 ช่องพิมพ์ค้นหา + ตัวกรองสถานะการจอง</span></td>
+                  <td>แถบค้นหาด้านบนตาราง</td>
+                  <td>ค้นหาจากรหัสจอง (<code>SW-...</code>), รหัสตั๋ว, เบอร์โทร หรือชื่อลูกค้า</td>
+                  <td>กรองแถวรายการจองในตารางแบบเรียลไทม์ทันทีที่พิมพ์</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">🎫 ดูตั๋ว (X)</span></td>
+                  <td>คอลัมน์การจัดการ (ขวาสุดของแต่ละแถว)</td>
+                  <td>เปิดดูรายการตั๋วทุกใบที่อยู่ในใบจองนั้น พร้อมปุ่มคืนเงินรายใบ</td>
+                  <td>เปิดหน้าต่างป๊อปอัพแสดงรายละเอียดตั๋วแต่ละใบ</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">✈️ ส่ง LINE ซ้ำ</span></td>
+                  <td>คอลัมน์การจัดการ (ข้างปุ่มดูตั๋ว)</td>
+                  <td>ยิงการ์ดตั๋ว Flex Message เข้าแชท LINE ของลูกค้าซ้ำอีกครั้ง</td>
+                  <td>ส่งตั๋วเข้า LINE ลูกค้าทันที (ใช้เมื่อลูกค้าทำแชทหายหรือเพิ่งกดเพิ่มเพื่อนบอท)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Screen 17 -->
+        <div class="screen-card">
+          <div class="screen-title">
+            <h3>6.6 แท็บที่ 4: ฟอร์มสร้างคอนเสิร์ตใหม่ กำหนดพิกัดแผนที่ และตั้งค่าโซนบัตร</h3>
+            <span class="route-badge">URL: /admin (Tab: + เพิ่มงานใหม่)</span>
+          </div>
+          <div class="screenshot-frame">
+            <img src="docs/manual-screenshots/17-admin-create-concert-tab.png" alt="แท็บสร้างคอนเสิร์ตใหม่" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ชื่อปุ่ม / ช่องกรอก</th>
+                  <th>ตำแหน่งในฟอร์มสร้างงาน</th>
+                  <th>หน้าที่การทำงาน</th>
+                  <th>ผลลัพธ์เมื่อกด</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="btn-tag">ช่องชื่อคอนเสิร์ต, Slug URL, วันเวลา และสถานที่</span></td>
+                  <td>ส่วนข้อมูลหลักด้านบน</td>
+                  <td>กรอกข้อมูลพื้นฐานของงานคอนเสิร์ตและเลือกวันเวลาจัดแสดงจากปฏิทิน</td>
+                  <td>ระบบสร้าง URL Slug อัตโนมัติและผูกพิกัดแผนที่สถานที่จัดงาน</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">อัปโหลดไฟล์โปสเตอร์ / วางลิงก์รูปภาพ</span></td>
+                  <td>ส่วนรูปภาพโปสเตอร์งาน</td>
+                  <td>เลือกรูปภาพจากเครื่องพร้อมเปิดหน้าต่างครอปตัดภาพ (Crop Modal)</td>
+                  <td>แสดงตัวอย่างภาพโปสเตอร์และอัปโหลดขึ้นเซิร์ฟเวอร์</td>
+                </tr>
+                <tr>
+                  <td><span class="btn-tag">+ เพิ่มโซนที่นั่ง / ปุ่มบันทึกสร้างคอนเสิร์ต</span></td>
+                  <td>ส่วนกำหนดโซนบัตรด้านล่าง</td>
+                  <td>กำหนดชื่อโซน ประเภท (บัตรนั่ง/บัตรยืน/VIP) ราคา ความจุ และสีประจำโซน</td>
+                  <td>สร้างงานคอนเสิร์ตใหม่พร้อมผังที่นั่งขึ้นแสดงบนหน้าเว็บทันที</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHAPTER 7 -->
+      <section id="ch7" class="manual-section">
+        <div class="section-header">
+          <span class="chapter-badge">บทที่ 7</span>
+          <h2>การแก้ไขปัญหาเบื้องต้นและคำถามที่พบบ่อย (Troubleshooting &amp; FAQ)</h2>
+        </div>
+        <div class="callout-tip">
+          <strong>💡 คำถามที่ 1: ลูกค้าชำระเงินแล้วแต่ไม่ได้รับตั๋วในแอป LINE ต้องทำอย่างไร?</strong><br/>
+          1. ลูกค้าสามารถเปิดดูตั๋ว QR Code บนเว็บได้ทันทีโดยกดปุ่ม <strong>"ตั๋วของฉัน"</strong> บนแถบเมนูด้านบน หรือค้นหาด้วยเบอร์โทรศัพท์<br/>
+          2. หากต้องการให้ตั๋วเข้าแชท LINE ให้ลูกค้ากดเพิ่มเพื่อน LINE Official Account ของงานก่อน จากนั้นแจ้งแอดมินให้กดปุ่ม <strong>"✈️ ส่ง LINE ซ้ำ"</strong> ในหน้า <code>/admin</code> แท็บรายการจอง
+        </div>
+        <div class="callout-tip">
+          <strong>💡 คำถามที่ 2: ลูกค้ากดเลือกที่นั่งค้างไว้แล้วปิดหน้าเว็บไป เก้าอี้ตัวนั้นจะว่างเมื่อไหร่?</strong><br/>
+          ระบบมีกลไกล็อกที่นั่งชั่วคราว <strong>10 นาที</strong> หากไม่มีการกดยืนยันชำระเงินภายในเวลาดังกล่าว ระบบจะปลดล็อกเก้าอี้ตัวนั้นกลับเข้าผังกลางให้ลูกค้าท่านอื่นเลือกซื้อต่อได้โดยอัตโนมัติ หรือแอดมินสามารถปลดล็อกจากหน้าผังที่นั่งได้ทันที
+        </div>
+        <div class="callout-tip">
+          <strong>💡 คำถามที่ 3: หน้างานอินเทอร์เน็ตช้าหรือกล้องมือถือสตาฟฟ์มีปัญหา จะตรวจบัตรอย่างไร?</strong><br/>
+          ในหน้า <code>/scanner</code> สตาฟฟ์สามารถพิมพ์รหัสตั๋ว (เช่น <code>SWP-VIP-...</code>) ลงในช่องค้นหาด้านล่าง ใช้เครื่องยิงบาร์โค้ด USB หรือกดปุ่ม <strong>"เลือกรูปภาพ QR จากเครื่อง"</strong> เพื่อตรวจบัตรได้ทันที
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    function filterManual(query) {
+      const q = (query || '').trim().toLowerCase();
+      const cards = document.querySelectorAll('.screen-card, .manual-section');
+      cards.forEach((card) => {
+        if (!q) {
+          card.style.display = '';
+          return;
+        }
+        const text = (card.innerText || '').toLowerCase();
+        card.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>

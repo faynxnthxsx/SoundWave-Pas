@@ -235,43 +235,45 @@ erDiagram
 
 ---
 
-## 🚀 วิธีติดตั้งและรันโปรเจกต์ (สำหรับทีมงานหลัง Clone)
+## 📘 เอกสารคู่มือผู้ใช้งานฉบับสมบูรณ์ (User Manual & Screenshots)
 
-### 1. เตรียมฐานข้อมูล MySQL 8.0
-สร้างฐานข้อมูลชื่อ `soundwave_db` บน MySQL เครื่องของคุณ:
-```sql
-CREATE DATABASE IF NOT EXISTS soundwave_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-### 2. ตั้งค่า Backend & นำเข้าข้อมูลชุดเดียวกันทั้งทีม
-```bash
-cd backend
-npm install
-cp .env.example .env
-# แก้ไข DATABASE_URL ในไฟล์ .env ให้ตรงกับรหัสผ่าน MySQL ของเครื่องคุณ
-# ตัวอย่าง: DATABASE_URL="mysql://root@127.0.0.1:3306/soundwave_db"
-
-npx prisma db push
-npm run db:seed
-npm run db:import
-npm run dev
-```
-> 💡 คำสั่ง `npm run db:import` จะนำเข้าข้อมูลชุดเดียวกับของทีมจากไฟล์ `backend/prisma/shared-data.json` (4 คอนเสิร์ตหลักบนหน้าเว็บ, 10 โซนที่นั่ง, 58 รายการในเรดาร์, 8 รายการจอง และ 18 ใบตั๋ว)
-> หากมีการแก้ไขข้อมูลในฐานข้อมูลและต้องการอัปเดตให้เพื่อนในทีม ใช้คำสั่ง `npm run db:export` แล้ว Commit ไฟล์ `backend/prisma/shared-data.json` ขึ้น GitHub ได้เลย
-
-### 3. รัน Frontend
-เปิด Terminal อีกหน้าต่าง:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-- **หน้าเว็บผู้ซื้อบัตร (Storefront):** `http://localhost:5173`
-- **พื้นที่ทีมงาน (Team Portal / Scanner / Admin):** `http://localhost:5173/team`
-- **Backend API:** `http://localhost:5000/api/health`
+- 🌐 **เปิดอ่านแบบหน้าเว็บพร้อมปุ่มพิมพ์เป็น PDF (A4):** [USER_MANUAL.html](./USER_MANUAL.html)
+- 📄 **เปิดอ่านแบบ Markdown พร้อมรูปหน้าจอประกอบครบ 17 หน้า:** [USER_MANUAL.md](./USER_MANUAL.md)
+- 👥 **คู่มือสำหรับทีมงาน (Team Guide):** [SOUNDWAVE_PASS_TEAM_GUIDE.md](./SOUNDWAVE_PASS_TEAM_GUIDE.md)
 
 ---
 
-## 🔑 บัญชีทดสอบเริ่มต้น (หลังรัน `db:seed` หรือ `db:import`)
+## 🐳 วิธีติดตั้งและรันโปรเจกต์ด้วย Docker (แนะนำ — รันได้ทันทีในคำสั่งเดียว)
+
+ระบบถูกตั้งค่าให้ทำงานผ่าน **Docker Compose** ครบทั้ง 3 ส่วน (`soundwave-mysql`, `soundwave-backend`, และ `soundwave-frontend`) โดยไม่ต้องติดตั้ง MySQL ในเครื่องเอง
+
+### 1. สั่งเปิดระบบทั้งหมดด้วย Docker
+เปิดโปรแกรม **Docker Desktop** แล้วรันคำสั่งที่โฟลเดอร์หลักของโปรเจกต์:
+```bash
+npm run docker:up
+# หรือใช้คำสั่ง: docker compose up -d --build
+```
+> 💡 เมื่อรันครั้งแรก คอนเทนเนอร์ `soundwave-backend` จะสร้างตารางฐานข้อมูล (`prisma db push`) และนำเข้าข้อมูลเริ่มต้นจาก `backend/prisma/shared-data.json` ให้อัตโนมัติทันที (`4 คอนเสิร์ต, 10 โซนที่นั่ง, 58 รายการเรดาร์, 8 รายการจอง และ 18 ใบตั๋ว`)
+
+### 2. ลิงก์เข้าใช้งานระบบ (เมื่อ Docker ทำงานแล้ว)
+- **หน้าเว็บผู้ซื้อบัตร (Storefront):** `http://localhost:5173`
+- **พื้นที่ทีมงาน (Team Portal):** `http://localhost:5173/team`
+- **หน้าสแกนตรวจตั๋วหน้าประตู (Gate Scanner):** `http://localhost:5173/scanner`
+- **หน้าแดชบอร์ดผู้จัดงาน (Admin Portal):** `http://localhost:5173/admin`
+- **หน้าเว็บดูตารางฐานข้อมูล MySQL (Prisma Studio):** `http://localhost:5555`
+- **Backend API Health Check:** `http://localhost:5000/api/health`
+
+### 3. คำสั่งจัดการ Docker & การซิงก์ข้อมูลในทีม
+| คำสั่ง | หน้าที่การทำงาน |
+| :--- | :--- |
+| `npm run docker:up` | สร้างและสตาร์ตคอนเทนเนอร์ทั้งหมดในพื้นหลัง |
+| `npm run docker:logs` | ดู Log การทำงานของระบบแบบเรียลไทม์ |
+| `npm run docker:export` | เซฟข้อมูลล่าสุดจากฐานข้อมูลใน Docker เก็บลงไฟล์ `backend/prisma/shared-data.json` |
+| `npm run docker:import` | โหลดข้อมูลจากไฟล์ `backend/prisma/shared-data.json` เข้าสู่ฐานข้อมูลใน Docker |
+| `npm run docker:down` | หยุดการทำงานของคอนเทนเนอร์ทั้งหมด (ข้อมูลในฐานข้อมูลยังอยู่ครบ) |
+
+---
+
+## 🔑 บัญชีทดสอบเริ่มต้น (สร้างให้อัตโนมัติเมื่อรัน Docker)
 - **Organizer (เจ้าของงาน - `/admin`):** ชื่อผู้ใช้ `owner` / รหัสผ่าน `1234`
 - **Gate Staff & Supervisor (`/scanner`):** ชื่อผู้ใช้ `faye`, `nam`, หรือ `staff01` / รหัสผ่าน `1234`
