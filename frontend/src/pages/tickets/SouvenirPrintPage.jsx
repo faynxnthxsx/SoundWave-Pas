@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Printer, Scissors, ArrowLeft, Calendar, MapPin, User } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { getConcertBannerUrl, handleImageError, FALLBACK_CONCERT_IMAGE } from '../../utils/imageUrl';
+import { getConcertBannerUrl, resolveImageUrl, handleImageError, FALLBACK_CONCERT_IMAGE } from '../../utils/imageUrl';
 
 function BarcodeStrips({ value = '' }) {
   const seed = value.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -191,7 +191,7 @@ export default function SouvenirPrintPage() {
                 style={{
                   minHeight: '27mm',
                   background: `linear-gradient(125deg,rgba(6,15,30,.28),rgba(7,9,18,.94)), url('${
-                    resolveImageUrl(ticket.concert.bannerUrl) || ''
+                    getConcertBannerUrl(ticket.concert) || resolveImageUrl(ticket.concert?.bannerUrl) || ''
                   }') center 42% / cover, linear-gradient(120deg,#123343,#29163b 58%,#10281f)`,
                 }}
               >
