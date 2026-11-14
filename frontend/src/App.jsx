@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -12,11 +12,19 @@ import ZoneSelectPage from './pages/booking/ZoneSelectPage';
 import PaymentPage from './pages/booking/PaymentPage';
 import ConcertDetailPage from './pages/booking/ConcertDetailPage';
 import MyTicketPage from './pages/tickets/MyTicketPage';
-import SouvenirPrintPage from './pages/tickets/SouvenirPrintPage';
-import GateScannerPage from './pages/scanner/GateScannerPage';
-import AdminPage from './pages/admin/AdminPage';
-import AdminInsightPage from './pages/admin/AdminInsightPage';
-import TeamPortalPage from './pages/TeamPortalPage';
+
+// Lazy load heavy / staff-only pages (split out of the main bundle)
+const SouvenirPrintPage = lazy(() => import('./pages/tickets/SouvenirPrintPage'));
+const GateScannerPage = lazy(() => import('./pages/scanner/GateScannerPage'));
+const AdminPage = lazy(() => import('./pages/admin/AdminPage'));
+const AdminInsightPage = lazy(() => import('./pages/admin/AdminInsightPage'));
+const TeamPortalPage = lazy(() => import('./pages/TeamPortalPage'));
+
+const PageFallback = () => (
+  <div className="min-h-[60vh] flex items-center justify-center">
+    <div className="w-10 h-10 rounded-full border-4 border-white/20 border-t-cyan-400 animate-spin" />
+  </div>
+);
 
 export default function App() {
   const [googleProcessing, setGoogleProcessing] = useState(() => {
@@ -97,6 +105,7 @@ export default function App() {
 
               {/* Main App Content - Instant Navigation */}
               <main className="flex-1 w-full max-w-full overflow-x-hidden pb-16 md:pb-0">
+                <Suspense fallback={<PageFallback />}>
                 <Routes>
                   {/* Booking Flow */}
                   <Route path="/" element={<HomePage />} />
@@ -114,6 +123,7 @@ export default function App() {
                   <Route path="/admin/insights/:type" element={<AdminInsightPage />} />
                   <Route path="/team" element={<TeamPortalPage />} />
                 </Routes>
+                </Suspense>
               </main>
 
               {/* Global Footer */}
