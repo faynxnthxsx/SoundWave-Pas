@@ -3,6 +3,19 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { sendTicketToLineUser, sendTicketsToLineUser } = require('../services/lineService');
 const { requireCustomer } = require('../middleware/customerAuth');
+const {
+  isOmiseConfigured,
+  isTestMode,
+  createPromptPayCharge,
+  getCharge,
+  markTestChargeAsPaid
+} = require('../services/omiseService');
+
+function extractOmiseChargeId(paymentMethod) {
+  if (!paymentMethod || typeof paymentMethod !== 'string') return null;
+  const match = paymentMethod.match(/(chrg_[a-zA-Z0-9_]+)/);
+  return match ? match[1] : null;
+}
 
 async function deliverTicketsToLine(booking, tickets) {
   if (!booking.customerLineId) {
@@ -328,31 +341,30 @@ router.get('/:bookingCode', async (req, res) => {
   }
 });
 
-// POST /api/bookings/:bookingCode/pay - Mock Payment Confirmation (Atomic status transition PENDING -> PAID)
-router.post('/:bookingCode/pay', async (req, res) => {
-  try {
-    const { bookingCode } = req.params;
-
-    const booking = await prisma.booking.findUnique({
-      where: { bookingCode },
-      include: {
-        items: {
-          include: {
-            zone: {
-              include: { concert: true }
-            }
+// Shared helper: Atomic status transition PENDING -> PAID + Ticket issuance + LINE delivery
+async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], paymentMethodOverride = null } = {}) {
+  const booking = await prisma.booking.findUnique({
+    where: { bookingCode },
+    include: {
+      items: {
+        include: {
+          zone: {
+            include: { concert: true }
           }
-        },
-        tickets: true
-      }
-    });
-
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
+        }
+      },
+      tickets: true
     }
+  });
 
-    if (booking.status === 'PAID') {
-      return res.json({
+  if (!booking) {
+    return { httpStatus: 404, body: { success: false, message: 'ไม่พบข้อมูลการจอง' } };
+  }
+
+  if (booking.status === 'PAID') {
+    return {
+      httpStatus: 200,
+      body: {
         success: true,
         message: 'การจองนี้ชำระเงินเรียบร้อยแล้ว',
         data: {
@@ -363,121 +375,130 @@ router.post('/:bookingCode/pay', async (req, res) => {
             error: booking.lineDeliveryError
           }
         }
-      });
-    }
+      }
+    };
+  }
 
-    if (booking.status === 'EXPIRED' || new Date() > new Date(booking.expiresAt)) {
-      return res.status(400).json({ success: false, message: 'หมดเวลาชำระเงินแล้ว รายการนี้ถูกยกเลิก' });
-    }
+  if (booking.status === 'EXPIRED' || new Date() > new Date(booking.expiresAt)) {
+    return { httpStatus: 400, body: { success: false, message: 'หมดเวลาชำระเงินแล้ว รายการนี้ถูกยกเลิก' } };
+  }
 
-    if (booking.status !== 'PENDING') {
-      return res.status(400).json({ success: false, message: `ไม่สามารถชำระเงินได้เนื่องจากสถานะปัจจุบันคือ ${booking.status}` });
-    }
+  if (booking.status !== 'PENDING') {
+    return {
+      httpStatus: 400,
+      body: { success: false, message: `ไม่สามารถชำระเงินได้เนื่องจากสถานะปัจจุบันคือ ${booking.status}` }
+    };
+  }
 
-    // Retrieve reserved seats from booking record or fallback to request body
-    let bookingSeats = [];
-    if (booking.selectedSeats) {
-      try {
-        bookingSeats = JSON.parse(booking.selectedSeats);
-      } catch (e) {}
-    }
-    if (!bookingSeats.length && Array.isArray(req.body?.selectedSeats)) {
-      bookingSeats = req.body.selectedSeats;
-    }
-
-    // Generate Tickets with unique seat numbers atomically
-    let seatIndex = 0;
-    let createdTickets;
+  let bookingSeats = [];
+  if (booking.selectedSeats) {
     try {
-      createdTickets = await prisma.$transaction(async (tx) => {
-        // Atomic status transition from PENDING -> PAID
-        const updateResult = await tx.booking.updateMany({
-          where: {
-            id: booking.id,
-            status: 'PENDING',
-            expiresAt: { gt: new Date() }
-          },
-          data: {
-            status: 'PAID',
-            paidAt: new Date()
-          }
-        });
+      bookingSeats = JSON.parse(booking.selectedSeats);
+    } catch (e) {}
+  }
+  if (!bookingSeats.length && Array.isArray(selectedSeatsFallback)) {
+    bookingSeats = selectedSeatsFallback;
+  }
 
-        if (updateResult.count !== 1) {
-          throw new Error('ALREADY_PAID_OR_EXPIRED');
-        }
+  let seatIndex = 0;
+  let createdTickets;
+  try {
+    createdTickets = await prisma.$transaction(async (tx) => {
+      const updateData = {
+        status: 'PAID',
+        paidAt: new Date()
+      };
+      if (paymentMethodOverride) {
+        updateData.paymentMethod = paymentMethodOverride;
+      }
 
-        // Double check no tickets exist for this booking yet
-        const existingCount = await tx.ticket.count({
-          where: { bookingId: booking.id }
-        });
-        if (existingCount > 0) {
-          throw new Error('TICKETS_ALREADY_ISSUED');
-        }
+      const updateResult = await tx.booking.updateMany({
+        where: {
+          id: booking.id,
+          status: 'PENDING',
+          expiresAt: { gt: new Date() }
+        },
+        data: updateData
+      });
 
-        const ticketsList = [];
-        for (const item of booking.items) {
-          for (let i = 0; i < item.quantity; i++) {
-            const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-            const catCode = (item.zone.category || 'TKT')
-              .replace(/[^a-zA-Z0-9]/g, '')
-              .slice(0, 4)
-              .toUpperCase() || 'PASS';
-            const ticketCode = `SWP-${catCode}-${randomSuffix}-${Date.now().toString().slice(-4)}`;
+      if (updateResult.count !== 1) {
+        throw new Error('ALREADY_PAID_OR_EXPIRED');
+      }
 
-            const isSeatCategory = /seat|chair|นั่ง|vip/i.test(item.zone.category || '');
-            const fallbackSeat = isSeatCategory
-              ? `ROW-A-${String(seatIndex + 1).padStart(2, '0')}`
-              : `SPOT-${String(seatIndex + 1).padStart(2, '0')}`;
-            
-            const seat = bookingSeats[seatIndex] || fallbackSeat;
-            seatIndex++;
+      const existingCount = await tx.ticket.count({
+        where: { bookingId: booking.id }
+      });
+      if (existingCount > 0) {
+        throw new Error('TICKETS_ALREADY_ISSUED');
+      }
 
-            // Double check no other ticket has claimed this seat
-            if (seat) {
-              const seatAlreadyClaimed = await tx.ticket.findFirst({
-                where: {
-                  zoneId: item.zoneId,
-                  status: { in: ['VALID', 'USED', 'RESERVED'] },
-                  seatNumber: seat,
-                  bookingId: { not: booking.id }
-                }
-              });
-              if (seatAlreadyClaimed) {
-                throw new Error(`SEAT_ALREADY_CLAIMED:${seat}`);
-              }
-            }
+      const ticketsList = [];
+      for (const item of booking.items) {
+        for (let i = 0; i < item.quantity; i++) {
+          const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+          const catCode = (item.zone.category || 'TKT')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .slice(0, 4)
+            .toUpperCase() || 'PASS';
+          const ticketCode = `SWP-${catCode}-${randomSuffix}-${Date.now().toString().slice(-4)}`;
 
-            const ticket = await tx.ticket.create({
-              data: {
-                ticketCode,
-                bookingId: booking.id,
+          const isSeatCategory = /seat|chair|นั่ง|vip/i.test(item.zone.category || '');
+          const fallbackSeat = isSeatCategory
+            ? `ROW-A-${String(seatIndex + 1).padStart(2, '0')}`
+            : `SPOT-${String(seatIndex + 1).padStart(2, '0')}`;
+
+          const seat = bookingSeats[seatIndex] || fallbackSeat;
+          seatIndex++;
+
+          if (seat) {
+            const seatAlreadyClaimed = await tx.ticket.findFirst({
+              where: {
                 zoneId: item.zoneId,
-                attendeeName: booking.customerName,
+                status: { in: ['VALID', 'USED', 'RESERVED'] },
                 seatNumber: seat,
-                status: 'VALID'
+                bookingId: { not: booking.id }
               }
             });
-            ticketsList.push(ticket);
+            if (seatAlreadyClaimed) {
+              throw new Error(`SEAT_ALREADY_CLAIMED:${seat}`);
+            }
           }
+
+          const ticket = await tx.ticket.create({
+            data: {
+              ticketCode,
+              bookingId: booking.id,
+              zoneId: item.zoneId,
+              attendeeName: booking.customerName,
+              seatNumber: seat,
+              status: 'VALID'
+            }
+          });
+          ticketsList.push(ticket);
         }
-        return ticketsList;
-      });
-    } catch (txError) {
-      if (txError.message?.startsWith('SEAT_ALREADY_CLAIMED:')) {
-        const seatName = txError.message.split(':')[1];
-        return res.status(409).json({
+      }
+      return ticketsList;
+    });
+  } catch (txError) {
+    if (txError.message?.startsWith('SEAT_ALREADY_CLAIMED:')) {
+      const seatName = txError.message.split(':')[1];
+      return {
+        httpStatus: 409,
+        body: {
           success: false,
           message: `ไม่สามารถออกตั๋วได้ เนื่องจากที่นั่ง ${seatName} มีผู้ชำระเงินตัดหน้าไปก่อนแล้ว`
-        });
-      }
-      if (txError.message === 'ALREADY_PAID_OR_EXPIRED' || txError.message === 'TICKETS_ALREADY_ISSUED') {
-        const latestBooking = await prisma.booking.findUnique({
-          where: { id: booking.id },
-          include: { tickets: true }
-        });
-        if (latestBooking && latestBooking.status === 'PAID') {
-          return res.json({
+        }
+      };
+    }
+    if (txError.message === 'ALREADY_PAID_OR_EXPIRED' || txError.message === 'TICKETS_ALREADY_ISSUED') {
+      const latestBooking = await prisma.booking.findUnique({
+        where: { id: booking.id },
+        include: { tickets: true }
+      });
+      if (latestBooking && latestBooking.status === 'PAID') {
+        return {
+          httpStatus: 200,
+          body: {
             success: true,
             message: 'การจองนี้ชำระเงินเรียบร้อยแล้ว',
             data: {
@@ -488,16 +509,22 @@ router.post('/:bookingCode/pay', async (req, res) => {
                 error: latestBooking.lineDeliveryError
               }
             }
-          });
-        }
-        return res.status(400).json({ success: false, message: 'หมดเวลาชำระเงินแล้ว หรือรายการนี้ถูกดำเนินการไปแล้ว' });
+          }
+        };
       }
-      throw txError;
+      return {
+        httpStatus: 400,
+        body: { success: false, message: 'หมดเวลาชำระเงินแล้ว หรือรายการนี้ถูกดำเนินการไปแล้ว' }
+      };
     }
+    throw txError;
+  }
 
-    const lineDelivery = await deliverTicketsToLine(booking, createdTickets);
+  const lineDelivery = await deliverTicketsToLine(booking, createdTickets);
 
-    res.json({
+  return {
+    httpStatus: 200,
+    body: {
       success: true,
       message: 'ชำระเงินสำเร็จ ออกตั๋วคอนเสิร์ตเรียบร้อย',
       data: {
@@ -505,12 +532,253 @@ router.post('/:bookingCode/pay', async (req, res) => {
         tickets: createdTickets,
         lineDelivery
       }
+    }
+  };
+}
+
+// POST /api/bookings/:bookingCode/omise-charge - Create or reuse an Omise PromptPay QR charge
+router.post('/:bookingCode/omise-charge', async (req, res) => {
+  try {
+    const { bookingCode } = req.params;
+    const booking = await prisma.booking.findUnique({
+      where: { bookingCode }
     });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
+    }
+
+    if (booking.status === 'PAID') {
+      return res.json({
+        success: true,
+        configured: isOmiseConfigured(),
+        alreadyPaid: true
+      });
+    }
+
+    if (booking.status !== 'PENDING' || new Date() > new Date(booking.expiresAt)) {
+      return res.status(400).json({ success: false, message: 'รายการจองนี้หมดเวลาหรือถูกยกเลิกแล้ว' });
+    }
+
+    if (!isOmiseConfigured()) {
+      return res.json({
+        success: true,
+        configured: false,
+        mode: 'DEMO',
+        message: 'ยังไม่ได้ตั้งค่า OMISE_SECRET_KEY ระบบทำงานในโหมดจำลอง (Demo PromptPay)'
+      });
+    }
+
+    // Reuse existing pending Omise charge if stored in paymentMethod
+    const existingChargeId = extractOmiseChargeId(booking.paymentMethod);
+    if (existingChargeId) {
+      try {
+        const existingCharge = await getCharge(existingChargeId);
+        if (existingCharge.paid && existingCharge.status === 'successful') {
+          const fulfilled = await fulfillBookingPayment(bookingCode, {
+            paymentMethodOverride: `OMISE_PROMPTPAY:${existingCharge.id}`
+          });
+          return res.status(fulfilled.httpStatus).json({
+            ...fulfilled.body,
+            configured: true,
+            mode: existingCharge.livemode ? 'OMISE_LIVE' : 'OMISE_TEST',
+            charge: existingCharge
+          });
+        }
+        if (existingCharge.status === 'pending' && existingCharge.qrImageUrl) {
+          return res.json({
+            success: true,
+            configured: true,
+            mode: existingCharge.livemode ? 'OMISE_LIVE' : 'OMISE_TEST',
+            charge: existingCharge
+          });
+        }
+      } catch (reuseErr) {
+        console.warn('Could not reuse previous Omise charge, creating a new one:', reuseErr.message);
+      }
+    }
+
+    // Create new Omise PromptPay charge
+    const charge = await createPromptPayCharge({
+      amountTHB: booking.totalAmount,
+      bookingCode: booking.bookingCode,
+      bookingId: booking.id,
+      expiresAt: booking.expiresAt
+    });
+
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { paymentMethod: `OMISE_PROMPTPAY:${charge.id}` }
+    });
+
+    res.json({
+      success: true,
+      configured: true,
+      mode: charge.livemode ? 'OMISE_LIVE' : 'OMISE_TEST',
+      charge
+    });
+  } catch (error) {
+    console.error('Error creating Omise PromptPay charge:', error);
+    res.status(502).json({
+      success: false,
+      configured: isOmiseConfigured(),
+      message: error.message || 'ไม่สามารถสร้าง QR PromptPay จาก Omise ได้'
+    });
+  }
+});
+
+// GET /api/bookings/:bookingCode/omise-status - Poll Omise charge status & fulfill if paid
+router.get('/:bookingCode/omise-status', async (req, res) => {
+  try {
+    const { bookingCode } = req.params;
+    const booking = await prisma.booking.findUnique({
+      where: { bookingCode },
+      include: { tickets: true }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
+    }
+
+    if (booking.status === 'PAID') {
+      return res.json({
+        success: true,
+        paid: true,
+        status: 'PAID',
+        data: {
+          bookingCode: booking.bookingCode,
+          tickets: booking.tickets
+        }
+      });
+    }
+
+    const chargeId = extractOmiseChargeId(booking.paymentMethod);
+    if (!isOmiseConfigured() || !chargeId) {
+      return res.json({
+        success: true,
+        paid: false,
+        status: booking.status,
+        configured: isOmiseConfigured()
+      });
+    }
+
+    const charge = await getCharge(chargeId);
+    if (charge.paid && charge.status === 'successful') {
+      const fulfilled = await fulfillBookingPayment(bookingCode, {
+        paymentMethodOverride: `OMISE_PROMPTPAY:${charge.id}`
+      });
+      return res.status(fulfilled.httpStatus).json({
+        ...fulfilled.body,
+        paid: true,
+        status: 'PAID',
+        chargeStatus: charge.status
+      });
+    }
+
+    res.json({
+      success: true,
+      paid: false,
+      status: booking.status,
+      chargeStatus: charge.status,
+      failureMessage: charge.failureMessage
+    });
+  } catch (error) {
+    console.error('Error checking Omise charge status:', error);
+    res.status(500).json({ success: false, message: 'ตรวจสอบสถานะจาก Omise ไม่สำเร็จ' });
+  }
+});
+
+// POST /api/bookings/:bookingCode/pay - Confirm / Simulate Payment (Supports both Omise Test & Demo Mode)
+router.post('/:bookingCode/pay', async (req, res) => {
+  try {
+    const { bookingCode } = req.params;
+
+    // If an Omise charge exists on this booking, either verify it or mark it paid in Test Mode
+    if (isOmiseConfigured()) {
+      const booking = await prisma.booking.findUnique({ where: { bookingCode } });
+      const chargeId = extractOmiseChargeId(booking?.paymentMethod);
+      if (chargeId) {
+        try {
+          let charge = await getCharge(chargeId);
+          // In Omise Test Mode, clicking the confirm/simulate button also marks the charge as paid on Omise
+          if (!charge.paid && charge.status === 'pending' && isTestMode() && chargeId.startsWith('chrg_test_')) {
+            charge = await markTestChargeAsPaid(chargeId);
+          } else if (!charge.paid && !isTestMode()) {
+            return res.status(402).json({
+              success: false,
+              message: 'ระบบยังไม่ได้รับยอดชำระจาก Omise กรุณาสแกน QR โอนเงินให้เรียบร้อยก่อน'
+            });
+          }
+        } catch (omiseErr) {
+          console.warn('Omise mark/verify warning during /pay:', omiseErr.message);
+        }
+      }
+    }
+
+    const result = await fulfillBookingPayment(bookingCode, {
+      selectedSeatsFallback: req.body?.selectedSeats
+    });
+    res.status(result.httpStatus).json(result.body);
   } catch (error) {
     console.error('Error confirming payment:', error);
     res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
+
+// POST /api/webhooks/omise (and /api/bookings/webhooks/omise) - Official Omise Webhook Handler
+async function handleOmiseWebhook(req, res) {
+  try {
+    const event = req.body;
+    if (!event || event.object !== 'event' || !event.data) {
+      return res.status(400).json({ success: false, message: 'Invalid Omise webhook payload' });
+    }
+
+    const eventData = event.data;
+    if (eventData.object !== 'charge' || !eventData.id) {
+      return res.json({ success: true, ignored: true });
+    }
+
+    // Verify charge directly with Omise API if secret key is configured
+    let verifiedCharge = null;
+    if (isOmiseConfigured()) {
+      verifiedCharge = await getCharge(eventData.id);
+    } else {
+      return res.status(503).json({ success: false, message: 'OMISE_SECRET_KEY is not configured' });
+    }
+
+    if (!verifiedCharge.paid || verifiedCharge.status !== 'successful') {
+      return res.json({
+        success: true,
+        processed: false,
+        chargeStatus: verifiedCharge.status
+      });
+    }
+
+    // Find matching booking via metadata.bookingCode or paymentMethod containing charge ID
+    let bookingCode = verifiedCharge.bookingCode;
+    if (!bookingCode) {
+      const matched = await prisma.booking.findFirst({
+        where: { paymentMethod: { contains: verifiedCharge.id } },
+        select: { bookingCode: true }
+      });
+      bookingCode = matched?.bookingCode;
+    }
+
+    if (!bookingCode) {
+      return res.status(404).json({ success: false, message: 'No matching booking found for charge' });
+    }
+
+    const result = await fulfillBookingPayment(bookingCode, {
+      paymentMethodOverride: `OMISE_PROMPTPAY:${verifiedCharge.id}`
+    });
+    return res.status(result.httpStatus).json(result.body);
+  } catch (error) {
+    console.error('Error handling Omise webhook:', error);
+    return res.status(500).json({ success: false, message: 'Webhook processing error' });
+  }
+}
+
+router.post('/webhooks/omise', handleOmiseWebhook);
 
 // POST /api/bookings/:bookingCode/line-resend - Retry ticket delivery after payment
 router.post('/:bookingCode/line-resend', async (req, res) => {
@@ -532,4 +800,5 @@ router.post('/:bookingCode/line-resend', async (req, res) => {
   }
 });
 
+router.handleOmiseWebhook = handleOmiseWebhook;
 module.exports = router;

@@ -27,6 +27,7 @@ app.use('/uploads', express.static(process.env.UPLOAD_DIR || path.join(__dirname
 // Routes
 app.use('/api/concerts', concertsRouter);
 app.use('/api/bookings', bookingsRouter);
+app.post('/api/webhooks/omise', bookingsRouter.handleOmiseWebhook);
 app.use('/api/tickets', ticketsRouter);
 app.use('/api/scanner', scannerRouter);
 app.use('/api/auth', authRouter);

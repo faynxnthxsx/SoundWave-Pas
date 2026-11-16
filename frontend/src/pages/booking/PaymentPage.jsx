@@ -16,6 +16,31 @@ export default function PaymentPage() {
   const [paidSuccess, setPaidSuccess] = useState(false);
   const [tickets, setTickets] = useState([]);
   const [paymentError, setPaymentError] = useState('');
+  const [omiseCharge, setOmiseCharge] = useState(null);
+  const [paymentMode, setPaymentMode] = useState('DEMO'); // DEMO | OMISE_TEST | OMISE_LIVE
+  const [qrImgFailed, setQrImgFailed] = useState(false);
+
+  const saveOrderToLocalHistory = (bookingObj, issuedTickets) => {
+    try {
+      const history = JSON.parse(localStorage.getItem('soundwave_purchase_history') || '[]');
+      const newEntry = {
+        bookingCode: bookingObj.bookingCode,
+        customerName: bookingObj.customerName,
+        customerPhone: bookingObj.customerPhone,
+        zoneName: bookingObj.items?.[0]?.zone?.name || 'Festival Zone',
+        totalAmount: bookingObj.totalAmount,
+        tickets: issuedTickets,
+        paidAt: bookingObj.paidAt || new Date().toISOString(),
+      };
+      const updatedHistory = [
+        newEntry,
+        ...history.filter((h) => h.bookingCode !== bookingObj.bookingCode),
+      ];
+      localStorage.setItem('soundwave_purchase_history', JSON.stringify(updatedHistory));
+    } catch {
+      /* ignore corrupted local history */
+    }
+  };
 
   useEffect(() => {
     fetch(`/api/bookings/${bookingCode}`)
@@ -27,37 +52,66 @@ export default function PaymentPage() {
             setPaidSuccess(true);
             const tList = data.data.tickets || [];
             setTickets(tList);
-            try {
-              const history = JSON.parse(localStorage.getItem('soundwave_purchase_history') || '[]');
-              const newEntry = {
-                bookingCode: data.data.bookingCode,
-                customerName: data.data.customerName,
-                customerPhone: data.data.customerPhone,
-                zoneName: data.data.items?.[0]?.zone?.name || 'Festival Zone',
-                totalAmount: data.data.totalAmount,
-                tickets: tList,
-                paidAt: data.data.paidAt || new Date().toISOString(),
-              };
-              const updatedHistory = [
-                newEntry,
-                ...history.filter((h) => h.bookingCode !== data.data.bookingCode),
-              ];
-              localStorage.setItem('soundwave_purchase_history', JSON.stringify(updatedHistory));
-            } catch {
-              /* ignore corrupted local history */
-            }
+            saveOrderToLocalHistory(data.data, tList);
           } else if (data.data.status === 'EXPIRED') {
             setIsExpired(true);
           } else {
             const diffSec = Math.floor((new Date(data.data.expiresAt).getTime() - Date.now()) / 1000);
-            if (diffSec <= 0) setIsExpired(true);
-            else setTimeLeft(diffSec);
+            if (diffSec <= 0) {
+              setIsExpired(true);
+            } else {
+              setTimeLeft(diffSec);
+              // Request Omise PromptPay QR charge if backend has OMISE_SECRET_KEY configured
+              fetch(`/api/bookings/${bookingCode}/omise-charge`, { method: 'POST' })
+                .then((r) => r.json())
+                .then((omiseRes) => {
+                  if (omiseRes.alreadyPaid && omiseRes.data?.tickets) {
+                    setPaidSuccess(true);
+                    setTickets(omiseRes.data.tickets);
+                    saveOrderToLocalHistory(data.data, omiseRes.data.tickets);
+                    return;
+                  }
+                  if (omiseRes.configured && omiseRes.charge) {
+                    setOmiseCharge(omiseRes.charge);
+                    setPaymentMode(omiseRes.mode || 'OMISE_TEST');
+                    setQrImgFailed(false);
+                  } else {
+                    setPaymentMode('DEMO');
+                  }
+                })
+                .catch(() => {
+                  setPaymentMode('DEMO');
+                });
+            }
           }
         }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [bookingCode]);
+
+  // Poll Omise charge status every 3s while waiting for PromptPay scan / webhook
+  useEffect(() => {
+    if (paidSuccess || isExpired || !omiseCharge?.id || !booking) return;
+    const poll = setInterval(() => {
+      if (document.hidden) return;
+      fetch(`/api/bookings/${bookingCode}/omise-status`)
+        .then((r) => r.json())
+        .then((statusRes) => {
+          if (statusRes.paid && statusRes.data?.tickets) {
+            setPaidSuccess(true);
+            setTickets(statusRes.data.tickets);
+            saveOrderToLocalHistory(booking, statusRes.data.tickets);
+          } else if (statusRes.chargeStatus === 'failed' || statusRes.chargeStatus === 'expired') {
+            if (statusRes.failureMessage) {
+              setPaymentError(statusRes.failureMessage);
+            }
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+    return () => clearInterval(poll);
+  }, [paidSuccess, isExpired, omiseCharge?.id, bookingCode, booking]);
 
   useEffect(() => {
     if (paidSuccess || isExpired) return;
@@ -297,21 +351,50 @@ export default function PaymentPage() {
         )}
 
         <div className="my-5 flex flex-col items-center">
-          <div className="bg-white p-4 rounded-2xl shadow-md text-center max-w-[220px]">
+          <div className="bg-white p-4 rounded-2xl shadow-md text-center max-w-[230px]">
             <div className="bg-[#003d79] text-white text-[9px] font-bold px-2 py-0.5 rounded mb-2 tracking-wider">
-              {t('PROMPTPAY · พร้อมเพย์', 'THAI QR PROMPTPAY')}
+              {paymentMode.startsWith('OMISE')
+                ? t('OMISE PROMPTPAY · พร้อมเพย์', 'OMISE THAI QR PROMPTPAY')
+                : t('PROMPTPAY · พร้อมเพย์', 'THAI QR PROMPTPAY')}
             </div>
 
-            <QRCodeSVG
-              value={`https://promptpay.io/0812345678/${booking.totalAmount}`}
-              size={170}
-              level="M"
-              includeMargin={false}
-            />
+            {omiseCharge?.qrImageUrl && !qrImgFailed ? (
+              <img
+                src={omiseCharge.qrImageUrl}
+                alt="Omise PromptPay QR"
+                onError={() => setQrImgFailed(true)}
+                className="w-[170px] h-[170px] object-contain mx-auto"
+              />
+            ) : (
+              <QRCodeSVG
+                value={`https://promptpay.io/0812345678/${booking.totalAmount}`}
+                size={170}
+                level="M"
+                includeMargin={false}
+              />
+            )}
 
             <p className="text-[9px] text-gray-500 font-mono mt-2">
               {t('สแกนผ่านแอปธนาคารทุกธนาคาร', 'Scan with any mobile banking app')}
             </p>
+          </div>
+
+          <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-mono">
+            {paymentMode === 'OMISE_LIVE' && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold">
+                OMISE LIVE · {omiseCharge?.id}
+              </span>
+            )}
+            {paymentMode === 'OMISE_TEST' && (
+              <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-bold">
+                OMISE TEST API · {omiseCharge?.id}
+              </span>
+            )}
+            {paymentMode === 'DEMO' && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold">
+                {t('DEMO MODE (รอใส่ OMISE_SECRET_KEY)', 'DEMO MODE (No OMISE_SECRET_KEY yet)')}
+              </span>
+            )}
           </div>
         </div>
 
