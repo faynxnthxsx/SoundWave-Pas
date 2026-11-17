@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
+import { Browser } from '@capacitor/browser';
 import { useLanguage } from '../context/LanguageContext';
 import Button from './ui/Button';
+
+const PUBLIC_WEB_ORIGIN = 'https://soundwave-pas.vercel.app';
 
 export default function AuthModal({ onClose, onAuthenticated }) {
   const { t } = useLanguage();
@@ -16,6 +19,12 @@ export default function AuthModal({ onClose, onAuthenticated }) {
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const tokenClientRef = useRef(null);
+  const onAuthenticatedRef = useRef(onAuthenticated);
+  const onCloseRef = useRef(onClose);
+  onAuthenticatedRef.current = onAuthenticated;
+  onCloseRef.current = onClose;
+  const isElectronDesktop = typeof window !== 'undefined' && Boolean(window.soundwaveDesktop?.startGoogleOAuth);
+  const isCapacitorNative = typeof window !== 'undefined' && Boolean(window.Capacitor?.isNativePlatform?.());
 
   const redirectToGoogleOAuth = (clientId) => {
     try {
@@ -40,6 +49,11 @@ export default function AuthModal({ onClose, onAuthenticated }) {
         if (d?.clientId) setGoogleClientId(d.clientId);
       })
       .catch(() => {});
+
+    // Electron Desktop and Capacitor Android use external system browser OAuth relay instead of GIS WebView popup
+    if (isElectronDesktop || isCapacitorNative) {
+      return;
+    }
 
     const initClient = () => {
       if (!window.google?.accounts?.oauth2 || !googleClientId) return;
@@ -121,7 +135,44 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       console.warn('Google GSI script failed to load; redirect fallback remains active.');
     };
     document.head.appendChild(script);
-  }, [googleClientId]);
+  }, [googleClientId, isCapacitorNative, isElectronDesktop]);
+
+  useEffect(() => {
+    const handleNativeSuccess = (event) => {
+      const detail = event?.detail;
+      if (detail?.source !== 'modal' && detail?.user && detail?.token) {
+        setBusy(false);
+        onAuthenticatedRef.current?.(detail);
+        onCloseRef.current?.();
+      }
+    };
+    const handleNativeError = (event) => {
+      setBusy(false);
+      if (event?.detail?.message) {
+        setError(event.detail.message);
+      }
+    };
+    window.addEventListener('soundwave:auth-updated', handleNativeSuccess);
+    window.addEventListener('soundwave:auth-error', handleNativeError);
+
+    let browserListenerPromise = null;
+    if (isCapacitorNative) {
+      browserListenerPromise = Browser.addListener('browserFinished', () => {
+        setTimeout(() => setBusy(false), 600);
+      });
+    }
+
+    return () => {
+      window.removeEventListener('soundwave:auth-updated', handleNativeSuccess);
+      window.removeEventListener('soundwave:auth-error', handleNativeError);
+      if (browserListenerPromise) {
+        browserListenerPromise.then((h) => h.remove()).catch(() => {});
+      }
+      if (isElectronDesktop) {
+        window.soundwaveDesktop?.cancelGoogleOAuth?.().catch(() => {});
+      }
+    };
+  }, [isCapacitorNative, isElectronDesktop]);
 
   const handleGoogleLogin = async (payload) => {
     setBusy(true);
@@ -136,7 +187,9 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       if (!response.ok || !data.success) {
         throw new Error(data.message || t('เข้าสู่ระบบด้วย Google ไม่สำเร็จ', 'Google Sign-In failed'));
       }
-      onAuthenticated({ user: data.user, token: data.token, expiresAt: data.expiresAt });
+      const authResult = { user: data.user, token: data.token, expiresAt: data.expiresAt };
+      window.dispatchEvent(new CustomEvent('soundwave:auth-updated', { detail: { ...authResult, source: 'modal' } }));
+      onAuthenticated(authResult);
       onClose();
     } catch (err) {
       setError(err.message);
@@ -145,10 +198,45 @@ export default function AuthModal({ onClose, onAuthenticated }) {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setError('');
     if (!googleClientId) {
       setError(t('ไม่พบการตั้งค่า Google Client ID', 'Google Client ID not configured'));
+      return;
+    }
+
+    // 1. Electron Desktop: Open system default browser using registered PUBLIC_WEB_ORIGIN relay -> loopback callback
+    if (isElectronDesktop) {
+      setBusy(true);
+      try {
+        const oauthPayload = await window.soundwaveDesktop.startGoogleOAuth(googleClientId);
+        await handleGoogleLogin(oauthPayload);
+      } catch (err) {
+        if (err?.message !== 'cancelled' && err?.message !== 'access_denied') {
+          setError(err?.message || t('เข้าสู่ระบบด้วย Google ไม่สำเร็จ', 'Google Sign-In failed'));
+        }
+        setBusy(false);
+      }
+      return;
+    }
+
+    // 2. Capacitor Native (Android/iOS APK): Open Chrome Custom Tab / ASWebAuthenticationSession via PUBLIC_WEB_ORIGIN -> soundwavepass://auth
+    if (isCapacitorNative) {
+      setBusy(true);
+      const nonce = Math.random().toString(36).substring(2);
+      const authUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(googleClientId)}` +
+        `&redirect_uri=${encodeURIComponent(PUBLIC_WEB_ORIGIN)}` +
+        `&response_type=token%20id_token` +
+        `&scope=${encodeURIComponent('openid email profile')}` +
+        `&state=${encodeURIComponent('__sw_cap__')}` +
+        `&nonce=${encodeURIComponent(nonce)}` +
+        `&prompt=select_account`;
+      try {
+        await Browser.open({ url: authUrl });
+      } catch {
+        window.open(authUrl, '_system');
+      }
       return;
     }
 

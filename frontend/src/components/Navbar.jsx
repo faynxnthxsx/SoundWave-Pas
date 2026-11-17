@@ -74,6 +74,16 @@ export default function Navbar() {
     setAuthUser(user);
   };
 
+  useEffect(() => {
+    const onAuthUpdated = (event) => {
+      if (event?.detail?.user) {
+        setAuthUser(event.detail.user);
+      }
+    };
+    window.addEventListener('soundwave:auth-updated', onAuthUpdated);
+    return () => window.removeEventListener('soundwave:auth-updated', onAuthUpdated);
+  }, []);
+
   const logout = async () => {
     const token = localStorage.getItem('soundwave_session');
     if (token) {
