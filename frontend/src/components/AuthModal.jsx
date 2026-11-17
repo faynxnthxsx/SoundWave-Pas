@@ -17,6 +17,22 @@ export default function AuthModal({ onClose, onAuthenticated }) {
   const [showPassword, setShowPassword] = useState(false);
   const tokenClientRef = useRef(null);
 
+  const redirectToGoogleOAuth = (clientId) => {
+    try {
+      sessionStorage.setItem('sw_google_auth_state', window.location.pathname + window.location.search);
+    } catch {
+      /* ignore */
+    }
+    const redirectUri = window.location.origin;
+    const scope = encodeURIComponent('openid email profile');
+    const state = encodeURIComponent(window.location.pathname + window.location.search);
+    const nonce = Math.random().toString(36).substring(2);
+
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=token%20id_token&scope=${scope}&state=${state}&nonce=${nonce}&prompt=select_account`;
+  };
+
   useEffect(() => {
     fetch('/api/auth/google/config')
       .then((r) => r.json())
@@ -35,17 +51,49 @@ export default function AuthModal({ onClose, onAuthenticated }) {
             if (tokenResponse?.error) {
               setBusy(false);
               if (tokenResponse.error !== 'access_denied') {
-                setError(tokenResponse.error_description || tokenResponse.error);
+                setError(
+                  tokenResponse.error_description ||
+                    tokenResponse.error ||
+                    t('เข้าสู่ระบบด้วย Google ไม่สำเร็จ', 'Google Sign-In failed')
+                );
               }
               return;
             }
             if (tokenResponse?.access_token) {
               await handleGoogleLogin({ access_token: tokenResponse.access_token });
+            } else {
+              setBusy(false);
             }
           },
           error_callback: (err) => {
             setBusy(false);
             console.warn('Google OAuth error:', err);
+            const isLocalhost =
+              typeof window !== 'undefined' &&
+              (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            if (err?.type === 'popup_failed_to_open') {
+              if (!isLocalhost) {
+                // On production HTTPS, seamlessly fall back to full-page Google OAuth redirect
+                redirectToGoogleOAuth(googleClientId);
+                return;
+              }
+              setError(
+                t(
+                  'เบราว์เซอร์บล็อกหน้าต่าง Popup ของ Google กรุณาอนุญาต Popup สำหรับหน้านี้แล้วลองอีกครั้ง',
+                  'Browser blocked the Google Sign-In popup. Please allow popups for this site and try again.'
+                )
+              );
+              return;
+            }
+            if (err?.type === 'popup_closed') {
+              return;
+            }
+            setError(
+              t(
+                `ไม่สามารถเปิดหน้าต่าง Google Login ได้ (${err?.type || 'origin/popup error'})`,
+                `Unable to start Google Sign-In (${err?.type || 'popup/origin error'}).`
+              )
+            );
           },
         });
       } catch (err) {
@@ -58,11 +106,20 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       return;
     }
 
+    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', initClient);
+      return () => existingScript.removeEventListener('load', initClient);
+    }
+
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
     script.onload = initClient;
+    script.onerror = () => {
+      console.warn('Google GSI script failed to load; redirect fallback remains active.');
+    };
     document.head.appendChild(script);
   }, [googleClientId]);
 
@@ -95,70 +152,37 @@ export default function AuthModal({ onClose, onAuthenticated }) {
       return;
     }
 
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const isDesktopPlatform =
+      typeof navigator !== 'undefined' && /^(Win|Mac|Linux x86|Linux i686)/i.test(navigator.platform || '');
     const isMobile =
       typeof navigator !== 'undefined' &&
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // On mobile devices, Google GIS popup opens as an orphaned tab which mobile browsers block from closing,
-    // leaving a blank white screen. Direct redirect solves this cleanly in the same tab with zero popup issues!
-    if (isMobile) {
-      try {
-        sessionStorage.setItem('sw_google_auth_state', window.location.pathname + window.location.search);
-      } catch {}
-
-      const redirectUri = window.location.origin;
-      const scope = encodeURIComponent('openid email profile');
-      const state = encodeURIComponent(window.location.pathname + window.location.search);
-      const nonce = Math.random().toString(36).substring(2);
-
-      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&response_type=token%20id_token&scope=${scope}&state=${state}&nonce=${nonce}&prompt=select_account`;
+    // Use full-page redirect only on real mobile devices over HTTPS (not Desktop F12 Device Emulator or localhost)
+    if (isMobile && !isLocalhost && !isDesktopPlatform) {
+      setBusy(true);
+      redirectToGoogleOAuth(googleClientId);
       return;
     }
 
-    // On desktop: use Google 1-Click Account Chooser if available
+    // Use Google GIS popup when available (works in both Desktop & F12 Mobile Emulator)
     if (tokenClientRef.current) {
       try {
+        setBusy(true);
         tokenClientRef.current.requestAccessToken({ prompt: 'select_account' });
         return;
       } catch (err) {
+        setBusy(false);
         console.warn('Google popup error, falling back to redirect:', err);
       }
     }
 
-    if (window.google?.accounts?.oauth2) {
-      try {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: googleClientId,
-          scope: 'email profile openid',
-          callback: async (tokenResponse) => {
-            if (tokenResponse?.access_token) {
-              await handleGoogleLogin({ access_token: tokenResponse.access_token });
-            }
-          },
-        });
-        tokenClientRef.current = client;
-        client.requestAccessToken({ prompt: 'select_account' });
-        return;
-      } catch (err) {
-        console.warn('Google client direct request error:', err);
-      }
-    }
-
-    // Fallback: Full-page redirect if GSI script was blocked
-    try {
-      sessionStorage.setItem('sw_google_auth_state', window.location.pathname + window.location.search);
-    } catch {}
-
-    const redirectUri = window.location.origin;
-    const scope = encodeURIComponent('openid email profile');
-    const state = encodeURIComponent(window.location.pathname + window.location.search);
-    const nonce = Math.random().toString(36).substring(2);
-
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&response_type=token%20id_token&scope=${scope}&state=${state}&nonce=${nonce}&prompt=select_account`;
+    // Fallback: Full-page redirect when GSI script isn't ready or was blocked
+    setBusy(true);
+    redirectToGoogleOAuth(googleClientId);
   };
 
   const submit = async (event) => {

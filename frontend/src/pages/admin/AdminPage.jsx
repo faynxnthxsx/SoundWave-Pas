@@ -35,6 +35,9 @@ import {
   Pause,
   StopCircle,
   Radar,
+  Tag,
+  Percent,
+  FileText,
 } from 'lucide-react';
 import CropImageModal from '../../components/CropImageModal';
 import LocationPicker from '../../components/LocationPicker';
@@ -43,6 +46,8 @@ import AdminSeatMapModal from '../../components/AdminSeatMapModal';
 import ConcertDiscoveryModal from '../../components/ConcertDiscoveryModal';
 import EditConcertModal from '../../components/EditConcertModal';
 import BookingTicketsModal from '../../components/BookingTicketsModal';
+import TaxInvoiceModal from '../../components/TaxInvoiceModal';
+import AdminPromotionsManager from '../../components/admin/AdminPromotionsManager';
 import { useToast } from '../../components/Toast';
 import { useLanguage } from '../../context/LanguageContext';
 import { getAdminCache, setAdminCache, clearAdminCache } from '../../utils/adminCache';
@@ -153,7 +158,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState(() => {
     try {
       const savedTab = sessionStorage.getItem('soundwave_admin_tab');
-      if (['overview', 'events', 'orders', 'create'].includes(savedTab)) return savedTab;
+      if (['overview', 'events', 'orders', 'promotions', 'create'].includes(savedTab)) return savedTab;
     } catch {}
     return 'overview';
   });
@@ -200,6 +205,7 @@ export default function AdminPage() {
 
   // Booking Individual Tickets Modal state
   const [viewBookingTickets, setViewBookingTickets] = useState(null);
+  const [viewTaxInvoiceBooking, setViewTaxInvoiceBooking] = useState(null);
 
   const toggleExpand = (id) => {
     setExpandedConcerts((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -343,16 +349,21 @@ export default function AdminPage() {
   // ── Quick Action: Resend Ticket to LINE ────────────────────────────────────
   const handleResendLineTicket = async (booking) => {
     if (!booking.customerLineId) {
-      toast.warning('รายการจองนี้ไม่มี LINE ID ของลูกค้า');
+      toast.warning(t('รายการจองนี้ไม่มี LINE ID ของลูกค้า', 'This booking has no linked LINE ID'));
       return;
     }
     setLineResendingId(booking.id);
     try {
       await api(`/bookings/${booking.id}/resend-line`, { method: 'POST' });
-      toast.success(`ส่งตั๋วเข้า LINE ลูกค้า (${booking.customerName}) สำเร็จแล้ว!`);
+      toast.success(
+        t(
+          `ส่งตั๋วเข้า LINE ลูกค้า (${booking.customerName}) สำเร็จแล้ว!`,
+          `Ticket sent to ${booking.customerName}'s LINE!`
+        )
+      );
       await loadDashboard();
     } catch (err) {
-      toast.error(err.message || 'ส่งตั๋วเข้า LINE ไม่สำเร็จ');
+      toast.error(err.message || t('ส่งตั๋วเข้า LINE ไม่สำเร็จ', 'Failed to resend LINE ticket'));
     } finally {
       setLineResendingId(null);
     }
@@ -718,11 +729,16 @@ export default function AdminPage() {
     clearAdminCache();
     sessionStorage.removeItem('soundwave_admin_tab');
     localStorage.removeItem('soundwave_organizer');
+    setViewBookingTickets(null);
+    setViewTaxInvoiceBooking(null);
+    setSelectedSeatConcert(null);
+    setArtistEditor(null);
+    setConfirmDialog(null);
     setOrganizer(null);
     setStats(null);
     setConcerts([]);
     setBookings([]);
-    toast.info('ออกจากระบบเรียบร้อยแล้ว');
+    toast.info(t('ออกจากระบบเรียบร้อยแล้ว', 'Signed out successfully'));
   };
 
   if (!organizer?.sessionToken) {
@@ -863,6 +879,19 @@ export default function AdminPage() {
 
               <button
                 type="button"
+                onClick={() => setActiveTab('promotions')}
+                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition-all ${
+                  activeTab === 'promotions'
+                    ? 'bg-pink-400 text-black shadow-md shadow-pink-400/30'
+                    : 'text-pink-200 hover:text-white'
+                }`}
+              >
+                <Tag size={14} className="shrink-0" />
+                <span className="truncate">{t('🎟️ โปรโมชัน & ภาษี (VeriTrans)', '🎟️ Promos & Tax (VeriTrans)')}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab('create')}
                 className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs font-bold transition-all ${
                   activeTab === 'create'
@@ -871,7 +900,7 @@ export default function AdminPage() {
                 }`}
               >
                 <Plus size={14} className="shrink-0" />
-                <span className="truncate">+ เพิ่มงานใหม่</span>
+                <span className="truncate">{t('+ เพิ่มงานใหม่', '+ New Event')}</span>
               </button>
             </nav>
 
@@ -883,7 +912,7 @@ export default function AdminPage() {
               className="relative flex items-center gap-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3.5 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20 hover:border-cyan-400/50 transition-all shadow-lg shadow-cyan-400/10 cursor-pointer"
             >
               <Radar size={14} className="text-cyan-300" />
-              <span>เรดาร์คอนเสิร์ต 🔔</span>
+              <span>{t('เรดาร์คอนเสิร์ต 🔔', 'Event Radar 🔔')}</span>
               {discoveryPendingCount > 0 && (
                 <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white animate-pulse">
                   {discoveryPendingCount}
@@ -895,88 +924,218 @@ export default function AdminPage() {
               to="/"
               className="rounded-xl border border-white/10 px-3.5 py-2 text-xs font-semibold text-gray-300 hover:bg-white/5"
             >
-              กลับหน้าร้าน
+              {t('กลับหน้าร้าน', 'Back to Store')}
             </Link>
 
             <button
               type="button"
               onClick={handleOrganizerLogout}
-              className="rounded-xl border border-rose-400/20 px-3.5 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-400/10"
+              className="admin-logout-btn rounded-xl border border-rose-400/30 bg-rose-500/10 px-3.5 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/20 cursor-pointer"
             >
               {t(`ออก (${organizer.name})`, `Sign Out (${organizer.name})`)}
             </button>
           </div>
         </header>
 
-        {/* ── Top Executive KPI Metrics (Always accessible overview) ── */}
-        <section aria-label="สรุปยอดภาพรวมระบบ" className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="ตั๋วที่ขายแล้วทั้งหมด"
-            value={loading ? '—' : `${(stats?.totalTickets || 0).toLocaleString('th-TH')} ใบ`}
-            detail={`จากความจุทั้งหมด ${totalSystemCapacity.toLocaleString()} ใบ`}
-            subTag={`เหลือ ${totalSystemAvailable.toLocaleString()} ใบ`}
-            icon={Ticket}
-            color="text-cyan-300"
-            onClick={() => navigate('/admin/insights/sales')}
-          />
-          <StatCard
-            label="รายได้รวมทั้งหมด"
-            value={loading ? '—' : money(stats?.revenue)}
-            detail={`ราคาเฉลี่ยต่อใบ ${money(
-              stats?.averageTicketPrice || (stats?.totalTickets ? stats.revenue / stats.totalTickets : 0)
-            )}`}
-            subTag={`${stats?.paidBookings || 0} รายการชำระแล้ว`}
-            icon={CircleDollarSign}
-            color="text-emerald-300"
-            onClick={() => navigate('/admin/insights/revenue')}
-          />
-          <StatCard
-            label="สแกนเข้างานแล้ว (Check-in)"
-            value={loading ? '—' : `${(stats?.checkedIn || 0).toLocaleString('th-TH')} คน`}
-            detail={`จากตั๋วที่ขายแล้ว ${stats?.totalTickets || 0} ใบ`}
-            subTag={`${stats?.totalTickets ? Math.round(((stats?.checkedIn || 0) / stats.totalTickets) * 100) : 0}% เข้างาน`}
-            icon={Users}
-            color="text-purple-300"
-            onClick={() => navigate('/admin/insights/check-in')}
-          />
-          <StatCard
-            label="คอนเสิร์ตในระบบ"
-            value={loading ? '—' : `${(stats?.totalConcerts || concerts.length || 0).toLocaleString('th-TH')} งาน`}
-            detail={`${stats?.pendingBookings || 0} รายการรอชำระเงิน`}
-            subTag="กำลังเปิดจำหน่าย"
-            icon={CalendarDays}
-            color="text-pink-300"
-            onClick={() => navigate('/admin/insights/concerts')}
-          />
-        </section>
-
         {/* ═══════════════════════════════════════════════════════════════
             TAB 1: 📊 ภาพรวม & ยอดขาย (Dashboard & Financial Analytics)
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
+            {/* ── Top Executive KPI Metrics (Shown ONLY in Overview Tab) ── */}
+            <section aria-label="สรุปยอดภาพรวมระบบ" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label={t('ตั๋วที่ขายแล้วทั้งหมด', 'Total Tickets Sold')}
+                value={loading ? '—' : `${(stats?.totalTickets || 0).toLocaleString('th-TH')} ${t('ใบ', 'tickets')}`}
+                detail={t(`จากความจุทั้งหมด ${totalSystemCapacity.toLocaleString()} ใบ`, `Total capacity: ${totalSystemCapacity.toLocaleString()}`)}
+                subTag={t(`เหลือ ${totalSystemAvailable.toLocaleString()} ใบ`, `${totalSystemAvailable.toLocaleString()} left`)}
+                icon={Ticket}
+                color="text-cyan-300"
+                onClick={() => navigate('/admin/insights/sales')}
+              />
+              <StatCard
+                label={t('รายได้รวมทั้งหมด', 'Total Revenue')}
+                value={loading ? '—' : money(stats?.revenue)}
+                detail={t(
+                  `ราคาเฉลี่ยต่อใบ ${money(
+                    stats?.averageTicketPrice || (stats?.totalTickets ? stats.revenue / stats.totalTickets : 0)
+                  )}`,
+                  `Avg per ticket: ${money(
+                    stats?.averageTicketPrice || (stats?.totalTickets ? stats.revenue / stats.totalTickets : 0)
+                  )}`
+                )}
+                subTag={t(`${stats?.paidBookings || 0} รายการชำระแล้ว`, `${stats?.paidBookings || 0} paid orders`)}
+                icon={CircleDollarSign}
+                color="text-emerald-300"
+                onClick={() => navigate('/admin/insights/revenue')}
+              />
+              <StatCard
+                label={t('สแกนเข้างานแล้ว (Check-in)', 'Checked In')}
+                value={loading ? '—' : `${(stats?.checkedIn || 0).toLocaleString('th-TH')} ${t('คน', 'attendees')}`}
+                detail={t(`จากตั๋วที่ขายแล้ว ${stats?.totalTickets || 0} ใบ`, `Out of ${stats?.totalTickets || 0} sold`)}
+                subTag={`${stats?.totalTickets ? Math.round(((stats?.checkedIn || 0) / stats.totalTickets) * 100) : 0}% ${t('เข้างาน', 'checked in')}`}
+                icon={Users}
+                color="text-purple-300"
+                onClick={() => navigate('/admin/insights/check-in')}
+              />
+              <StatCard
+                label={t('คอนเสิร์ตในระบบ', 'Active Concerts')}
+                value={loading ? '—' : `${(stats?.totalConcerts || concerts.length || 0).toLocaleString('th-TH')} ${t('งาน', 'events')}`}
+                detail={t(`${stats?.pendingBookings || 0} รายการรอชำระเงิน`, `${stats?.pendingBookings || 0} pending orders`)}
+                subTag={t('กำลังเปิดจำหน่าย', 'On Sale')}
+                icon={CalendarDays}
+                color="text-pink-300"
+                onClick={() => navigate('/admin/insights/concerts')}
+              />
+            </section>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-black text-white">รายงานสรุปภาพรวมและการเงิน (Financial Summary)</h2>
+                <h2 className="text-xl font-black text-white">
+                  {t('รายงานสรุปภาพรวมและการเงิน (Financial Summary)', 'Financial & Sales Overview')}
+                </h2>
                 <p className="mt-0.5 text-xs text-gray-400">
-                  ตรวจสอบสัดส่วนรายได้ ยอดขาย และความเคลื่อนไหวล่าสุดของทุกคอนเสิร์ต
+                  {t(
+                    'ตรวจสอบสัดส่วนรายได้ ยอดขาย และความเคลื่อนไหวล่าสุดของทุกคอนเสิร์ต',
+                    'Track revenue, ticket sales, discounts, and taxes across all concerts.'
+                  )}
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('promotions')}
+                  className="flex items-center gap-1.5 rounded-xl border border-pink-400/35 bg-pink-500/15 px-3.5 py-1.5 text-xs font-bold text-pink-200 hover:bg-pink-500/25 cursor-pointer"
+                >
+                  <Tag size={13} />
+                  <span>
+                    {t(
+                      `จัดการโปรโมชัน & ภาษี (${stats?.activePromotionsCount ?? 6} แคมเปญ)`,
+                      `Manage Promos & Tax (${stats?.activePromotionsCount ?? 6} active)`
+                    )}
+                  </span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleExportCSV()}
                   className="flex items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3.5 py-1.5 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20"
                 >
                   <Download size={13} />
-                  <span>ส่งออก CSV ทั้งหมด</span>
+                  <span>{t('ส่งออก CSV ทั้งหมด', 'Export CSV')}</span>
                 </button>
                 <button
                   type="button"
                   onClick={loadDashboard}
                   className="rounded-xl border border-white/10 px-3.5 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/5"
                 >
-                  รีเฟรชข้อมูล
+                  {t('รีเฟรชข้อมูล', 'Refresh')}
+                </button>
+              </div>
+            </div>
+
+            {/* ── DASHBOARD TAX, DISCOUNT & VERITRANS GATEWAY OVERVIEW BAR ── */}
+            <div className="rounded-3xl border border-cyan-400/25 bg-[#101018] p-5 shadow-xl">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg bg-pink-400/20 border border-pink-400/40 px-2.5 py-0.5 text-[10px] font-black text-pink-200 uppercase">
+                    VeriTrans Gateway · Tax & Promotions
+                  </span>
+                  <h3 className="text-sm font-black text-white">
+                    {t(
+                      'สรุปยอดส่วนลดโปรโมชัน ภาษีมูลค่าเพิ่ม (VAT 7%) และช่องทางรับชำระเงิน',
+                      'Promotional Discounts, VAT 7% & VeriTrans Payment Channels'
+                    )}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('promotions')}
+                  className="text-xs font-bold text-cyan-300 hover:text-white flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{t('+ เพิ่ม / ลบโค้ดส่วนลดและตั้งค่าเกตเวย์', '+ Add / Delete Promos & Gateway Config')}</span>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/insights/gross')}
+                  className="concert-inner-box text-left rounded-2xl border border-white/10 bg-[#12121a] p-3.5 transition hover:border-cyan-400/50 cursor-pointer"
+                >
+                  <span className="text-gray-400 block">
+                    {t('ยอดขายก่อนหักส่วนลด (Gross)', 'Gross Sales (Before Discount)')}
+                  </span>
+                  <span className="mt-1 block font-mono text-lg font-black text-white">
+                    {money(stats?.grossSubtotal || stats?.revenue || 0)}
+                  </span>
+                  <span className="text-[10px] text-emerald-300 flex items-center justify-between mt-1">
+                    <span>{t('รับสุทธิ:', 'Net Revenue:')} {money(stats?.revenue || 0)}</span>
+                    <ChevronRight size={12} />
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/insights/discounts')}
+                  className="concert-inner-box text-left rounded-2xl border border-pink-400/20 bg-[#12121a] p-3.5 transition hover:border-pink-400/60 cursor-pointer"
+                >
+                  <span className="text-pink-200 block">
+                    {t('ส่วนลดที่ใช้ไปทั้งหมด (Discounts)', 'Total Discounts Used')}
+                  </span>
+                  <span className="mt-1 block font-mono text-lg font-black text-pink-300">
+                    -{money(stats?.totalDiscountsGiven || 0)}
+                  </span>
+                  <span className="text-[10px] text-gray-400 flex items-center justify-between mt-1">
+                    <span>
+                      {t(
+                        `โปรที่เปิดใช้งานอยู่: ${stats?.activePromotionsCount ?? 6} รายการ`,
+                        `Active promotions: ${stats?.activePromotionsCount ?? 6}`
+                      )}
+                    </span>
+                    <ChevronRight size={12} />
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/insights/taxes')}
+                  className="concert-inner-box text-left rounded-2xl border border-amber-400/20 bg-[#12121a] p-3.5 transition hover:border-amber-400/60 cursor-pointer"
+                >
+                  <span className="text-amber-200 block">
+                    {t('ภาษีมูลค่าเพิ่มสะสม (VAT 7%)', 'Total VAT 7% Collected')}
+                  </span>
+                  <span className="mt-1 block font-mono text-lg font-black text-amber-300">
+                    +{money(stats?.totalVatCollected || 0)}
+                  </span>
+                  <span className="text-[10px] text-purple-300 flex items-center justify-between mt-1">
+                    <span>{t('หัก ณ ที่จ่าย (WHT 3%):', 'WHT 3%:')} -{money(stats?.totalWhtDeducted || 0)}</span>
+                    <ChevronRight size={12} />
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/insights/channels')}
+                  className="concert-inner-box text-left rounded-2xl border border-cyan-400/20 bg-[#12121a] p-3.5 transition hover:border-cyan-400/60 cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-cyan-200 block">
+                      {t('ช่องทางชำระเงิน VeriTrans', 'VeriTrans Channels')}
+                    </span>
+                    <ChevronRight size={12} className="text-cyan-300" />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[11px]">
+                    <span className="text-gray-300">QR PromptPay:</span>
+                    <span className="font-mono font-bold text-cyan-300">
+                      {stats?.paymentChannels?.promptPayCount || 0} ({money(stats?.paymentChannels?.promptPayRevenue || 0)})
+                    </span>
+                  </div>
+                  <div className="mt-0.5 flex items-center justify-between text-[11px]">
+                    <span className="text-gray-300">{t('บัตรเครดิต/เดบิต:', 'Credit Card:')}</span>
+                    <span className="font-mono font-bold text-pink-300">
+                      {stats?.paymentChannels?.creditCardCount || 0} ({money(stats?.paymentChannels?.creditCardRevenue || 0)})
+                    </span>
+                  </div>
                 </button>
               </div>
             </div>
@@ -1015,20 +1174,20 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => handleCopyStoreLink(c)}
-                        title="คัดลอกลิงก์ร้าน"
+                        title={t('คัดลอกลิงก์ร้าน', 'Copy store link')}
                         className="shrink-0 rounded-xl border border-white/10 p-2 text-gray-400 hover:text-cyan-300 hover:bg-white/5"
                       >
                         <Copy size={14} />
                       </button>
                     </div>
 
-                    <div className="mt-4 rounded-2xl bg-black/30 p-3.5 space-y-2">
+                    <div className="concert-inner-box mt-4 rounded-2xl border border-white/10 bg-[#12121a] p-3.5 space-y-2">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-xs text-gray-400 shrink-0">รายได้รวม:</span>
+                        <span className="text-xs text-gray-400 shrink-0">{t('รายได้รวม:', 'Revenue:')}</span>
                         <span className="font-mono text-lg font-black text-emerald-300 truncate">{money(c.revenue)}</span>
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
-                        <span className="text-gray-400">ตั๋วที่ขายแล้ว:</span>
+                        <span className="text-gray-400">{t('ตั๋วที่ขายแล้ว:', 'Tickets Sold:')}</span>
                         <span className="font-mono font-bold text-white">
                           {sold.toLocaleString()} / {capacity.toLocaleString()} {t('ใบ', 'tickets')} ({percentSold}%)
                         </span>
@@ -1050,7 +1209,7 @@ export default function AdminPage() {
                         }}
                         className="text-cyan-300 hover:text-white font-bold flex items-center gap-1"
                       >
-                        <span>จัดการโซน & ที่นั่ง</span>
+                        <span>{t('จัดการโซน & ที่นั่ง', 'Manage Zones & Seats')}</span>
                         <ChevronRight size={13} />
                       </button>
                       <Link
@@ -1059,7 +1218,7 @@ export default function AdminPage() {
                         className="text-gray-400 hover:text-white flex items-center gap-1"
                       >
                         <ExternalLink size={12} />
-                        <span>หน้าร้าน</span>
+                        <span>{t('หน้าร้าน', 'Storefront')}</span>
                       </Link>
                     </div>
                   </article>
@@ -1067,6 +1226,19 @@ export default function AdminPage() {
               })}
             </div>
           </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════
+            TAB PROMOTIONS: 🎟️ โปรโมชัน ส่วนลด & ภาษี (VeriTrans Gateway)
+        ══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'promotions' && (
+          <AdminPromotionsManager
+            stats={stats}
+            concerts={concerts}
+            api={api}
+            toast={toast}
+            onDataChanged={() => loadDashboard(true)}
+          />
         )}
 
         {/* ═══════════════════════════════════════════════════════════════
@@ -1526,19 +1698,19 @@ export default function AdminPage() {
                           <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-emerald-400">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                             <span>
-                              ผูก LINE แล้ว (
+                              {t('ผูก LINE แล้ว', 'LINE Linked')} (
                               {booking.lineDeliveryStatus === 'SENT'
-                                ? '✓ ส่งแล้ว'
+                                ? t('✓ ส่งแล้ว', '✓ Sent')
                                 : booking.lineDeliveryStatus === 'FAILED'
-                                ? 'ส่งไม่สำเร็จ'
-                                : 'รอส่ง'}
+                                ? t('ส่งไม่สำเร็จ', 'Failed')
+                                : t('รอส่ง', 'Pending')}
                               )
                             </span>
                           </span>
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-[10px] text-gray-400">ยอดชำระ</p>
+                        <p className="text-[10px] text-gray-400">{t('ยอดชำระ', 'Total Paid')}</p>
                         <p className="font-mono text-base font-black text-emerald-300">
                           {money(booking.totalAmount - (booking.refundedAmount || 0))}
                         </p>
@@ -1546,10 +1718,12 @@ export default function AdminPage() {
                     </div>
 
                     <div className="rounded-xl bg-black/30 p-2.5 text-xs space-y-1">
-                      <p className="font-semibold text-gray-200 truncate">{concertNames.join(', ') || '—'}</p>
+                      <p className="font-semibold text-gray-200 truncate">{concertNames.map(trData).join(', ') || '—'}</p>
                       <p className="text-[11px] text-gray-400">
-                        โซน: {zoneNames.map(trData).join(', ') || t('ไม่ระบุโซน', 'Unspecified Zone')} · ตั๋ว{' '}
-                        <strong className="text-cyan-200">{booking.tickets?.length || 0} ใบ</strong>
+                        {t('โซน:', 'Zone:')} {zoneNames.map(trData).join(', ') || t('ไม่ระบุโซน', 'Unspecified Zone')} · {t('ตั๋ว', 'Tickets')}{' '}
+                        <strong className="text-cyan-200">
+                          {booking.tickets?.length || 0} {t('ใบ', booking.tickets?.length === 1 ? 'ticket' : 'tickets')}
+                        </strong>
                       </p>
                       {booking.tickets?.length > 0 && (
                         <div className="pt-1 flex flex-wrap gap-1">
@@ -1572,16 +1746,26 @@ export default function AdminPage() {
                       )}
                     </div>
 
-                    {(booking.tickets?.length > 0 || (isPaid && booking.customerLineId)) && (
+                    {(booking.tickets?.length > 0 || (isPaid && (booking.customerLineId || booking.taxInvoiceRequested || booking.taxId || booking.whtAmount > 0))) && (
                       <div className="flex flex-wrap items-center gap-2 pt-1">
                         {booking.tickets?.length > 0 && (
                           <button
                             type="button"
                             onClick={() => setViewBookingTickets(booking)}
-                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20 transition-all"
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20 transition-all cursor-pointer"
                           >
                             <Ticket size={13} />
                             <span>{t(`ดูตั๋ว (${booking.tickets.length})`, `View Tickets (${booking.tickets.length})`)}</span>
+                          </button>
+                        )}
+                        {isPaid && (booking.taxInvoiceRequested || booking.taxId || booking.whtAmount > 0) && (
+                          <button
+                            type="button"
+                            onClick={() => setViewTaxInvoiceBooking(booking)}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-400/20 transition-all cursor-pointer"
+                          >
+                            <FileText size={13} />
+                            <span>{t('ใบกำกับภาษี', 'Tax Invoice')}</span>
                           </button>
                         )}
                         {isPaid && booking.customerLineId && (
@@ -1592,7 +1776,7 @@ export default function AdminPage() {
                             className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20 disabled:opacity-50"
                           >
                             {isResending ? <LoaderCircle size={13} className="animate-spin" /> : <Send size={13} />}
-                            <span>ส่ง LINE ซ้ำ</span>
+                            <span>{t('ส่ง LINE ซ้ำ', 'Resend LINE')}</span>
                           </button>
                         )}
                       </div>
@@ -1646,13 +1830,13 @@ export default function AdminPage() {
                           {booking.customerLineId && (
                             <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-400">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                              <span>ผูก LINE แล้ว</span>
+                              <span>{t('ผูก LINE แล้ว', 'LINE Linked')}</span>
                             </div>
                           )}
                         </td>
 
                         <td className="px-4 py-3.5">
-                          <div className="text-gray-200">{concertNames.join(', ') || '—'}</div>
+                          <div className="text-gray-200">{concertNames.map(trData).join(', ') || '—'}</div>
                           <div className="mt-1 text-[10px] text-gray-500">{zoneNames.map(trData).join(', ') || t('ไม่ระบุโซน', 'Unspecified Zone')}</div>
                         </td>
 
@@ -1661,11 +1845,17 @@ export default function AdminPage() {
                             type="button"
                             onClick={() => booking.tickets?.length > 0 && setViewBookingTickets(booking)}
                             disabled={!booking.tickets?.length}
-                            title={booking.tickets?.length > 0 ? "คลิกเพื่อขยายดูตั๋วทุกใบพร้อม QR Code และที่นั่งแยกรายคน" : "ไม่มีข้อมูลตั๋ว"}
+                            title={
+                              booking.tickets?.length > 0
+                                ? t('คลิกเพื่อขยายดูตั๋วทุกใบพร้อม QR Code และที่นั่งแยกรายคน', 'Click to view all tickets with QR codes and seats')
+                                : t('ไม่มีข้อมูลตั๋ว', 'No ticket data')
+                            }
                             className="group inline-flex flex-col items-center hover:opacity-80 transition-all cursor-pointer disabled:cursor-default"
                           >
                             <span className="font-mono font-bold text-cyan-200 group-hover:underline flex items-center gap-1">
-                              <span>{booking.tickets?.length || 0} ใบ</span>
+                              <span>
+                                {booking.tickets?.length || 0} {t('ใบ', booking.tickets?.length === 1 ? 'ticket' : 'tickets')}
+                              </span>
                               {booking.tickets?.length > 0 && <span className="text-[10px] text-cyan-400">🔍</span>}
                             </span>
                             {booking.tickets?.length > 0 && (
@@ -1720,12 +1910,12 @@ export default function AdminPage() {
                             }`}
                           >
                             {booking.lineDeliveryStatus === 'SENT'
-                              ? '✓ ส่งแล้ว'
+                              ? t('✓ ส่งแล้ว', '✓ Sent')
                               : booking.lineDeliveryStatus === 'FAILED'
-                              ? 'ส่งไม่สำเร็จ'
+                              ? t('ส่งไม่สำเร็จ', 'Failed')
                               : booking.customerLineId
-                              ? 'รอส่ง'
-                              : 'ไม่มี LINE'}
+                              ? t('รอส่ง', 'Pending')
+                              : t('ไม่มี LINE', 'No LINE')}
                           </span>
                           {booking.lineDeliveryError && (
                             <p className="mt-1 max-w-28 text-[9px] text-rose-300 truncate mx-auto">
@@ -1741,11 +1931,24 @@ export default function AdminPage() {
                               <button
                                 type="button"
                                 onClick={() => setViewBookingTickets(booking)}
-                                title="เปิดดูตั๋วรายใบพร้อม QR Code และที่นั่งแยกรายคน"
+                                title={t('เปิดดูตั๋วรายใบพร้อม QR Code และที่นั่งแยกรายคน', 'View individual tickets with QR codes and seats')}
                                 className="flex items-center gap-1 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200 hover:bg-cyan-400/20 transition-all cursor-pointer"
                               >
                                 <Ticket size={11} />
                                 <span>{t(`ดูตั๋ว (${booking.tickets.length})`, `View Tickets (${booking.tickets.length})`)}</span>
+                              </button>
+                            )}
+
+                            {/* View / Print Official Tax Invoice (ONLY when customer requested it) */}
+                            {isPaid && (booking.taxInvoiceRequested || booking.taxId || booking.whtAmount > 0) && (
+                              <button
+                                type="button"
+                                onClick={() => setViewTaxInvoiceBooking(booking)}
+                                title={t('เปิดดูและพิมพ์ใบกำกับภาษี / ใบเสร็จรับเงิน', 'View & Print Tax Invoice')}
+                                className="flex items-center gap-1 rounded-xl border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold text-amber-200 hover:bg-amber-400/20 transition-all cursor-pointer"
+                              >
+                                <FileText size={11} />
+                                <span>{t('ใบกำกับภาษี', 'Tax Invoice')}</span>
                               </button>
                             )}
 
@@ -1755,11 +1958,11 @@ export default function AdminPage() {
                                 type="button"
                                 disabled={isResending}
                                 onClick={() => handleResendLineTicket(booking)}
-                                title="ส่งตั๋วเข้า LINE ซ้ำ"
+                                title={t('ส่งตั๋วเข้า LINE ซ้ำ', 'Resend ticket to LINE')}
                                 className="flex items-center gap-1 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold text-emerald-200 hover:bg-emerald-400/20 disabled:opacity-50"
                               >
                                 {isResending ? <LoaderCircle size={11} className="animate-spin" /> : <Send size={11} />}
-                                <span>ส่ง LINE ซ้ำ</span>
+                                <span>{t('ส่ง LINE ซ้ำ', 'Resend LINE')}</span>
                               </button>
                             )}
                           </div>
@@ -2213,6 +2416,14 @@ export default function AdminPage() {
         <BookingTicketsModal
           booking={viewBookingTickets}
           onClose={() => setViewBookingTickets(null)}
+        />
+      )}
+
+      {/* ── Official Tax Invoice / Receipt Modal ── */}
+      {viewTaxInvoiceBooking && (
+        <TaxInvoiceModal
+          booking={viewTaxInvoiceBooking}
+          onClose={() => setViewTaxInvoiceBooking(null)}
         />
       )}
 

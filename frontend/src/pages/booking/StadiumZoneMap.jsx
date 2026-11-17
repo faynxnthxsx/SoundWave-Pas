@@ -677,13 +677,13 @@ export default function StadiumZoneMap({
       </div>
 
       {/* Main Content: Interactive SVG Seating Plan */}
-      <div className="bg-[radial-gradient(ellipse_at_top,_#172033_0%,_#070a10_78%)] w-full overflow-hidden">
+      <div className="stadium-svg-backdrop bg-[radial-gradient(ellipse_at_top,_#172033_0%,_#070a10_78%)] w-full overflow-hidden">
         <div className="w-full p-3.5 sm:p-5 flex flex-col items-center justify-center">
           <svg
             viewBox="0 0 800 565"
             role="img"
             aria-label={t('ผังเวทีคอนเสิร์ตและโซนบัตรตามสถานที่จริง', 'Concert venue stage and zone layout')}
-            className="w-full max-w-full h-auto drop-shadow-[0_18px_40px_rgba(0,0,0,0.65)] select-none"
+            className="stadium-svg-canvas w-full max-w-full h-auto drop-shadow-[0_18px_40px_rgba(0,0,0,0.65)] select-none"
           >
             <defs>
               <linearGradient id="arena-shell" x1="0" x2="0" y1="0" y2="1">
@@ -718,7 +718,7 @@ export default function StadiumZoneMap({
 
           {/* Live Hovered / Selected Zone Quick Banner */}
           {activeZone && (
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 sm:gap-3 w-full max-w-[720px] rounded-2xl border border-white/15 bg-white/[0.04] px-3 sm:px-4 py-2 sm:py-2.5 text-xs">
+            <div className="stadium-active-zone-bar mt-2 flex flex-wrap items-center justify-between gap-2 sm:gap-3 w-full max-w-[720px] rounded-2xl border border-white/15 bg-white/[0.04] px-3 sm:px-4 py-2 sm:py-2.5 text-xs">
               <div className="flex items-center gap-2 min-w-0">
                 <span
                   className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-md shadow-sm ring-2 ring-white/40 shrink-0"

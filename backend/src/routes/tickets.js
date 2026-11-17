@@ -15,7 +15,13 @@ router.get('/:ticketCode', async (req, res) => {
             concert: true
           }
         },
-        booking: true
+        booking: {
+          include: {
+            items: {
+              include: { zone: { include: { concert: true } } }
+            }
+          }
+        }
       }
     });
 
@@ -46,8 +52,7 @@ router.get('/:ticketCode', async (req, res) => {
           colorCode: ticket.zone.colorCode
         },
         booking: {
-          bookingCode: ticket.booking.bookingCode,
-          paidAt: ticket.booking.paidAt
+          ...ticket.booking
         }
       }
     });

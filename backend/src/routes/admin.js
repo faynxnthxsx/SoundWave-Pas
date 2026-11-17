@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const { requireOrganizer } = require('../middleware/organizerAuth');
 const { sendTicketsToLineUser } = require('../services/lineService');
 const { getDiscoveredConcerts, importDiscoveredConcert } = require('../services/concertDiscoveryService');
+const { ensureDefaultPromotions, DEFAULT_PROMOTIONS } = require('../services/promotionService');
+const { getGatewayConfig, updateRuntimeGatewayConfig } = require('../services/veritransService');
 const prisma = require('../lib/prisma');
 
 // Organizer dashboard accounts are separate from gate staff accounts.
@@ -144,32 +146,110 @@ router.patch('/radar/candidates/:id/status', async (req, res) => {
 });
 
 // ─── GET /api/admin/stats ────────────────────────────────────────────────────
-// Summary numbers: tickets, revenue, check-ins, concerts
+// Summary numbers: tickets, revenue, check-ins, concerts + Tax, Discounts & VeriTrans split
 router.get('/stats', async (req, res) => {
   try {
-    const [totalTickets, checkedIn, revenueData, totalConcerts, pendingBookings, paidBookings] =
-      await Promise.all([
-        prisma.ticket.count({ where: { status: { in: ['VALID', 'USED'] } } }),
-        prisma.ticket.count({ where: { status: 'USED' } }),
-        prisma.booking.aggregate({
-          where: { status: { in: ['PAID', 'PARTIALLY_REFUNDED'] } },
-          _sum: { totalAmount: true, refundedAmount: true },
-        }),
-        prisma.concert.count(),
-        prisma.booking.count({ where: { status: 'PENDING' } }),
-        prisma.booking.count({ where: { status: { in: ['PAID', 'PARTIALLY_REFUNDED'] } } }),
-      ]);
+    await ensureDefaultPromotions();
+    const [
+      totalTickets,
+      checkedIn,
+      revenueData,
+      totalConcerts,
+      pendingBookings,
+      paidBookings,
+      paidBookingRows,
+      promotionsCount,
+      activePromotionsCount,
+    ] = await Promise.all([
+      prisma.ticket.count({ where: { status: { in: ['VALID', 'USED'] } } }),
+      prisma.ticket.count({ where: { status: 'USED' } }),
+      prisma.booking.aggregate({
+        where: { status: { in: ['PAID', 'PARTIALLY_REFUNDED'] } },
+        _sum: {
+          totalAmount: true,
+          refundedAmount: true,
+          subtotalAmount: true,
+          discountAmount: true,
+          bundleDiscount: true,
+          couponDiscount: true,
+          partnerDiscount: true,
+          vatAmount: true,
+          whtAmount: true,
+        },
+      }),
+      prisma.concert.count(),
+      prisma.booking.count({ where: { status: 'PENDING' } }),
+      prisma.booking.count({ where: { status: { in: ['PAID', 'PARTIALLY_REFUNDED'] } } }),
+      prisma.booking.findMany({
+        where: { status: { in: ['PAID', 'PARTIALLY_REFUNDED'] } },
+        select: {
+          totalAmount: true,
+          subtotalAmount: true,
+          discountAmount: true,
+          vatAmount: true,
+          whtAmount: true,
+          paymentMethod: true,
+          promoCode: true,
+        },
+      }),
+      prisma.promotion.count(),
+      prisma.promotion.count({ where: { isActive: true } }),
+    ]);
+
+    const netRevenue = Math.max(0, (revenueData._sum.totalAmount || 0) - (revenueData._sum.refundedAmount || 0));
+    const grossSubtotal =
+      (revenueData._sum.subtotalAmount || 0) > 0
+        ? revenueData._sum.subtotalAmount
+        : netRevenue + (revenueData._sum.discountAmount || 0);
+    const totalDiscountsGiven = revenueData._sum.discountAmount || 0;
+    const totalVatCollected =
+      (revenueData._sum.vatAmount || 0) > 0
+        ? revenueData._sum.vatAmount
+        : Math.round((netRevenue * 7) / 107);
+    const totalWhtDeducted = revenueData._sum.whtAmount || 0;
+
+    let promptPayCount = 0;
+    let promptPayRevenue = 0;
+    let creditCardCount = 0;
+    let creditCardRevenue = 0;
+
+    for (const b of paidBookingRows) {
+      const m = String(b.paymentMethod || '').toUpperCase();
+      if (m.includes('CARD') || m.includes('CREDIT') || m.includes('JCB') || m.includes('VISA') || m.includes('MASTER')) {
+        creditCardCount++;
+        creditCardRevenue += Number(b.totalAmount || 0);
+      } else {
+        promptPayCount++;
+        promptPayRevenue += Number(b.totalAmount || 0);
+      }
+    }
 
     res.json({
       success: true,
       data: {
         totalTickets,
         checkedIn,
-        revenue: Math.max(0, (revenueData._sum.totalAmount || 0) - (revenueData._sum.refundedAmount || 0)),
-        averageTicketPrice: totalTickets > 0 ? Math.round(Math.max(0, (revenueData._sum.totalAmount || 0) - (revenueData._sum.refundedAmount || 0)) / totalTickets) : 0,
+        revenue: netRevenue,
+        grossSubtotal,
+        totalDiscountsGiven,
+        bundleDiscountTotal: revenueData._sum.bundleDiscount || 0,
+        couponDiscountTotal: revenueData._sum.couponDiscount || 0,
+        partnerDiscountTotal: revenueData._sum.partnerDiscount || 0,
+        totalVatCollected,
+        totalWhtDeducted,
+        averageTicketPrice: totalTickets > 0 ? Math.round(netRevenue / totalTickets) : 0,
         totalConcerts,
         pendingBookings,
         paidBookings,
+        promotionsCount,
+        activePromotionsCount,
+        paymentChannels: {
+          promptPayCount,
+          promptPayRevenue,
+          creditCardCount,
+          creditCardRevenue,
+        },
+        gateway: getGatewayConfig(),
       },
     });
   } catch (err) {
@@ -956,8 +1036,24 @@ router.post('/bookings/:bookingId/resend-line', async (req, res) => {
     });
 
     if (!booking) return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
-    if (!booking.customerLineId) {
-      return res.status(400).json({ success: false, message: 'รายการจองนี้ยังไม่ได้ผูกกับบัญชี LINE ของลูกค้า' });
+
+    const realLineRegex = /^U[0-9a-f]{32}$/i;
+    let targetLineId = (booking.customerLineId || '').trim();
+    if (!realLineRegex.test(targetLineId)) {
+      const recentValid = await prisma.booking.findMany({
+        where: { customerLineId: { not: null } },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+        select: { customerLineId: true },
+      });
+      const validMatch = recentValid.find((b) => realLineRegex.test(b.customerLineId || ''));
+      if (validMatch?.customerLineId) {
+        targetLineId = validMatch.customerLineId;
+      }
+    }
+
+    if (!targetLineId || !realLineRegex.test(targetLineId)) {
+      return res.status(400).json({ success: false, message: 'รายการจองนี้ยังไม่ได้ผูกกับบัญชี LINE จริงของลูกค้า' });
     }
 
     const item = booking.items?.find((entry) => entry.zoneId === booking.tickets[0]?.zoneId);
@@ -968,13 +1064,13 @@ router.post('/bookings/:bookingId/resend-line', async (req, res) => {
       return res.status(400).json({ success: false, message: 'ข้อมูลคอนเสิร์ตหรือโซนไม่สมบูรณ์' });
     }
 
-    const result = await sendTicketsToLineUser(booking.customerLineId, concert, booking.tickets, zone, booking);
+    const result = await sendTicketsToLineUser(targetLineId, concert, booking.tickets, zone, booking);
     const status = result.success ? 'SENT' : 'FAILED';
     const error = result.error || result.reason || null;
 
     const updated = await prisma.booking.update({
       where: { id: booking.id },
-      data: { lineDeliveryStatus: status, lineDeliveryError: error }
+      data: { customerLineId: targetLineId, lineDeliveryStatus: status, lineDeliveryError: error }
     });
 
     if (!result.success) {
@@ -1060,6 +1156,266 @@ router.post('/discovery/import', async (req, res) => {
   } catch (err) {
     console.error('Admin import discovery error:', err);
     res.status(500).json({ success: false, message: err.message || 'เกิดข้อผิดพลาดในการนำเข้าคอนเสิร์ต' });
+  }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 🎟️ PROMOTIONS, DISCOUNTS & VERITRANS GATEWAY MANAGEMENT (ADMIN CRUD)
+// ═════════════════════════════════════════════════════════════════════════════
+
+// GET /api/admin/promotions - List all promotions & gateway config
+router.get('/promotions', async (req, res) => {
+  try {
+    await ensureDefaultPromotions();
+    const promotions = await prisma.promotion.findMany({
+      orderBy: [{ isActive: 'desc' }, { category: 'asc' }, { createdAt: 'desc' }],
+    });
+    res.json({
+      success: true,
+      gateway: getGatewayConfig(),
+      data: promotions,
+    });
+  } catch (err) {
+    console.error('Admin get promotions error:', err);
+    res.status(500).json({ success: false, message: 'โหลดรายการโปรโมชันไม่สำเร็จ' });
+  }
+});
+
+// POST /api/admin/promotions - Create a new promotion or discount rule
+router.post('/promotions', async (req, res) => {
+  try {
+    const {
+      code,
+      name,
+      description = '',
+      category = 'COUPON',
+      discountType = 'PERCENT',
+      discountValue = 10,
+      maxDiscount = null,
+      minTickets = 1,
+      minSpend = 0,
+      paymentChannel = 'ALL',
+      concertId = null,
+      maxUses = 100,
+      expiresAt = null,
+      isActive = true,
+    } = req.body || {};
+
+    const cleanCode = String(code || '')
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, '');
+
+    if (!cleanCode || !String(name || '').trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'กรุณากรอกรหัสโปรโมชัน (ภาษาอังกฤษ/ตัวเลข) และชื่อโปรโมชันให้ครบถ้วน',
+      });
+    }
+
+    const existing = await prisma.promotion.findUnique({ where: { code: cleanCode } });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: `รหัสโปรโมชัน "${cleanCode}" มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น`,
+      });
+    }
+
+    const val = Number(discountValue);
+    if (!Number.isFinite(val) || val <= 0) {
+      return res.status(400).json({ success: false, message: 'มูลค่าส่วนลดต้องมากกว่า 0' });
+    }
+    if (discountType === 'PERCENT' && val > 100) {
+      return res.status(400).json({ success: false, message: 'ส่วนลดแบบเปอร์เซ็นต์ต้องไม่เกิน 100%' });
+    }
+
+    const created = await prisma.promotion.create({
+      data: {
+        code: cleanCode,
+        name: String(name).trim(),
+        description: String(description || '').trim(),
+        category: ['COUPON', 'AUTO_BUNDLE', 'PAYMENT_PARTNER'].includes(category) ? category : 'COUPON',
+        discountType: ['PERCENT', 'FIXED'].includes(discountType) ? discountType : 'PERCENT',
+        discountValue: val,
+        maxDiscount: maxDiscount !== null && maxDiscount !== '' && Number(maxDiscount) > 0 ? Number(maxDiscount) : null,
+        minTickets: Math.max(1, parseInt(minTickets, 10) || 1),
+        minSpend: Math.max(0, Number(minSpend) || 0),
+        paymentChannel: String(paymentChannel || 'ALL').toUpperCase(),
+        concertId: concertId ? parseInt(concertId, 10) : null,
+        maxUses: Math.max(1, parseInt(maxUses, 10) || 100),
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        isActive: Boolean(isActive),
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `สร้างโปรโมชัน "${created.name}" (${created.code}) สำเร็จแล้ว`,
+      data: created,
+    });
+  } catch (err) {
+    console.error('Admin create promotion error:', err);
+    res.status(500).json({ success: false, message: 'สร้างโปรโมชันไม่สำเร็จ' });
+  }
+});
+
+// PUT /api/admin/promotions/:id - Edit an existing promotion
+router.put('/promotions/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const {
+      code,
+      name,
+      description,
+      category,
+      discountType,
+      discountValue,
+      maxDiscount,
+      minTickets,
+      minSpend,
+      paymentChannel,
+      concertId,
+      maxUses,
+      expiresAt,
+      isActive,
+    } = req.body || {};
+
+    const existing = await prisma.promotion.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'ไม่พบโปรโมชันที่ต้องการแก้ไข' });
+    }
+
+    const cleanCode = code
+      ? String(code)
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9_-]/g, '')
+      : existing.code;
+
+    if (cleanCode !== existing.code) {
+      const dup = await prisma.promotion.findUnique({ where: { code: cleanCode } });
+      if (dup) {
+        return res.status(400).json({ success: false, message: `รหัสโปรโมชัน "${cleanCode}" ซ้ำกับรายการอื่น` });
+      }
+    }
+
+    const updated = await prisma.promotion.update({
+      where: { id },
+      data: {
+        code: cleanCode,
+        ...(name !== undefined && { name: String(name).trim() }),
+        ...(description !== undefined && { description: String(description).trim() }),
+        ...(category !== undefined && { category }),
+        ...(discountType !== undefined && { discountType }),
+        ...(discountValue !== undefined && { discountValue: Number(discountValue) }),
+        ...(maxDiscount !== undefined && {
+          maxDiscount: maxDiscount !== null && maxDiscount !== '' && Number(maxDiscount) > 0 ? Number(maxDiscount) : null,
+        }),
+        ...(minTickets !== undefined && { minTickets: Math.max(1, parseInt(minTickets, 10) || 1) }),
+        ...(minSpend !== undefined && { minSpend: Math.max(0, Number(minSpend) || 0) }),
+        ...(paymentChannel !== undefined && { paymentChannel: String(paymentChannel).toUpperCase() }),
+        ...(concertId !== undefined && { concertId: concertId ? parseInt(concertId, 10) : null }),
+        ...(maxUses !== undefined && { maxUses: Math.max(1, parseInt(maxUses, 10) || 100) }),
+        ...(expiresAt !== undefined && { expiresAt: expiresAt ? new Date(expiresAt) : null }),
+        ...(isActive !== undefined && { isActive: Boolean(isActive) }),
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `อัปเดตโปรโมชัน "${updated.name}" เรียบร้อยแล้ว`,
+      data: updated,
+    });
+  } catch (err) {
+    console.error('Admin update promotion error:', err);
+    res.status(500).json({ success: false, message: 'แก้ไขโปรโมชันไม่สำเร็จ' });
+  }
+});
+
+// PATCH /api/admin/promotions/:id/toggle - Toggle active/pause status
+router.patch('/promotions/:id/toggle', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const existing = await prisma.promotion.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'ไม่พบโปรโมชันนี้' });
+    }
+
+    const updated = await prisma.promotion.update({
+      where: { id },
+      data: { isActive: !existing.isActive },
+    });
+
+    res.json({
+      success: true,
+      message: `${updated.isActive ? 'เปิดใช้งาน' : 'พักการใช้งาน'} โปรโมชัน "${updated.code}" แล้ว`,
+      data: updated,
+    });
+  } catch (err) {
+    console.error('Admin toggle promotion error:', err);
+    res.status(500).json({ success: false, message: 'เปลี่ยนสถานะโปรโมชันไม่สำเร็จ' });
+  }
+});
+
+// DELETE /api/admin/promotions/:id - Delete a promotion
+router.delete('/promotions/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const existing = await prisma.promotion.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'ไม่พบโปรโมชันที่ต้องการลบ' });
+    }
+
+    await prisma.promotion.delete({ where: { id } });
+    res.json({
+      success: true,
+      message: `ลบโปรโมชัน "${existing.name}" (${existing.code}) ออกจากระบบเรียบร้อยแล้ว`,
+    });
+  } catch (err) {
+    console.error('Admin delete promotion error:', err);
+    res.status(500).json({ success: false, message: 'ลบโปรโมชันไม่สำเร็จ' });
+  }
+});
+
+// POST /api/admin/promotions/reset-defaults - Restore default concert promotions
+router.post('/promotions/reset-defaults', async (req, res) => {
+  try {
+    for (const promo of DEFAULT_PROMOTIONS) {
+      await prisma.promotion.upsert({
+        where: { code: promo.code },
+        create: promo,
+        update: { isActive: true },
+      });
+    }
+    const list = await prisma.promotion.findMany({
+      orderBy: [{ isActive: 'desc' }, { category: 'asc' }, { createdAt: 'desc' }],
+    });
+    res.json({
+      success: true,
+      message: 'กู้คืนโปรโมชันมาตรฐานสำหรับคอนเสิร์ตเรียบร้อยแล้ว',
+      data: list,
+    });
+  } catch (err) {
+    console.error('Admin reset promotions error:', err);
+    res.status(500).json({ success: false, message: 'กู้คืนโปรโมชันไม่สำเร็จ' });
+  }
+});
+
+// POST /api/admin/veritrans/config - Save or update VeriTrans / Midtrans Sandbox API Keys at runtime
+router.post('/veritrans/config', async (req, res) => {
+  try {
+    const { serverKey, clientKey, merchantId } = req.body || {};
+    const updated = updateRuntimeGatewayConfig({ serverKey, clientKey, merchantId });
+    res.json({
+      success: true,
+      message: updated.configured
+        ? 'เชื่อมต่อ API Key ของ VeriTrans / Midtrans Sandbox สำเร็จแล้ว!'
+        : 'สลับเป็นโหมด VeriTrans Sandbox Simulator อัตโนมัติแล้ว',
+      data: updated,
+    });
+  } catch (err) {
+    console.error('Admin update VeriTrans config error:', err);
+    res.status(500).json({ success: false, message: 'บันทึกการตั้งค่า VeriTrans ไม่สำเร็จ' });
   }
 });
 

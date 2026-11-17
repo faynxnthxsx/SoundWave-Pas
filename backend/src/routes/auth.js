@@ -123,27 +123,51 @@ router.post('/google', async (req, res) => {
     }
 
     let payload = null;
-    if (credential) {
-      const verifyRes = await fetch(
-        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
-      );
-      payload = await verifyRes.json();
-      if (!verifyRes.ok || !payload?.sub || !payload?.email) {
-        return res.status(401).json({ success: false, message: 'ยืนยันตัวตนกับ Google ไม่สำเร็จ' });
-      }
+    let verificationError = null;
+    const configuredClientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
 
-      const configuredClientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
-      if (configuredClientId && !configuredClientId.startsWith('YOUR_') && payload.aud !== configuredClientId) {
-        return res.status(401).json({ success: false, message: 'Google Client ID ไม่ตรงกับระบบ' });
+    if (credential) {
+      try {
+        const verifyRes = await fetch(
+          `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+        );
+        const tokenPayload = await verifyRes.json();
+        if (verifyRes.ok && tokenPayload?.sub && tokenPayload?.email) {
+          if (
+            configuredClientId &&
+            !configuredClientId.startsWith('YOUR_') &&
+            tokenPayload.aud !== configuredClientId
+          ) {
+            verificationError = 'Google Client ID ไม่ตรงกับระบบ';
+          } else {
+            payload = tokenPayload;
+          }
+        } else {
+          verificationError = tokenPayload?.error_description || 'ยืนยันตัวตนด้วย id_token ไม่สำเร็จ';
+        }
+      } catch (err) {
+        verificationError = err.message;
       }
-    } else if (accessToken) {
+    }
+
+    // Fallback to OAuth2 userinfo endpoint if id_token was absent or failed verification
+    if (!payload && accessToken) {
       const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      payload = await userinfoRes.json();
-      if (!userinfoRes.ok || !payload?.sub || !payload?.email) {
-        return res.status(401).json({ success: false, message: 'ดึงข้อมูลโปรไฟล์จาก Google ไม่สำเร็จ' });
+      const userinfoPayload = await userinfoRes.json();
+      if (userinfoRes.ok && userinfoPayload?.sub && userinfoPayload?.email) {
+        payload = userinfoPayload;
+      } else {
+        verificationError = userinfoPayload?.error_description || 'ดึงข้อมูลโปรไฟล์จาก Google ไม่สำเร็จ';
       }
+    }
+
+    if (!payload?.sub || !payload?.email) {
+      return res.status(401).json({
+        success: false,
+        message: verificationError || 'ยืนยันตัวตนกับ Google ไม่สำเร็จ',
+      });
     }
 
     const email = String(payload.email).trim().toLowerCase();
@@ -271,10 +295,10 @@ router.get('/line/config', async (req, res) => {
   });
 });
 
-// POST /api/auth/line/verify - Exchange auth code for user profile
+// POST /api/auth/line/verify - Exchange auth code for user profile & persist to Customer
 router.post('/line/verify', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, redirectUri: clientRedirectUri } = req.body;
     if (!code) {
       return res.status(400).json({ success: false, message: 'ไม่พบรหัสยืนยันตัวตน (Missing auth code)' });
     }
@@ -284,7 +308,7 @@ router.post('/line/verify', async (req, res) => {
     if (!channelSecret) {
       return res.status(503).json({ success: false, message: 'LINE Login ยังไม่ได้ตั้งค่า กรุณากำหนด LINE_LOGIN_CHANNEL_SECRET' });
     }
-    const redirectUri = getLineCallbackUrl(req);
+    const redirectUri = clientRedirectUri || getLineCallbackUrl(req);
 
     // 1. Exchange code for access token
     const tokenParams = new URLSearchParams({
@@ -318,6 +342,25 @@ router.post('/line/verify', async (req, res) => {
     const profile = await profileRes.json();
     if (!profileRes.ok) {
       return res.status(400).json({ success: false, message: 'ดึงข้อมูลโปรไฟล์ LINE ไม่สำเร็จ' });
+    }
+
+    // Persist real lineUserId to logged-in Customer account if session exists
+    try {
+      const sessionToken =
+        req.headers.authorization?.match(/^Bearer (.+)$/)?.[1] || req.headers['x-soundwave-session'];
+      if (sessionToken && profile.userId) {
+        const session = await prisma.authSession.findUnique({
+          where: { tokenHash: tokenHash(sessionToken) },
+        });
+        if (session?.customerId) {
+          await prisma.customer.update({
+            where: { id: session.customerId },
+            data: { lineUserId: profile.userId },
+          });
+        }
+      }
+    } catch (linkErr) {
+      console.warn('Could not persist lineUserId to customer:', linkErr.message);
     }
 
     let friendFlag = null;

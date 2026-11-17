@@ -63,26 +63,66 @@ model RadarCandidate {
 }
 
 model Booking {
-  id             String        @id @default(uuid())
-  bookingCode    String        @unique // e.g. "SW-98213"
-  customerName   String
-  customerPhone  String
-  customerLineId String?       // LINE User ID for Flex Message delivery
-  selectedSeats  String?       // JSON array of selected seat numbers
-  lineDeliveryStatus String?   // SENT, FAILED, or NOT_LINKED
-  lineDeliveryError String?
-  status         String        @default("PENDING") // PENDING, PAID, CANCELLED, EXPIRED
-  totalAmount    Float
-  refundedAmount Float         @default(0)
-  refundedAt     DateTime?
-  expiresAt      DateTime      // 10 minutes lock
-  paidAt         DateTime?
-  paymentMethod  String        @default("PROMPTPAY")
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id                  String        @id @default(uuid())
+  bookingCode         String        @unique // e.g. "SW-98213"
+  customerName        String
+  customerPhone       String
+  customerLineId      String?       // LINE User ID for Flex Message delivery
+  selectedSeats       String?       // JSON array of selected seat numbers
+  lineDeliveryStatus  String?       // SENT, FAILED, or NOT_LINKED
+  lineDeliveryError   String?
+  status              String        @default("PENDING") // PENDING, PAID, CANCELLED, EXPIRED
+  subtotalAmount      Float         @default(0)
+  discountAmount      Float         @default(0)
+  bundleDiscount      Float         @default(0)
+  couponDiscount      Float         @default(0)
+  partnerDiscount     Float         @default(0)
+  promoCode           String?
+  vatRate             Float         @default(7)
+  vatAmount           Float         @default(0)
+  whtRate             Float         @default(0)
+  whtAmount           Float         @default(0)
+  processingFee       Float         @default(0)
+  taxInvoiceRequested Boolean       @default(false)
+  taxCompanyName      String?
+  taxId               String?
+  totalAmount         Float
+  refundedAmount      Float         @default(0)
+  refundedAt          DateTime?
+  expiresAt           DateTime      // 10 minutes lock
+  paidAt              DateTime?
+  paymentMethod       String        @default("PROMPTPAY")
+  paymentGateway      String        @default("VERITRANS")
+  gatewayOrderId      String?
+  gatewaySnapToken    String?
+  gatewayRedirectUrl  String?       @db.Text
+  gatewayPayloadJson  String?       @db.LongText
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
-  items          BookingItem[]
-  tickets        Ticket[]
+  items               BookingItem[]
+  tickets             Ticket[]
+}
+
+model Promotion {
+  id             Int       @id @default(autoincrement())
+  code           String    @unique
+  name           String
+  description    String    @default("") @db.VarChar(1000)
+  category       String    @default("COUPON") // COUPON, AUTO_BUNDLE, PAYMENT_PARTNER
+  discountType   String    @default("PERCENT") // PERCENT, FIXED
+  discountValue  Float     @default(10)
+  maxDiscount    Float?
+  minTickets     Int       @default(1)
+  minSpend       Float     @default(0)
+  paymentChannel String    @default("ALL") // ALL, CREDIT_CARD, JCB, VISA, PROMPTPAY
+  concertId      Int?
+  maxUses        Int       @default(100)
+  usedCount      Int       @default(0)
+  isActive       Boolean   @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model BookingItem {

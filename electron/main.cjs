@@ -44,7 +44,11 @@ function startStaticServer() {
       if (!filePath.startsWith(DIST_DIR) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
         filePath = path.join(DIST_DIR, 'index.html');
       }
-      res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream' });
+      const ext = path.extname(filePath).toLowerCase();
+      res.writeHead(200, {
+        'Content-Type': MIME[ext] || 'application/octet-stream',
+        ...(ext === '.html' ? { 'Cross-Origin-Opener-Policy': 'same-origin-allow-popups' } : {}),
+      });
       fs.createReadStream(filePath).pipe(res);
     });
     server.listen(0, '127.0.0.1', () => resolve(server.address().port));
@@ -87,7 +91,25 @@ async function createWindow() {
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    // Allow printable Tax Invoice / blank popups, Google OAuth, and VeriTrans/Midtrans popups inside Electron
+    if (
+      !url ||
+      url === 'about:blank' ||
+      url.startsWith('https://accounts.google.com') ||
+      url.startsWith('https://app.sandbox.midtrans.com') ||
+      url.startsWith('https://app.midtrans.com')
+    ) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          autoHideMenuBar: true,
+          backgroundColor: '#07070b',
+        },
+      };
+    }
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url);
+    }
     return { action: 'deny' };
   });
 

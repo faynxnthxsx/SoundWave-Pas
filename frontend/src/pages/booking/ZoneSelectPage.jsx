@@ -19,6 +19,7 @@ import {
 import StadiumZoneMap from './StadiumZoneMap';
 import AuthModal from '../../components/AuthModal';
 import LineConnectCard from '../../components/booking/LineConnectCard';
+import SmartPromoAndTaxBox from '../../components/booking/SmartPromoAndTaxBox';
 import Button from '../../components/ui/Button';
 import { useLanguage } from '../../context/LanguageContext';
 import {
@@ -30,6 +31,8 @@ import {
   isZoneStanding,
 } from '../../utils/seatLayout';
 
+const REAL_LINE_ID_REGEX = /^U[0-9a-f]{32}$/i;
+
 export default function ZoneSelectPage() {
   const { t, trData } = useLanguage();
   const navigate = useNavigate();
@@ -38,7 +41,11 @@ export default function ZoneSelectPage() {
   const bookingDraftKey = `soundwave_booking_draft:${concertId || 'default'}`;
   const [bookingDraft] = useState(() => {
     try {
-      return JSON.parse(sessionStorage.getItem(bookingDraftKey) || 'null');
+      return (
+        JSON.parse(sessionStorage.getItem(bookingDraftKey) || 'null') ||
+        JSON.parse(sessionStorage.getItem('soundwave_booking_draft_latest') || 'null') ||
+        JSON.parse(localStorage.getItem('soundwave_booking_draft_latest') || 'null')
+      );
     } catch {
       return null;
     }
@@ -93,6 +100,7 @@ export default function ZoneSelectPage() {
     const code = urlParams.get('code');
     if (code) {
       setLineLoading(true);
+      const pendingRedirectUri = sessionStorage.getItem('soundwave_line_redirect_uri');
       fetch('/api/auth/line/verify', {
         method: 'POST',
         headers: {
@@ -104,23 +112,42 @@ export default function ZoneSelectPage() {
               }
             : {}),
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({
+          code,
+          ...(pendingRedirectUri ? { redirectUri: pendingRedirectUri } : {}),
+        }),
       })
         .then((res) => res.json())
         .then((data) => {
-          if (data.success && data.user) {
+          if (data.success && data.user && REAL_LINE_ID_REGEX.test(data.user.userId || '')) {
             setLineUser(data.user);
-            setCustomerName(data.user.displayName || '');
-            setCustomerLineId(data.user.userId || '');
+            setCustomerName((prev) => (prev && prev.trim() ? prev : data.user.displayName || ''));
+            setCustomerLineId(data.user.userId);
             localStorage.setItem('soundwave_line_user', JSON.stringify(data.user));
+            try {
+              const account = JSON.parse(localStorage.getItem('soundwave_user') || 'null');
+              if (account) {
+                localStorage.setItem(
+                  'soundwave_user',
+                  JSON.stringify({ ...account, lineUserId: data.user.userId })
+                );
+              }
+            } catch {
+              /* ignore */
+            }
           } else {
-            console.error('LINE verification failed:', data.message);
+            console.error('LINE verification failed:', data.message || 'Invalid LINE user ID');
+            if (data.message) {
+              setErrorMsg(data.message);
+            }
           }
         })
         .catch((err) => console.error(err))
         .finally(() => {
           setLineLoading(false);
-          const nextUrl = window.location.pathname + (concertId ? `?concertId=${concertId}` : '');
+          sessionStorage.removeItem('soundwave_line_redirect_uri');
+          const restoredConcertId = concertId || bookingDraft?.concertId;
+          const nextUrl = window.location.pathname + (restoredConcertId ? `?concertId=${restoredConcertId}` : '');
           window.history.replaceState({}, document.title, nextUrl);
         });
     } else {
@@ -128,21 +155,27 @@ export default function ZoneSelectPage() {
         const savedLine = localStorage.getItem('soundwave_line_user');
         if (savedLine) {
           const u = JSON.parse(savedLine);
-          setLineUser(u);
-          if (!bookingDraft?.customerName) setCustomerName(u.displayName || '');
-          setCustomerLineId(u.userId || '');
-        } else {
-          const account = JSON.parse(localStorage.getItem('soundwave_user') || 'null');
-          if (account) {
-            if (!bookingDraft?.customerName) setCustomerName(account.username || '');
-            setCustomerLineId(account.lineUserId || '');
+          if (REAL_LINE_ID_REGEX.test(u?.userId || '')) {
+            setLineUser(u);
+            setCustomerName((prev) => (prev && prev.trim() ? prev : bookingDraft?.customerName || u.displayName || ''));
+            setCustomerLineId(u.userId);
+          } else {
+            // Purge stale mock LINE IDs (e.g. U...alpha) that fail LINE Messaging API with 400 Bad Request
+            localStorage.removeItem('soundwave_line_user');
+          }
+        }
+        const account = JSON.parse(localStorage.getItem('soundwave_user') || 'null');
+        if (account) {
+          setCustomerName((prev) => (prev && prev.trim() ? prev : bookingDraft?.customerName || account.username || ''));
+          if (REAL_LINE_ID_REGEX.test(account.lineUserId || '')) {
+            setCustomerLineId((prev) => prev || account.lineUserId);
           }
         }
       } catch {
         /* ignore */
       }
     }
-  }, [concertId, bookingDraft?.customerName]);
+  }, [concertId, bookingDraft?.concertId, bookingDraft?.customerName]);
 
   // Load Concert & Zones
   useEffect(() => {
@@ -152,7 +185,7 @@ export default function ZoneSelectPage() {
         const response = await fetch(concertId ? `/api/concerts/${encodeURIComponent(concertId)}` : '/api/concerts');
         const data = await response.json();
         const event = concertId ? data.data : data.data?.[0];
-        if (!response.ok || !data.success || !event) throw new Error(data.message || 'ไม่พบคอนเสิร์ตที่เลือก');
+        if (!response.ok || !data.success || !event) throw new Error(data.message || t('ไม่พบคอนเสิร์ตที่เลือก', 'Selected concert not found'));
         if (!mounted) return;
         setConcert(event);
         const availableZones = event.zones?.filter((zone) => zone.available > 0) || [];
@@ -161,7 +194,7 @@ export default function ZoneSelectPage() {
           : null;
         setSelectedZone(zoneToSelect);
       } catch (err) {
-        if (mounted) setLoadError(err.message || 'โหลดข้อมูลคอนเสิร์ตไม่สำเร็จ');
+        if (mounted) setLoadError(err.message || t('โหลดข้อมูลคอนเสิร์ตไม่สำเร็จ', 'Failed to load concert details'));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -237,7 +270,12 @@ export default function ZoneSelectPage() {
           setSelectedSeats((prev) => {
             const valid = prev.filter((s) => !taken.includes(s));
             if (valid.length < prev.length) {
-              setErrorMsg('บางที่นั่งที่คุณเลือกถูกจองไปแล้ว ระบบได้นำออกจากรายการให้แล้ว');
+              setErrorMsg(
+                t(
+                  'บางที่นั่งที่คุณเลือกถูกจองไปแล้ว ระบบได้นำออกจากรายการให้แล้ว',
+                  'Some of your selected seats were just reserved and have been removed from your selection'
+                )
+              );
             }
             return valid;
           });
@@ -406,28 +444,76 @@ export default function ZoneSelectPage() {
     }
   };
 
-  // Trigger LINE OAuth Redirect
+  // Trigger LINE Connect (Preserves all filled-in buyer info, seats, promo & tax across OAuth redirect)
   const handleLineLogin = () => {
+    const draftPayload = JSON.stringify({
+      concertId: concert?.id || concertId,
+      zoneId: selectedZone?.id || null,
+      quantity: selectedSeats.length,
+      customerName,
+      customerPhone,
+      selectedSeats,
+      promoCodeInput,
+      appliedPromoCode,
+      paymentChannel,
+      withholdingTax,
+      taxCompanyName,
+      taxId,
+    });
+    try {
+      sessionStorage.setItem(bookingDraftKey, draftPayload);
+      sessionStorage.setItem('soundwave_booking_draft_latest', draftPayload);
+      localStorage.setItem('soundwave_booking_draft_latest', draftPayload);
+    } catch {
+      /* ignore */
+    }
+
+    // Reuse an already-verified real 33-char LINE User ID (U + 32 hex chars) without redirecting
+    let existingRealUser = null;
+    try {
+      const savedLine = JSON.parse(localStorage.getItem('soundwave_line_user') || 'null');
+      if (REAL_LINE_ID_REGEX.test(savedLine?.userId || '')) {
+        existingRealUser = savedLine;
+      } else {
+        localStorage.removeItem('soundwave_line_user');
+      }
+      if (!existingRealUser) {
+        const account = JSON.parse(localStorage.getItem('soundwave_user') || 'null');
+        if (REAL_LINE_ID_REGEX.test(account?.lineUserId || '')) {
+          existingRealUser = {
+            userId: account.lineUserId,
+            displayName: customerName.trim() || account.username || 'LINE Verified User',
+            pictureUrl: account.avatarUrl || '',
+          };
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    if (existingRealUser) {
+      setLineUser(existingRealUser);
+      if (!customerName.trim()) {
+        setCustomerName(existingRealUser.displayName || '');
+      }
+      setCustomerLineId(existingRealUser.userId);
+      localStorage.setItem('soundwave_line_user', JSON.stringify(existingRealUser));
+      return;
+    }
+
+    // Never fabricate fake LINE IDs (like U...alpha); redirect to real LINE Login OAuth
     const clientId = lineConfig?.channelId || '2012117630';
     const callbackUrl = lineConfig?.callbackUrl || `${window.location.origin}/booking/zone-select`;
+    try {
+      sessionStorage.setItem('soundwave_line_redirect_uri', callbackUrl);
+    } catch {
+      /* ignore */
+    }
     const state = 'swp_' + Math.random().toString(36).substring(7);
     const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
       callbackUrl
     )}&state=${state}&scope=profile%20openid`;
     window.location.href = lineAuthUrl;
-  };
-
-  // Mock LINE Login for fast demo
-  const handleMockLineLogin = () => {
-    const mockUser = {
-      userId: 'U' + Math.random().toString(36).substring(2, 12) + 'alpha',
-      displayName: 'สมชาย รักเสียงเพลง (LINE Test)',
-      pictureUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80',
-    };
-    setLineUser(mockUser);
-    setCustomerName(mockUser.displayName);
-    setCustomerLineId(mockUser.userId);
-    localStorage.setItem('soundwave_line_user', JSON.stringify(mockUser));
   };
 
   const handleDisconnectLine = () => {
@@ -437,9 +523,74 @@ export default function ZoneSelectPage() {
   };
 
   const cleanPhone = customerPhone.replace(/\D/g, '');
+
+  // Smart Concert Promotion, VeriTrans Channel & Tax State
+  const [promoCodeInput, setPromoCodeInput] = useState(() => bookingDraft?.promoCodeInput || '');
+  const [appliedPromoCode, setAppliedPromoCode] = useState(() => bookingDraft?.appliedPromoCode || '');
+  const [paymentChannel, setPaymentChannel] = useState(() => bookingDraft?.paymentChannel || 'PROMPTPAY'); // PROMPTPAY | CREDIT_CARD
+  const [withholdingTax, setWithholdingTax] = useState(() => Boolean(bookingDraft?.withholdingTax));
+  const [taxCompanyName, setTaxCompanyName] = useState(() => bookingDraft?.taxCompanyName || '');
+  const [taxId, setTaxId] = useState(() => bookingDraft?.taxId || '');
+  const [pricingBreakdown, setPricingBreakdown] = useState(null);
+
+  useEffect(() => {
+    const handleLogout = () => {
+      setLineUser(null);
+      setCustomerLineId('');
+      setCustomerName('');
+      setCustomerPhone('');
+      setTaxCompanyName('');
+      setTaxId('');
+      setWithholdingTax(false);
+      try {
+        sessionStorage.removeItem(bookingDraftKey);
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener('soundwave:logout', handleLogout);
+    return () => window.removeEventListener('soundwave:logout', handleLogout);
+  }, [bookingDraftKey]);
+
+  useEffect(() => {
+    if (!selectedZone || selectedSeats.length === 0) {
+      setPricingBreakdown(null);
+      return;
+    }
+    let active = true;
+    fetch('/api/bookings/promotions/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        zoneId: selectedZone.id,
+        unitPrice: selectedZone.price,
+        quantity: selectedSeats.length,
+        concertId: concert?.id || null,
+        promoCode: appliedPromoCode,
+        paymentChannel,
+        withholdingTax,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (active && data.success) {
+          setPricingBreakdown(data.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [selectedZone, selectedSeats.length, concert?.id, appliedPromoCode, paymentChannel, withholdingTax]);
+
   const totalPrice = useMemo(
-    () => (selectedZone ? selectedZone.price * selectedSeats.length : 0),
-    [selectedZone, selectedSeats]
+    () =>
+      pricingBreakdown && selectedSeats.length > 0
+        ? pricingBreakdown.totalAmount
+        : selectedZone
+        ? selectedZone.price * selectedSeats.length
+        : 0,
+    [pricingBreakdown, selectedZone, selectedSeats]
   );
 
   // Submit Booking Reservation
@@ -518,16 +669,24 @@ export default function ZoneSelectPage() {
           customerPhone: cleanPhone,
           customerLineId: customerLineId.trim() || undefined,
           selectedSeats,
+          promoCode: appliedPromoCode,
+          paymentChannel,
+          withholdingTax,
+          taxInvoiceRequested: withholdingTax,
+          taxCompanyName,
+          taxId,
         }),
       });
 
       const data = await response.json();
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'จองบัตรไม่สำเร็จ');
+        throw new Error(data.message || t('จองบัตรไม่สำเร็จ', 'Booking failed'));
       }
 
       localStorage.setItem(`soundwave_seats_${data.data.bookingCode}`, JSON.stringify(selectedSeats));
       sessionStorage.removeItem(bookingDraftKey);
+      sessionStorage.removeItem('soundwave_booking_draft_latest');
+      localStorage.removeItem('soundwave_booking_draft_latest');
 
       navigate(`/booking/payment/${data.data.bookingCode}`);
     } catch (err) {
@@ -1058,7 +1217,7 @@ export default function ZoneSelectPage() {
                   /* ── MODE B: REALISTIC STADIUM / ARENA BOWL SEATED MATRIX (โซนบัตรนั่ง) ── */
                   <div>
                     {/* Live Hover Seat Inspector Pill */}
-                    <div className="mb-3 flex items-center justify-between rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-xs">
+                    <div className="seat-inspector-pill mb-3 flex items-center justify-between rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-xs">
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">{t('ข้อมูลที่นั่ง:', 'Seat Info:')}</span>
                         {hoveredSeat ? (
@@ -1088,7 +1247,7 @@ export default function ZoneSelectPage() {
                     </div>
 
                     {/* Stadium Bowl Seat Rows (Rows A - G, Left Wing / Center / Right Wing) */}
-                    <div className={`space-y-1.5 sm:space-y-2.5 max-w-full py-3.5 px-3 sm:px-4 rounded-2xl bg-[#0b0b12] border border-white/10 select-none ${
+                    <div className={`seat-matrix-grid-box space-y-1.5 sm:space-y-2.5 max-w-full py-3.5 px-3 sm:px-4 rounded-2xl bg-[#0b0b12] border border-white/10 select-none ${
                       seatZoom ? 'overflow-x-auto touch-pan-x' : 'overflow-hidden'
                     }`}>
                       {seatZoom && (
@@ -1291,7 +1450,7 @@ export default function ZoneSelectPage() {
                     {selectedSeats.length > 0 && (
                       <button
                         type="button"
-                        aria-label="ลดจำนวนบัตร"
+                        aria-label={t('ลดจำนวนบัตร', 'Decrease ticket quantity')}
                         onClick={() => handleQuantityChange(selectedSeats.length - 1)}
                         className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 cursor-pointer"
                       >
@@ -1303,7 +1462,7 @@ export default function ZoneSelectPage() {
                     </span>
                     <button
                       type="button"
-                      aria-label="เพิ่มจำนวนบัตร"
+                      aria-label={t('เพิ่มจำนวนบัตร', 'Increase ticket quantity')}
                       onClick={() => handleQuantityChange(selectedSeats.length + 1)}
                       disabled={selectedSeats.length >= Math.min(6, selectedZone?.available || 6)}
                       className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 disabled:opacity-30 cursor-pointer"
@@ -1315,9 +1474,30 @@ export default function ZoneSelectPage() {
               )}
 
               <div className="flex items-center justify-between border-t border-white/10 pt-3">
-                <span className="text-xs font-semibold text-gray-300">{t('ยอดชำระสุทธิ', 'Total Amount')}</span>
+                <span className="text-xs font-semibold text-gray-300">{t('ยอดชำระสุทธิ (รวมภาษี/หักส่วนลด)', 'Net Total (Inc. Tax & Discounts)')}</span>
                 <span className="text-2xl font-black text-cyan-200">฿{totalPrice.toLocaleString()}</span>
               </div>
+            </div>
+
+            {/* ── SMART CONCERT PROMOTION, VOUCHER PICKER & TAX BREAKDOWN ── */}
+            <div className="my-3.5">
+              <SmartPromoAndTaxBox
+                pricing={pricingBreakdown}
+                promoCodeInput={promoCodeInput}
+                setPromoCodeInput={setPromoCodeInput}
+                appliedCode={appliedPromoCode}
+                onApplyPromoCode={(code) => setAppliedPromoCode(code)}
+                paymentChannel={paymentChannel}
+                setPaymentChannel={setPaymentChannel}
+                withholdingTax={withholdingTax}
+                setWithholdingTax={setWithholdingTax}
+                taxCompanyName={taxCompanyName}
+                setTaxCompanyName={setTaxCompanyName}
+                taxId={taxId}
+                setTaxId={setTaxId}
+                onQuickAddTickets={(targetQty) => handleQuantityChange(targetQty)}
+                selectedSeatsCount={selectedSeats.length}
+              />
             </div>
 
             {/* ── LINE CONNECT INTEGRATION ── */}

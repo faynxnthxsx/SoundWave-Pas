@@ -10,6 +10,16 @@ const {
   getCharge,
   markTestChargeAsPaid
 } = require('../services/omiseService');
+const {
+  ensureDefaultPromotions,
+  calculateOrderPricing
+} = require('../services/promotionService');
+const {
+  getGatewayConfig,
+  createVeritransTransaction,
+  processSandboxPayment,
+  verifyWebhookSignature
+} = require('../services/veritransService');
 
 function extractOmiseChargeId(paymentMethod) {
   if (!paymentMethod || typeof paymentMethod !== 'string') return null;
@@ -17,10 +27,55 @@ function extractOmiseChargeId(paymentMethod) {
   return match ? match[1] : null;
 }
 
+const REAL_LINE_USER_ID_REGEX = /^U[0-9a-f]{32}$/i;
+
+async function resolveRealLineUserId(booking) {
+  let candidate = (booking?.customerLineId || '').trim();
+  if (REAL_LINE_USER_ID_REGEX.test(candidate)) return candidate;
+
+  // 1. Try matching Customer by username === customerName
+  if (booking?.customerName) {
+    const cust = await prisma.customer.findFirst({
+      where: {
+        username: booking.customerName,
+        lineUserId: { not: null },
+      },
+      select: { lineUserId: true },
+    });
+    if (cust?.lineUserId && REAL_LINE_USER_ID_REGEX.test(cust.lineUserId)) {
+      return cust.lineUserId;
+    }
+  }
+
+  // 2. Try matching any previous booking with a valid 33-char LINE ID
+  const recentBookings = await prisma.booking.findMany({
+    where: { customerLineId: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    take: 30,
+    select: { customerName: true, customerPhone: true, customerLineId: true },
+  });
+
+  const exactMatch = recentBookings.find(
+    (b) =>
+      REAL_LINE_USER_ID_REGEX.test(b.customerLineId || '') &&
+      (b.customerPhone === booking?.customerPhone || b.customerName === booking?.customerName)
+  );
+  if (exactMatch) return exactMatch.customerLineId;
+
+  const fallbackValid = recentBookings.find((b) => REAL_LINE_USER_ID_REGEX.test(b.customerLineId || ''));
+  return fallbackValid?.customerLineId || null;
+}
+
 async function deliverTicketsToLine(booking, tickets) {
-  if (!booking.customerLineId) {
-    await prisma.booking.update({ where: { id: booking.id }, data: { lineDeliveryStatus: 'NOT_LINKED', lineDeliveryError: 'ยังไม่มี LINE ID ในรายการจอง' } });
+  let targetLineId = await resolveRealLineUserId(booking);
+  if (!targetLineId) {
+    await prisma.booking.update({ where: { id: booking.id }, data: { lineDeliveryStatus: 'NOT_LINKED', lineDeliveryError: 'ยังไม่มี LINE ID จริงในรายการจอง' } });
     return { status: 'NOT_LINKED', error: 'รายการจองนี้ไม่มี LINE ID' };
+  }
+
+  if (targetLineId !== booking.customerLineId) {
+    await prisma.booking.update({ where: { id: booking.id }, data: { customerLineId: targetLineId } });
+    booking.customerLineId = targetLineId;
   }
 
   const item = booking.items?.find((entry) => entry.zoneId === tickets[0]?.zoneId);
@@ -31,12 +86,84 @@ async function deliverTicketsToLine(booking, tickets) {
     return { status: 'FAILED', error: 'ข้อมูลคอนเสิร์ตของตั๋วไม่ครบ' };
   }
 
-  const result = await sendTicketsToLineUser(booking.customerLineId, concert, tickets, zone, booking);
+  const result = await sendTicketsToLineUser(targetLineId, concert, tickets, zone, booking);
   const status = result.success ? 'SENT' : 'FAILED';
   const error = result.error || result.reason || null;
   await prisma.booking.update({ where: { id: booking.id }, data: { lineDeliveryStatus: status, lineDeliveryError: error } });
   return { status, error };
 }
+
+// ─── GET /api/bookings/promotions/active ─────────────────────────────────────
+// Public endpoint to list active promotions & VeriTrans gateway info
+router.get('/promotions/active', async (req, res) => {
+  try {
+    await ensureDefaultPromotions();
+    const concertId = req.query.concertId ? Number(req.query.concertId) : null;
+    const promotions = await prisma.promotion.findMany({
+      where: {
+        isActive: true,
+        ...(concertId ? { OR: [{ concertId: null }, { concertId }] } : {}),
+      },
+      orderBy: [{ category: 'asc' }, { discountValue: 'desc' }],
+    });
+    res.json({
+      success: true,
+      gateway: getGatewayConfig(),
+      data: promotions,
+    });
+  } catch (error) {
+    console.error('Error fetching active promotions:', error);
+    res.status(500).json({ success: false, message: 'ไม่สามารถโหลดข้อมูลโปรโมชันได้' });
+  }
+});
+
+// ─── POST /api/bookings/promotions/calculate ─────────────────────────────────
+// Real-time discount, VAT 7%, WHT 3% & VeriTrans item_details preview
+router.post('/promotions/calculate', async (req, res) => {
+  try {
+    const {
+      zoneId,
+      unitPrice,
+      quantity = 1,
+      concertId = null,
+      promoCode = '',
+      paymentChannel = 'PROMPTPAY',
+      withholdingTax = false,
+    } = req.body || {};
+
+    let resolvedPrice = Number(unitPrice || 0);
+    let resolvedZoneName = 'Concert Ticket';
+    let resolvedConcertId = concertId;
+
+    if (zoneId) {
+      const zone = await prisma.zone.findUnique({ where: { id: Number(zoneId) } });
+      if (zone) {
+        resolvedPrice = zone.price;
+        resolvedZoneName = zone.name;
+        resolvedConcertId = zone.concertId;
+      }
+    }
+
+    const pricing = await calculateOrderPricing({
+      unitPrice: resolvedPrice,
+      quantity: Number(quantity || 0),
+      concertId: resolvedConcertId,
+      promoCode,
+      paymentChannel,
+      withholdingTax: Boolean(withholdingTax),
+      zoneName: resolvedZoneName,
+    });
+
+    res.json({
+      success: true,
+      gateway: getGatewayConfig(),
+      data: pricing,
+    });
+  } catch (error) {
+    console.error('Error calculating pricing:', error);
+    res.status(500).json({ success: false, message: 'คำนวณส่วนลดและภาษีไม่สำเร็จ' });
+  }
+});
 
 // GET /api/bookings/zones/:zoneId/occupied-seats - List all occupied/reserved seats
 router.get('/zones/:zoneId/occupied-seats', async (req, res) => {
@@ -91,7 +218,21 @@ router.get('/zones/:zoneId/occupied-seats', async (req, res) => {
 // POST /api/bookings - Create new reservation with 10-minute hold & unique seat validation (Requires Customer Login)
 router.post('/', requireCustomer, async (req, res) => {
   try {
-    const { concertId, zoneId, quantity, customerName, customerPhone, customerLineId, selectedSeats } = req.body;
+    const {
+      concertId,
+      zoneId,
+      quantity,
+      customerName,
+      customerPhone,
+      customerLineId,
+      selectedSeats,
+      promoCode = '',
+      paymentChannel = 'PROMPTPAY',
+      withholdingTax = false,
+      taxInvoiceRequested = false,
+      taxCompanyName = '',
+      taxId = '',
+    } = req.body;
 
     if (!concertId || !zoneId || !quantity || !customerName || !customerPhone) {
       return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
@@ -108,12 +249,12 @@ router.post('/', requireCustomer, async (req, res) => {
       include: { concert: true }
     });
 
-  if (!zone || zone.concertId !== Number(concertId) || zone.available < qty) {
+    if (!zone || zone.concertId !== Number(concertId) || zone.available < qty) {
       return res.status(400).json({ success: false, message: 'บัตรในโซนนี้ไม่เพียงพอหรือหมดแล้ว' });
     }
-  if (!['ON_SALE'].includes(zone.status) || !['ON_SALE', 'UPCOMING'].includes(zone.concert.status)) {
-    return res.status(409).json({ success: false, message: 'คอนเสิร์ตหรือโซนนี้พักการขาย/ปิดการขายแล้ว' });
-  }
+    if (!['ON_SALE'].includes(zone.status) || !['ON_SALE', 'UPCOMING'].includes(zone.concert.status)) {
+      return res.status(409).json({ success: false, message: 'คอนเสิร์ตหรือโซนนี้พักการขาย/ปิดการขายแล้ว' });
+    }
 
     if (zone.concert?.status === 'PAUSED') {
       return res.status(400).json({ success: false, message: 'คอนเสิร์ตนี้พักการจำหน่ายบัตรชั่วคราว' });
@@ -146,13 +287,37 @@ router.post('/', requireCustomer, async (req, res) => {
       }
     }
 
+    // Calculate Discounts (Squad Bundle + Coupon + VeriTrans Partner) & Taxes (VAT 7% + WHT 3%)
+    const pricing = await calculateOrderPricing({
+      unitPrice: zone.price,
+      quantity: qty,
+      concertId: zone.concertId,
+      promoCode,
+      paymentChannel,
+      withholdingTax: Boolean(withholdingTax),
+      zoneName: zone.name,
+    });
+
     // Generate Booking Code: SW-YEAR-RANDOM
     const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
     const bookingCode = `SW-${new Date().getFullYear()}-${randomCode}`;
 
     // 10 minutes expiry lock
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    const totalAmount = zone.price * qty;
+    const totalAmount = pricing.totalAmount;
+
+    // Create VeriTrans Sandbox Transaction
+    const vtTransaction = await createVeritransTransaction({
+      booking: {
+        bookingCode,
+        customerName,
+        customerPhone,
+        totalAmount,
+        promoCode: pricing.appliedCouponPromo?.code || null,
+      },
+      pricing,
+      paymentChannel: pricing.paymentChannel,
+    });
 
     // Use transaction to hold quota and atomically validate seat reservation (Prevents Race Condition)
     let booking;
@@ -169,7 +334,6 @@ router.post('/', requireCustomer, async (req, res) => {
 
         // 2. Atomically check and lock seats inside the transaction
         if (seatsToReserve.length > 0) {
-          // Check conflict with already issued or reserved tickets in this zone
           const conflictTicket = await tx.ticket.findFirst({
             where: {
               zoneId: zone.id,
@@ -182,7 +346,6 @@ router.post('/', requireCustomer, async (req, res) => {
             throw new Error(`SEAT_TAKEN:${conflictTicket.seatNumber}`);
           }
 
-          // Check conflict with other users' active pending or reserved bookings
           const activePending = await tx.booking.findMany({
             where: {
               status: { in: ['PENDING', 'RESERVED'] },
@@ -207,6 +370,20 @@ router.post('/', requireCustomer, async (req, res) => {
           }
         }
 
+        // Increment promotion usage count if applied
+        const appliedPromoIds = [
+          pricing.appliedBundlePromo?.id,
+          pricing.appliedCouponPromo?.id,
+          pricing.appliedPartnerPromo?.id,
+        ].filter(Boolean);
+
+        for (const promoId of new Set(appliedPromoIds)) {
+          await tx.promotion.update({
+            where: { id: promoId },
+            data: { usedCount: { increment: 1 } },
+          });
+        }
+
         return await tx.booking.create({
           data: {
             bookingCode,
@@ -214,9 +391,32 @@ router.post('/', requireCustomer, async (req, res) => {
             customerPhone,
             customerLineId: customerLineId || req.customer?.lineUserId || null,
             selectedSeats: seatsToReserve.length > 0 ? JSON.stringify(seatsToReserve) : null,
+            subtotalAmount: pricing.subtotalAmount,
+            discountAmount: pricing.discountAmount,
+            bundleDiscount: pricing.bundleDiscount,
+            couponDiscount: pricing.couponDiscount,
+            partnerDiscount: pricing.partnerDiscount,
+            promoCode: pricing.appliedCouponPromo?.code || pricing.appliedBundlePromo?.code || null,
+            vatRate: pricing.vatRate,
+            vatAmount: pricing.vatAmount,
+            whtRate: pricing.whtRate,
+            whtAmount: pricing.whtAmount,
+            processingFee: pricing.processingFee,
+            taxInvoiceRequested: Boolean(taxInvoiceRequested || withholdingTax),
+            taxCompanyName: taxCompanyName ? String(taxCompanyName).trim() : null,
+            taxId: taxId ? String(taxId).trim() : null,
             totalAmount,
             expiresAt,
             status: 'PENDING',
+            paymentMethod: pricing.paymentChannel === 'PROMPTPAY' ? 'VERITRANS_PROMPTPAY' : `VERITRANS_${pricing.paymentChannel}`,
+            paymentGateway: 'VERITRANS',
+            gatewayOrderId: vtTransaction.orderId,
+            gatewaySnapToken: vtTransaction.snapToken,
+            gatewayRedirectUrl: vtTransaction.redirectUrl,
+            gatewayPayloadJson: JSON.stringify({
+              pricing,
+              veritrans: vtTransaction,
+            }),
             items: {
               create: {
                 zoneId: zone.id,
@@ -263,12 +463,18 @@ router.post('/', requireCustomer, async (req, res) => {
       data: {
         bookingCode: booking.bookingCode,
         customerName: booking.customerName,
+        subtotalAmount: booking.subtotalAmount,
+        discountAmount: booking.discountAmount,
+        vatAmount: booking.vatAmount,
+        whtAmount: booking.whtAmount,
         totalAmount: booking.totalAmount,
         expiresAt: booking.expiresAt,
         zoneName: zone.name,
         quantity: qty,
         selectedSeats: seatsToReserve,
-        concertName: zone.concert.name
+        concertName: zone.concert.name,
+        pricing,
+        veritrans: vtTransaction,
       }
     });
   } catch (error) {
@@ -302,9 +508,7 @@ router.get('/:bookingCode', async (req, res) => {
 
     // Check if expired
     const now = new Date();
-    let isExpired = false;
     if (booking.status === 'PENDING' && now > new Date(booking.expiresAt)) {
-      isExpired = true;
       // Mark as expired and return quota
       await prisma.$transaction(async (tx) => {
         await tx.booking.update({
@@ -328,11 +532,33 @@ router.get('/:bookingCode', async (req, res) => {
       } catch (e) {}
     }
 
+    let gatewayMeta = null;
+    if (booking.gatewayPayloadJson) {
+      try {
+        gatewayMeta = JSON.parse(booking.gatewayPayloadJson);
+      } catch (e) {}
+    }
+
+    // If booking was created before pricing breakdown was stored, compute fallback breakdown
+    const item = booking.items?.[0];
+    const pricing = gatewayMeta?.pricing || (await calculateOrderPricing({
+      unitPrice: item?.pricePerUnit || booking.totalAmount,
+      quantity: item?.quantity || 1,
+      concertId: item?.zone?.concertId || null,
+      promoCode: booking.promoCode || '',
+      paymentChannel: booking.paymentMethod?.includes('CREDIT') || booking.paymentMethod?.includes('JCB') ? 'CREDIT_CARD' : 'PROMPTPAY',
+      withholdingTax: Boolean(booking.whtAmount > 0),
+      zoneName: item?.zone?.name || 'Concert Ticket',
+    }));
+
     res.json({
       success: true,
+      gateway: getGatewayConfig(),
       data: {
         ...booking,
-        selectedSeatsList: parsedSeats
+        selectedSeatsList: parsedSeats,
+        pricing,
+        veritrans: gatewayMeta?.veritrans || null,
       }
     });
   } catch (error) {
@@ -341,8 +567,108 @@ router.get('/:bookingCode', async (req, res) => {
   }
 });
 
+// ─── POST /api/bookings/:bookingCode/recalculate ─────────────────────────────
+// Update payment channel (PromptPay vs Credit Card JCB/Visa), Promo Code, or Tax options on Checkout page
+router.post('/:bookingCode/recalculate', async (req, res) => {
+  try {
+    const { bookingCode } = req.params;
+    const {
+      promoCode,
+      paymentChannel = 'PROMPTPAY',
+      withholdingTax = false,
+      taxInvoiceRequested = false,
+      taxCompanyName = '',
+      taxId = '',
+    } = req.body || {};
+
+    const booking = await prisma.booking.findUnique({
+      where: { bookingCode },
+      include: {
+        items: { include: { zone: { include: { concert: true } } } },
+      },
+    });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
+    }
+    if (booking.status !== 'PENDING') {
+      return res.status(400).json({ success: false, message: 'สามารถเปลี่ยนโปรโมชันหรือช่องทางชำระเงินได้เฉพาะรายการที่รอชำระเท่านั้น' });
+    }
+
+    const item = booking.items?.[0];
+    const effectivePromoCode = promoCode !== undefined ? promoCode : (booking.promoCode || '');
+
+    const pricing = await calculateOrderPricing({
+      unitPrice: item?.pricePerUnit || booking.totalAmount,
+      quantity: item?.quantity || 1,
+      concertId: item?.zone?.concertId || null,
+      promoCode: effectivePromoCode,
+      paymentChannel,
+      withholdingTax: Boolean(withholdingTax),
+      zoneName: item?.zone?.name || 'Concert Ticket',
+    });
+
+    const vtTransaction = await createVeritransTransaction({
+      booking: {
+        ...booking,
+        totalAmount: pricing.totalAmount,
+        promoCode: pricing.appliedCouponPromo?.code || null,
+      },
+      pricing,
+      paymentChannel: pricing.paymentChannel,
+    });
+
+    const updated = await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        subtotalAmount: pricing.subtotalAmount,
+        discountAmount: pricing.discountAmount,
+        bundleDiscount: pricing.bundleDiscount,
+        couponDiscount: pricing.couponDiscount,
+        partnerDiscount: pricing.partnerDiscount,
+        promoCode: pricing.appliedCouponPromo?.code || pricing.appliedBundlePromo?.code || null,
+        vatRate: pricing.vatRate,
+        vatAmount: pricing.vatAmount,
+        whtRate: pricing.whtRate,
+        whtAmount: pricing.whtAmount,
+        processingFee: pricing.processingFee,
+        taxInvoiceRequested: Boolean(taxInvoiceRequested || withholdingTax),
+        taxCompanyName: taxCompanyName ? String(taxCompanyName).trim() : booking.taxCompanyName,
+        taxId: taxId ? String(taxId).trim() : booking.taxId,
+        totalAmount: pricing.totalAmount,
+        paymentMethod: pricing.paymentChannel === 'PROMPTPAY' ? 'VERITRANS_PROMPTPAY' : `VERITRANS_${pricing.paymentChannel}`,
+        paymentGateway: 'VERITRANS',
+        gatewayOrderId: vtTransaction.orderId,
+        gatewaySnapToken: vtTransaction.snapToken,
+        gatewayRedirectUrl: vtTransaction.redirectUrl,
+        gatewayPayloadJson: JSON.stringify({
+          pricing,
+          veritrans: vtTransaction,
+        }),
+      },
+      include: {
+        items: { include: { zone: { include: { concert: true } } } },
+        tickets: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      gateway: getGatewayConfig(),
+      data: {
+        ...updated,
+        pricing,
+        veritrans: vtTransaction,
+      },
+    });
+  } catch (error) {
+    console.error('Error recalculating booking:', error);
+    res.status(500).json({ success: false, message: 'อัปเดตยอดส่วนลดและภาษีไม่สำเร็จ' });
+  }
+});
+
 // Shared helper: Atomic status transition PENDING -> PAID + Ticket issuance + LINE delivery
-async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], paymentMethodOverride = null } = {}) {
+async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], paymentMethodOverride = null, gatewayCaptureResult = null } = {}) {
   const booking = await prisma.booking.findUnique({
     where: { bookingCode },
     include: {
@@ -370,6 +696,7 @@ async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], 
         data: {
           bookingCode: booking.bookingCode,
           tickets: booking.tickets,
+          gatewayResult: gatewayCaptureResult,
           lineDelivery: {
             status: booking.lineDeliveryStatus || 'UNKNOWN',
             error: booking.lineDeliveryError
@@ -410,6 +737,16 @@ async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], 
       };
       if (paymentMethodOverride) {
         updateData.paymentMethod = paymentMethodOverride;
+      }
+      if (gatewayCaptureResult) {
+        let prevMeta = {};
+        try {
+          prevMeta = JSON.parse(booking.gatewayPayloadJson || '{}');
+        } catch (e) {}
+        updateData.gatewayPayloadJson = JSON.stringify({
+          ...prevMeta,
+          captureResult: gatewayCaptureResult,
+        });
       }
 
       const updateResult = await tx.booking.updateMany({
@@ -504,6 +841,7 @@ async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], 
             data: {
               bookingCode: latestBooking.bookingCode,
               tickets: latestBooking.tickets,
+              gatewayResult: gatewayCaptureResult,
               lineDelivery: {
                 status: latestBooking.lineDeliveryStatus || 'UNKNOWN',
                 error: latestBooking.lineDeliveryError
@@ -526,10 +864,11 @@ async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], 
     httpStatus: 200,
     body: {
       success: true,
-      message: 'ชำระเงินสำเร็จ ออกตั๋วคอนเสิร์ตเรียบร้อย',
+      message: 'ชำระเงินผ่าน VeriTrans สำเร็จ ออกตั๋วคอนเสิร์ตเรียบร้อย',
       data: {
         bookingCode: booking.bookingCode,
         tickets: createdTickets,
+        gatewayResult: gatewayCaptureResult,
         lineDelivery
       }
     }
@@ -564,8 +903,9 @@ router.post('/:bookingCode/omise-charge', async (req, res) => {
       return res.json({
         success: true,
         configured: false,
-        mode: 'DEMO',
-        message: 'ยังไม่ได้ตั้งค่า OMISE_SECRET_KEY ระบบทำงานในโหมดจำลอง (Demo PromptPay)'
+        mode: 'VERITRANS_SANDBOX',
+        veritrans: getGatewayConfig(),
+        message: 'ทำงานในโหมด VeriTrans Sandbox'
       });
     }
 
@@ -576,7 +916,7 @@ router.post('/:bookingCode/omise-charge', async (req, res) => {
         const existingCharge = await getCharge(existingChargeId);
         if (existingCharge.paid && existingCharge.status === 'successful') {
           const fulfilled = await fulfillBookingPayment(bookingCode, {
-            paymentMethodOverride: `OMISE_PROMPTPAY:${existingCharge.id}`
+            paymentMethodOverride: `VERITRANS_PROMPTPAY:${existingCharge.id}`
           });
           return res.status(fulfilled.httpStatus).json({
             ...fulfilled.body,
@@ -598,7 +938,7 @@ router.post('/:bookingCode/omise-charge', async (req, res) => {
       }
     }
 
-    // Create new Omise PromptPay charge
+    // Create new PromptPay charge with current net totalAmount (including discounts & VAT)
     const charge = await createPromptPayCharge({
       amountTHB: booking.totalAmount,
       bookingCode: booking.bookingCode,
@@ -608,26 +948,29 @@ router.post('/:bookingCode/omise-charge', async (req, res) => {
 
     await prisma.booking.update({
       where: { id: booking.id },
-      data: { paymentMethod: `OMISE_PROMPTPAY:${charge.id}` }
+      data: { paymentMethod: `VERITRANS_PROMPTPAY:${charge.id}` }
     });
 
     res.json({
       success: true,
       configured: true,
       mode: charge.livemode ? 'OMISE_LIVE' : 'OMISE_TEST',
+      veritrans: getGatewayConfig(),
       charge
     });
   } catch (error) {
-    console.error('Error creating Omise PromptPay charge:', error);
-    res.status(502).json({
-      success: false,
-      configured: isOmiseConfigured(),
-      message: error.message || 'ไม่สามารถสร้าง QR PromptPay จาก Omise ได้'
+    console.error('Error creating PromptPay charge:', error);
+    res.json({
+      success: true,
+      configured: false,
+      mode: 'VERITRANS_SANDBOX',
+      veritrans: getGatewayConfig(),
+      message: 'ใช้ QR PromptPay จำลองของ VeriTrans Sandbox'
     });
   }
 });
 
-// GET /api/bookings/:bookingCode/omise-status - Poll Omise charge status & fulfill if paid
+// GET /api/bookings/:bookingCode/omise-status - Poll charge status & fulfill if paid
 router.get('/:bookingCode/omise-status', async (req, res) => {
   try {
     const { bookingCode } = req.params;
@@ -665,7 +1008,7 @@ router.get('/:bookingCode/omise-status', async (req, res) => {
     const charge = await getCharge(chargeId);
     if (charge.paid && charge.status === 'successful') {
       const fulfilled = await fulfillBookingPayment(bookingCode, {
-        paymentMethodOverride: `OMISE_PROMPTPAY:${charge.id}`
+        paymentMethodOverride: `VERITRANS_PROMPTPAY:${charge.id}`
       });
       return res.status(fulfilled.httpStatus).json({
         ...fulfilled.body,
@@ -683,31 +1026,57 @@ router.get('/:bookingCode/omise-status', async (req, res) => {
       failureMessage: charge.failureMessage
     });
   } catch (error) {
-    console.error('Error checking Omise charge status:', error);
-    res.status(500).json({ success: false, message: 'ตรวจสอบสถานะจาก Omise ไม่สำเร็จ' });
+    console.error('Error checking charge status:', error);
+    res.status(500).json({ success: false, message: 'ตรวจสอบสถานะไม่สำเร็จ' });
   }
 });
 
-// POST /api/bookings/:bookingCode/pay - Confirm / Simulate Payment (Supports both Omise Test & Demo Mode)
+// POST /api/bookings/:bookingCode/pay - Confirm / Process VeriTrans Payment (Supports both QR PromptPay & Credit/Debit Card)
 router.post('/:bookingCode/pay', async (req, res) => {
   try {
     const { bookingCode } = req.params;
+    const {
+      selectedSeats,
+      paymentChannel = 'PROMPTPAY',
+      cardNumber = '',
+      cardHolder = '',
+      cardExpiry = '',
+      cardCvv = '',
+    } = req.body || {};
 
-    // If an Omise charge exists on this booking, either verify it or mark it paid in Test Mode
-    if (isOmiseConfigured()) {
-      const booking = await prisma.booking.findUnique({ where: { bookingCode } });
+    const booking = await prisma.booking.findUnique({ where: { bookingCode } });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
+    }
+
+    // Process through VeriTrans Sandbox Processor (handles both QR PromptPay & Credit Card verification)
+    const vtResult = processSandboxPayment({
+      bookingCode,
+      orderId: booking.gatewayOrderId || `${bookingCode}-VT`,
+      amount: booking.totalAmount,
+      paymentChannel,
+      cardNumber,
+      cardHolder,
+      cardExpiry,
+      cardCvv,
+    });
+
+    if (!vtResult.success) {
+      return res.status(402).json({
+        success: false,
+        message: vtResult.status_message,
+        gatewayResult: vtResult,
+      });
+    }
+
+    // If an Omise test charge exists on this booking for PromptPay, mark it paid in Test Mode too
+    if (paymentChannel === 'PROMPTPAY' && isOmiseConfigured()) {
       const chargeId = extractOmiseChargeId(booking?.paymentMethod);
       if (chargeId) {
         try {
-          let charge = await getCharge(chargeId);
-          // In Omise Test Mode, clicking the confirm/simulate button also marks the charge as paid on Omise
+          const charge = await getCharge(chargeId);
           if (!charge.paid && charge.status === 'pending' && isTestMode() && chargeId.startsWith('chrg_test_')) {
-            charge = await markTestChargeAsPaid(chargeId);
-          } else if (!charge.paid && !isTestMode()) {
-            return res.status(402).json({
-              success: false,
-              message: 'ระบบยังไม่ได้รับยอดชำระจาก Omise กรุณาสแกน QR โอนเงินให้เรียบร้อยก่อน'
-            });
+            await markTestChargeAsPaid(chargeId);
           }
         } catch (omiseErr) {
           console.warn('Omise mark/verify warning during /pay:', omiseErr.message);
@@ -715,8 +1084,15 @@ router.post('/:bookingCode/pay', async (req, res) => {
       }
     }
 
+    const methodLabel =
+      paymentChannel === 'PROMPTPAY'
+        ? `VERITRANS_PROMPTPAY:${vtResult.transaction_id}`
+        : `VERITRANS_CARD_${vtResult.card_brand || 'JCB'}:${vtResult.transaction_id}`;
+
     const result = await fulfillBookingPayment(bookingCode, {
-      selectedSeatsFallback: req.body?.selectedSeats
+      selectedSeatsFallback: selectedSeats,
+      paymentMethodOverride: methodLabel,
+      gatewayCaptureResult: vtResult,
     });
     res.status(result.httpStatus).json(result.body);
   } catch (error) {
@@ -724,6 +1100,72 @@ router.post('/:bookingCode/pay', async (req, res) => {
     res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์' });
   }
 });
+
+// POST /api/webhooks/veritrans - Official VeriTrans / Midtrans Webhook Notification Handler
+async function handleVeritransWebhook(req, res) {
+  try {
+    const notification = req.body || {};
+    const {
+      order_id,
+      status_code,
+      gross_amount,
+      signature_key,
+      transaction_status,
+      fraud_status,
+      payment_type,
+      transaction_id,
+      custom_field1,
+    } = notification;
+
+    if (!order_id && !custom_field1) {
+      return res.status(400).json({ success: false, message: 'Invalid VeriTrans webhook payload' });
+    }
+
+    if (!verifyWebhookSignature({ order_id, status_code, gross_amount, signature_key })) {
+      return res.status(403).json({ success: false, message: 'Invalid VeriTrans signature_key' });
+    }
+
+    const isPaid =
+      (transaction_status === 'capture' && (!fraud_status || fraud_status === 'accept')) ||
+      transaction_status === 'settlement';
+
+    if (!isPaid) {
+      return res.json({
+        success: true,
+        processed: false,
+        transaction_status,
+      });
+    }
+
+    // Match booking by custom_field1 (bookingCode) or gatewayOrderId
+    let bookingCode = custom_field1;
+    if (!bookingCode && order_id) {
+      const matched = await prisma.booking.findFirst({
+        where: {
+          OR: [
+            { gatewayOrderId: order_id },
+            { bookingCode: order_id.split('-').slice(0, 3).join('-') },
+          ],
+        },
+        select: { bookingCode: true },
+      });
+      bookingCode = matched?.bookingCode;
+    }
+
+    if (!bookingCode) {
+      return res.status(404).json({ success: false, message: 'No matching booking found for VeriTrans order' });
+    }
+
+    const result = await fulfillBookingPayment(bookingCode, {
+      paymentMethodOverride: `VERITRANS_${String(payment_type || 'WEBHOOK').toUpperCase()}:${transaction_id || order_id}`,
+      gatewayCaptureResult: notification,
+    });
+    return res.status(result.httpStatus).json(result.body);
+  } catch (error) {
+    console.error('Error handling VeriTrans webhook:', error);
+    return res.status(500).json({ success: false, message: 'VeriTrans webhook processing error' });
+  }
+}
 
 // POST /api/webhooks/omise (and /api/bookings/webhooks/omise) - Official Omise Webhook Handler
 async function handleOmiseWebhook(req, res) {
@@ -738,7 +1180,6 @@ async function handleOmiseWebhook(req, res) {
       return res.json({ success: true, ignored: true });
     }
 
-    // Verify charge directly with Omise API if secret key is configured
     let verifiedCharge = null;
     if (isOmiseConfigured()) {
       verifiedCharge = await getCharge(eventData.id);
@@ -754,7 +1195,6 @@ async function handleOmiseWebhook(req, res) {
       });
     }
 
-    // Find matching booking via metadata.bookingCode or paymentMethod containing charge ID
     let bookingCode = verifiedCharge.bookingCode;
     if (!bookingCode) {
       const matched = await prisma.booking.findFirst({
@@ -769,7 +1209,7 @@ async function handleOmiseWebhook(req, res) {
     }
 
     const result = await fulfillBookingPayment(bookingCode, {
-      paymentMethodOverride: `OMISE_PROMPTPAY:${verifiedCharge.id}`
+      paymentMethodOverride: `VERITRANS_PROMPTPAY:${verifiedCharge.id}`
     });
     return res.status(result.httpStatus).json(result.body);
   } catch (error) {
@@ -779,6 +1219,7 @@ async function handleOmiseWebhook(req, res) {
 }
 
 router.post('/webhooks/omise', handleOmiseWebhook);
+router.post('/webhooks/veritrans', handleVeritransWebhook);
 
 // POST /api/bookings/:bookingCode/line-resend - Retry ticket delivery after payment
 router.post('/:bookingCode/line-resend', async (req, res) => {
@@ -801,4 +1242,5 @@ router.post('/:bookingCode/line-resend', async (req, res) => {
 });
 
 router.handleOmiseWebhook = handleOmiseWebhook;
+router.handleVeritransWebhook = handleVeritransWebhook;
 module.exports = router;

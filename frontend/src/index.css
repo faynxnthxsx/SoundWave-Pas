@@ -549,24 +549,64 @@ html.light body {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   8. STADIUM VENUE MAP SECTION (Guaranteed clear map and labels)
+   8. STADIUM VENUE MAP SECTION (Clean White Frame in Light Mode)
    ══════════════════════════════════════════════════════════════════ */
-[data-theme="light"] .stadium-map-container {
-  background-color: #0b0f17 !important;
-  border-color: rgba(14, 165, 233, 0.4) !important;
+[data-theme="light"] .stadium-map-container,
+html.light .stadium-map-container {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
 }
 
-[data-theme="light"] .stadium-map-container > div:first-child {
+[data-theme="light"] .stadium-map-container > div:first-child,
+html.light .stadium-map-container > div:first-child {
   background-color: #ffffff !important;
   border-bottom-color: #e2e8f0 !important;
 }
 
-[data-theme="light"] .stadium-map-container > div:first-child h2 {
+[data-theme="light"] .stadium-map-container > div:first-child h2,
+html.light .stadium-map-container > div:first-child h2 {
   color: #0f172a !important;
 }
 
-[data-theme="light"] .stadium-map-container > div:first-child p {
+[data-theme="light"] .stadium-map-container > div:first-child p,
+html.light .stadium-map-container > div:first-child p {
   color: #475569 !important;
+}
+
+[data-theme="light"] .stadium-svg-backdrop,
+html.light .stadium-svg-backdrop {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+[data-theme="light"] .stadium-svg-canvas,
+html.light .stadium-svg-canvas {
+  filter: drop-shadow(0 8px 20px rgba(15, 23, 42, 0.08)) !important;
+}
+
+/* Make the outer shell of the SVG venue map light/white in Light Mode instead of dark black */
+[data-theme="light"] .stadium-svg-canvas path[fill="url(#arena-shell)"],
+[data-theme="light"] .stadium-svg-canvas rect[fill="url(#festival-ground)"],
+[data-theme="light"] .stadium-svg-canvas rect[fill="#0f1420"],
+[data-theme="light"] .stadium-svg-canvas path[fill="#0b0f19"],
+html.light .stadium-svg-canvas path[fill="url(#arena-shell)"],
+html.light .stadium-svg-canvas rect[fill="url(#festival-ground)"],
+html.light .stadium-svg-canvas rect[fill="#0f1420"],
+html.light .stadium-svg-canvas path[fill="#0b0f19"] {
+  fill: #f8fafc !important;
+  stroke: #cbd5e1 !important;
+}
+
+[data-theme="light"] .stadium-active-zone-bar,
+html.light .stadium-active-zone-bar {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .stadium-active-zone-bar span,
+html.light .stadium-active-zone-bar span {
+  color: #0f172a !important;
 }
 
 [data-theme="light"] .venue-profile-badge {
@@ -580,17 +620,9 @@ html.light body {
   font-weight: 800 !important;
 }
 
-/* In the dark stadium SVG arena, keep texts bright and readable */
+/* Keep SVG zone labels crisp white with dark stroke outline so they stand out on colored zones */
 [data-theme="light"] .stadium-map-container svg text {
   fill: #ffffff;
-}
-
-[data-theme="light"] .stadium-map-container .text-white {
-  color: #ffffff !important;
-}
-
-[data-theme="light"] .stadium-map-container .text-gray-300 {
-  color: #cbd5e1 !important;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1878,3 +1910,242 @@ html.light .standing-pit-manager .standing-slot-pending .standing-slot-name {
   color: #a16207 !important;
   font-weight: 800 !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   LIGHT MODE: SEAT MATRIX WHITE FRAME, CONCERT INNER WHITE BOX,
+   ADMIN LOGOUT BUTTON & VERITRANS / PROMO / TAX COMPONENTS
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* 1. Seat Matrix Grid Box & Inspector Bar (Pure White in Light Mode instead of Black) */
+[data-theme="light"] .seat-matrix-grid-box,
+[data-theme="light"] .seat-inspector-pill,
+[data-theme="light"] .bg-\[\#0b0b12\],
+[data-theme="light"] .bg-\[\#0c0d16\],
+[data-theme="light"] .bg-\[\#0e101a\],
+[data-theme="light"] .bg-\[\#10131c\],
+[data-theme="light"] .bg-\[\#121420\],
+html.light .seat-matrix-grid-box,
+html.light .seat-inspector-pill,
+html.light .bg-\[\#0b0b12\],
+html.light .bg-\[\#0c0d16\],
+html.light .bg-\[\#0e101a\],
+html.light .bg-\[\#10131c\],
+html.light .bg-\[\#121420\] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Legend sample seats inside ZoneSelectPage in Light Mode */
+[data-theme="light"] .bg-\[\#171b29\],
+html.light .bg-\[\#171b29\] {
+  background-color: #ffffff !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .bg-\[\#0f1018\],
+html.light .bg-\[\#0f1018\] {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+/* 2. Inner boxes inside Concert Cards (Pure White instead of Gray in Light Mode) */
+[data-theme="light"] .concert-inner-box,
+[data-theme="light"] .admin-dashboard-screen .bg-black\/30,
+[data-theme="light"] .admin-dashboard-screen .bg-black\/40,
+[data-theme="light"] .admin-dashboard-screen .bg-\[\#12121a\],
+html.light .concert-inner-box,
+html.light .admin-dashboard-screen .bg-black\/30,
+html.light .admin-dashboard-screen .bg-black\/40,
+html.light .admin-dashboard-screen .bg-\[\#12121a\] {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03) !important;
+}
+
+/* 3. Sign Out Button & Rose Text in Light Mode (Crisp Crimson Red, Never Faded) */
+[data-theme="light"] .admin-logout-btn,
+html.light .admin-logout-btn {
+  background-color: #fff1f2 !important;
+  border: 1.5px solid #fda4af !important;
+  color: #be123c !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .admin-logout-btn:hover,
+html.light .admin-logout-btn:hover {
+  background-color: #ffe4e6 !important;
+  border-color: #fb7185 !important;
+  color: #9f1239 !important;
+}
+
+[data-theme="light"] .text-rose-100,
+[data-theme="light"] .text-rose-200,
+[data-theme="light"] .text-rose-300,
+[data-theme="light"] .text-rose-400,
+html.light .text-rose-100,
+html.light .text-rose-200,
+html.light .text-rose-300,
+html.light .text-rose-400 {
+  color: #be123c !important;
+  font-weight: 700 !important;
+}
+
+/* 4. Smart Promo & Tax Box + VeriTrans Payment Page in Light Mode */
+[data-theme="light"] .smart-promo-tax-box,
+html.light .smart-promo-tax-box {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="light"] .smart-promo-tax-box .bg-white\/\[0\.02\],
+[data-theme="light"] .smart-promo-tax-box .bg-white\/\[0\.03\],
+[data-theme="light"] .payment-page-container .bg-white\/\[0\.02\],
+[data-theme="light"] .payment-page-container .bg-white\/\[0\.03\],
+html.light .smart-promo-tax-box .bg-white\/\[0\.02\],
+html.light .smart-promo-tax-box .bg-white\/\[0\.03\],
+html.light .payment-page-container .bg-white\/\[0\.02\],
+html.light .payment-page-container .bg-white\/\[0\.03\] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* 5. High-Contrast Price, Discount & Tax Breakdown Box in Light Mode */
+[data-theme="light"] .price-breakdown-box,
+html.light .price-breakdown-box {
+  background-color: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme="light"] .price-breakdown-box .price-label,
+[data-theme="light"] .price-breakdown-box .price-val,
+[data-theme="light"] .price-breakdown-box .price-total-label,
+html.light .price-breakdown-box .price-label,
+html.light .price-breakdown-box .price-val,
+html.light .price-breakdown-box .price-total-label {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .price-breakdown-box .price-label-discount,
+[data-theme="light"] .price-breakdown-box .price-val-emerald,
+[data-theme="light"] .price-breakdown-box .price-saved-badge,
+html.light .price-breakdown-box .price-label-discount,
+html.light .price-breakdown-box .price-val-emerald,
+html.light .price-breakdown-box .price-saved-badge {
+  color: #047857 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .price-breakdown-box .price-label-coupon,
+[data-theme="light"] .price-breakdown-box .price-val-cyan,
+[data-theme="light"] .price-breakdown-box .price-total-amount,
+html.light .price-breakdown-box .price-label-coupon,
+html.light .price-breakdown-box .price-val-cyan,
+html.light .price-breakdown-box .price-total-amount {
+  color: #0369a1 !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="light"] .price-breakdown-box .price-label-partner,
+[data-theme="light"] .price-breakdown-box .price-val-pink,
+html.light .price-breakdown-box .price-label-partner,
+html.light .price-breakdown-box .price-val-pink {
+  color: #be185d !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .price-breakdown-box .price-label-vat,
+[data-theme="light"] .price-breakdown-box .price-val-amber,
+html.light .price-breakdown-box .price-label-vat,
+html.light .price-breakdown-box .price-val-amber {
+  color: #b45309 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .price-breakdown-box .price-label-wht,
+[data-theme="light"] .price-breakdown-box .price-val-purple,
+html.light .price-breakdown-box .price-label-wht,
+html.light .price-breakdown-box .price-val-purple {
+  color: #6d28d9 !important;
+  font-weight: 800 !important;
+}
+
+/* 6. MyTicketPage Top Status Badges & Banner Gradient in Light Mode */
+[data-theme="light"] .ticket-banner-gradient,
+html.light .ticket-banner-gradient {
+  background-image: linear-gradient(to top, #ffffff 0%, rgba(255, 255, 255, 0.45) 45%, rgba(15, 23, 42, 0.35) 100%) !important;
+}
+
+[data-theme="light"] .ticket-badge-pill,
+[data-theme="light"] .ticket-badge-pill *,
+html.light .ticket-badge-pill,
+html.light .ticket-badge-pill * {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .tax-modal-close-btn,
+html.light .tax-modal-close-btn {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .tax-modal-close-btn:hover,
+html.light .tax-modal-close-btn:hover {
+  background-color: #ffe4e6 !important;
+  border-color: #fda4af !important;
+  color: #be123c !important;
+}
+
+/* 7. Custom Promotion Form Dropdown (Light Mode) */
+[data-theme="light"] .promo-select-trigger,
+html.light .promo-select-trigger {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .promo-select-trigger.is-open,
+html.light .promo-select-trigger.is-open {
+  border-color: #0284c7 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.14) !important;
+}
+
+[data-theme="light"] .promo-select-menu,
+html.light .promo-select-menu {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 18px 36px -8px rgba(15, 23, 42, 0.18) !important;
+}
+
+[data-theme="light"] .promo-select-option,
+html.light .promo-select-option {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .promo-select-option:hover,
+html.light .promo-select-option:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .promo-select-option.is-selected,
+html.light .promo-select-option.is-selected {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+}
+
+[data-theme="light"] .promo-select-option .promo-select-hint,
+html.light .promo-select-option .promo-select-hint {
+  color: #64748b !important;
+}
+
+

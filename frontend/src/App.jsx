@@ -2,8 +2,8 @@ import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import { ToastProvider } from './components/Toast';
-import { LanguageProvider } from './context/LanguageContext';
+import { ToastProvider, useToast } from './components/Toast';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
 
 // Eager load all pages for instant 0ms page transitions
@@ -26,7 +26,9 @@ const PageFallback = () => (
   </div>
 );
 
-export default function App() {
+function GoogleOAuthHandler() {
+  const { t } = useLanguage();
+  const toast = useToast();
   const [googleProcessing, setGoogleProcessing] = useState(() => {
     return Boolean(
       typeof window !== 'undefined' &&
@@ -35,70 +37,87 @@ export default function App() {
     );
   });
 
-  // Listen for Google OAuth standard redirect callback in URL hash
   useEffect(() => {
-    if (
-      window.location.hash &&
-      (window.location.hash.includes('access_token=') || window.location.hash.includes('id_token='))
-    ) {
-      setGoogleProcessing(true);
-      const hash = window.location.hash.replace(/^#/, '');
-      const params = new URLSearchParams(hash);
-      const accessToken = params.get('access_token');
-      const idToken = params.get('id_token');
+    const hashRaw = (window.location.hash || '').replace(/^#/, '');
+    const hashParams = new URLSearchParams(hashRaw);
+    const searchParams = new URLSearchParams(window.location.search || '');
+    const oauthError = hashParams.get('error') || searchParams.get('error');
 
-      // Clear the hash from address bar immediately
+    if (oauthError) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
-
-      if (accessToken || idToken) {
-        fetch('/api/auth/google', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ access_token: accessToken, credential: idToken }),
-        })
-          .then((r) => r.json())
-          .then((data) => {
-            if (data?.success && data?.user) {
-              localStorage.setItem('soundwave_session', data.token);
-              localStorage.setItem('soundwave_user', JSON.stringify(data.user));
-
-              try {
-                const savedRoute = sessionStorage.getItem('sw_google_auth_state');
-                if (savedRoute && savedRoute !== window.location.pathname) {
-                  sessionStorage.removeItem('sw_google_auth_state');
-                  window.location.href = savedRoute;
-                  return;
-                }
-              } catch {}
-              window.location.reload();
-            } else {
-              setGoogleProcessing(false);
-            }
-          })
-          .catch((err) => {
-            console.error('Google OAuth callback failed:', err);
-            setGoogleProcessing(false);
-          });
-      } else {
-        setGoogleProcessing(false);
+      setGoogleProcessing(false);
+      if (oauthError !== 'access_denied') {
+        toast.error(
+          t(`เข้าสู่ระบบด้วย Google ไม่สำเร็จ (${oauthError})`, `Google Sign-In failed (${oauthError})`)
+        );
       }
+      return;
     }
+
+    const accessToken = hashParams.get('access_token');
+    const idToken = hashParams.get('id_token');
+    if (!accessToken && !idToken) return;
+
+    setGoogleProcessing(true);
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+    fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ access_token: accessToken, credential: idToken }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && data?.user) {
+          localStorage.setItem('soundwave_session', data.token);
+          localStorage.setItem('soundwave_user', JSON.stringify(data.user));
+
+          try {
+            const savedRoute = sessionStorage.getItem('sw_google_auth_state');
+            if (savedRoute && savedRoute !== window.location.pathname + window.location.search) {
+              sessionStorage.removeItem('sw_google_auth_state');
+              window.location.href = savedRoute;
+              return;
+            }
+          } catch {
+            /* ignore */
+          }
+          window.location.reload();
+        } else {
+          toast.error(
+            data?.message || t('เข้าสู่ระบบด้วย Google ไม่สำเร็จ กรุณาลองใหม่', 'Google Sign-In failed. Please try again.')
+          );
+          setGoogleProcessing(false);
+        }
+      })
+      .catch((err) => {
+        console.error('Google OAuth callback failed:', err);
+        toast.error(t('เชื่อมต่อเซิร์ฟเวอร์สำหรับ Google Login ไม่สำเร็จ', 'Could not complete Google Sign-In'));
+        setGoogleProcessing(false);
+      });
   }, []);
 
+  if (!googleProcessing) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#07070b]/95 backdrop-blur-md">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent mb-4" />
+      <p className="text-sm font-semibold text-white">{t('กำลังเข้าสู่ระบบด้วย Google…', 'Signing in with Google…')}</p>
+      <p className="text-xs text-gray-400 mt-1">
+        {t('กรุณารอสักครู่ ระบบกำลังนำท่านเข้าใช้งาน', 'Please wait a moment while we sign you in')}
+      </p>
+    </div>
+  );
+}
+
+export default function App() {
   return (
     <BrowserRouter>
       <LanguageProvider>
         <ThemeProvider>
           <ToastProvider>
             <div className="theme-app-container min-h-screen flex flex-col bg-[#07070b] text-gray-100 selection:bg-[#00f0ff] selection:text-black overflow-x-hidden w-full max-w-full">
-              {/* Google Login Overlay (Dark themed, prevents white screen) */}
-              {googleProcessing && (
-                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#07070b]/95 backdrop-blur-md">
-                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent mb-4" />
-                  <p className="text-sm font-semibold text-white">กำลังเข้าสู่ระบบด้วย Google…</p>
-                  <p className="text-xs text-gray-400 mt-1">กรุณารอสักครู่ ระบบกำลังนำท่านเข้าใช้งาน</p>
-                </div>
-              )}
+              <GoogleOAuthHandler />
 
               {/* Navigation Bar */}
               <Navbar />

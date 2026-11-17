@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Ticket, Music, LogOut, UserRound, Home, Users, Store, QrCode, ShieldCheck, Download } from 'lucide-react';
 import AuthModal from './AuthModal';
 import PurchaseHistoryModal from './PurchaseHistoryModal';
@@ -12,6 +12,7 @@ import { useLanguage } from '../context/LanguageContext';
 export default function Navbar() {
   const { t } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
   const isTeamSurface = ['/admin', '/scanner', '/team'].some((path) => location.pathname.startsWith(path));
   const [showHistory, setShowHistory] = useState(false);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
@@ -84,7 +85,24 @@ export default function Navbar() {
     }
     localStorage.removeItem('soundwave_session');
     localStorage.removeItem('soundwave_user');
+    localStorage.removeItem('soundwave_line_user');
+    localStorage.removeItem('soundwave_purchase_history');
+    localStorage.removeItem('soundwave_booking_draft_latest');
+    try {
+      sessionStorage.removeItem('soundwave_booking_draft_latest');
+      sessionStorage.removeItem('soundwave_line_redirect_uri');
+    } catch {
+      /* ignore */
+    }
     setAuthUser(null);
+    setShowHistory(false);
+    setPurchaseHistory([]);
+    setAuthOpen(false);
+    window.dispatchEvent(new Event('soundwave:logout'));
+
+    if (location.pathname.startsWith('/tickets') || location.pathname.startsWith('/booking/payment')) {
+      navigate('/', { replace: true });
+    }
   };
 
   return (
