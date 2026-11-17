@@ -1507,7 +1507,6 @@ export default function ZoneSelectPage() {
               customerName={customerName}
               lineLoading={lineLoading}
               onLineLogin={handleLineLogin}
-              onMockLineLogin={handleMockLineLogin}
               onDisconnectLine={handleDisconnectLine}
             />
 

@@ -197,8 +197,11 @@ function processSandboxPayment({
 }) {
   const cleanCard = String(cardNumber || '').replace(/\D/g, '');
 
-  // Simulate declined card if ending in 0000 or 9999
-  if (paymentChannel !== 'PROMPTPAY' && (cleanCard.endsWith('0000') || cleanCard.endsWith('9999'))) {
+  // Simulate declined card if ending in 0000, 9999, or Midtrans deny test card 1115
+  if (
+    paymentChannel !== 'PROMPTPAY' &&
+    (cleanCard.endsWith('0000') || cleanCard.endsWith('9999') || cleanCard.endsWith('1115'))
+  ) {
     return {
       success: false,
       status_code: '402',
@@ -255,6 +258,27 @@ function verifyWebhookSignature({ order_id, status_code, gross_amount, signature
   return expected === signature_key;
 }
 
+/**
+ * Fetch real transaction details & promo_details from Midtrans Status API
+ */
+async function getVeritransTransactionStatus(orderId) {
+  const serverKey = cleanKey(runtimeConfig.serverKey || process.env.VERITRANS_SERVER_KEY || process.env.MIDTRANS_SERVER_KEY);
+  if (!serverKey || !orderId) return null;
+  try {
+    const coreUrl = runtimeConfig.isProduction ? MIDTRANS_CORE_LIVE_URL : MIDTRANS_CORE_SANDBOX_URL;
+    const authHeader = `Basic ${Buffer.from(`${serverKey}:`).toString('base64')}`;
+    const res = await fetch(`${coreUrl}/${encodeURIComponent(orderId)}/status`, {
+      headers: { Authorization: authHeader, Accept: 'application/json' },
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || data.status_code === '404') return null;
+    return data;
+  } catch (err) {
+    console.warn('Could not query Midtrans transaction status:', err.message);
+    return null;
+  }
+}
+
 module.exports = {
   getGatewayConfig,
   updateRuntimeGatewayConfig,
@@ -262,6 +286,7 @@ module.exports = {
   createVeritransTransaction,
   processSandboxPayment,
   verifyWebhookSignature,
+  getVeritransTransactionStatus,
   MIDTRANS_CORE_SANDBOX_URL,
   MIDTRANS_CORE_LIVE_URL,
 };

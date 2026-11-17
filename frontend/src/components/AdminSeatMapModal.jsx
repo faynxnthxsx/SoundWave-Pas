@@ -8,6 +8,8 @@ import {
   Users,
   MapPinned,
   Plus,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { useLanguage } from '../context/LanguageContext';
@@ -36,6 +38,7 @@ export default function AdminSeatMapModal({
 
   const isStanding = useMemo(() => isZoneStanding(zone), [zone]);
   const [viewMode, setViewMode] = useState('visual'); // 'visual' | 'venue' | 'table'
+  const [seatZoom, setSeatZoom] = useState(false); // Mobile fit-to-screen vs zoomed scroll view
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'AVAILABLE' | 'SOLD' | 'PENDING' | 'RESERVED'
   const [selectedSeatDetail, setSelectedSeatDetail] = useState(null);
   const [hoveredSeat, setHoveredSeat] = useState(null);
@@ -425,7 +428,9 @@ export default function AdminSeatMapModal({
                 `Seat ${seatCode} (Pending Hold: ${seatInfo.attendeeName}) - Click for details`
               )
         }
-        className={`group/seat relative flex flex-col items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-t-xl rounded-b-md font-mono text-[10px] font-bold transition-all duration-150 select-none cursor-pointer ${
+        className={`group/seat relative flex flex-col items-center justify-center rounded-t-lg sm:rounded-t-xl rounded-b-sm sm:rounded-b-md font-mono font-bold transition-all duration-150 select-none cursor-pointer ${
+          seatZoom ? 'w-7 h-7 sm:w-8 sm:h-8 text-[10px]' : 'w-[16px] h-[20px] sm:w-7 sm:h-7 md:w-8 md:h-8 text-[7px] sm:text-[10px]'
+        } ${
           isDimmed ? 'opacity-20 scale-95' : 'hover:scale-110 active:scale-95'
         } ${
           isSelected ? 'ring-2 ring-white scale-110 z-10' : ''
@@ -441,7 +446,9 @@ export default function AdminSeatMapModal({
       >
         {/* Realistic Stadium Seat Backrest Curve */}
         <span
-          className={`w-4 sm:w-5 h-1 rounded-full mb-0.5 transition-all ${
+          className={`rounded-full transition-all ${
+            seatZoom ? 'w-4 sm:w-5 h-1 mb-0.5' : 'w-2.5 sm:w-4 md:w-5 h-[2px] sm:h-1 mb-[1px] sm:mb-0.5'
+          } ${
             status === 'AVAILABLE'
               ? 'bg-emerald-400/60 group-hover/seat:bg-emerald-300'
               : status === 'RESERVED'
@@ -451,7 +458,7 @@ export default function AdminSeatMapModal({
               : 'bg-purple-400'
           }`}
         />
-        <span className="leading-none text-[9px] sm:text-[10px] tracking-tighter">
+        <span className="leading-none tracking-tighter">
           {String(colNum).padStart(2, '0')}
         </span>
       </button>
@@ -459,75 +466,97 @@ export default function AdminSeatMapModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-3 sm:p-5 backdrop-blur-md">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-2 sm:p-5 backdrop-blur-md">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="zone-seat-map-title"
-        className="admin-seatmap-modal flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#0f1017] shadow-2xl"
+        className="admin-seatmap-modal flex max-h-[96vh] sm:max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl sm:rounded-3xl border border-white/15 bg-[#0f1017] shadow-2xl"
       >
         {/* ── Modal Header ── */}
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-5">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border shadow-inner"
-              style={{
-                backgroundColor: `${zoneColor}20`,
-                borderColor: `${zoneColor}60`,
-                color: zoneColor,
-              }}
-            >
-              {isStanding ? <Users size={22} /> : <Armchair size={22} />}
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-cyan-400/15 px-2.5 py-0.5 text-[10px] font-bold text-cyan-200 border border-cyan-400/30">
-                  {t('ผังที่นั่งเชื่อมหน้าลูกค้า (Real-time Sync)', 'Customer-Synced Seat Map (Real-time)')}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {trData(zone?.concert?.name || 'SoundWave Live')}
-                </span>
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 bg-white/[0.02] p-3.5 sm:p-5">
+          <div className="flex items-start justify-between gap-2.5 min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div
+                className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border shadow-inner"
+                style={{
+                  backgroundColor: `${zoneColor}20`,
+                  borderColor: `${zoneColor}60`,
+                  color: zoneColor,
+                }}
+              >
+                {isStanding ? <Users size={20} /> : <Armchair size={20} />}
               </div>
-              <h2 id="zone-seat-map-title" className="mt-0.5 text-xl font-black text-white">
-                {t('ผังที่นั่งแอดมิน', 'Admin Seat Map')} · {trData(zone?.name)}
-              </h2>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="rounded-full bg-cyan-400/15 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-cyan-200 border border-cyan-400/30">
+                    {t('ผังเชื่อมหน้าลูกค้า (Real-time)', 'Customer-Synced (Real-time)')}
+                  </span>
+                  <span className="text-[11px] text-gray-400 truncate max-w-[160px] sm:max-w-none">
+                    {trData(zone?.concert?.name || 'SoundWave Live')}
+                  </span>
+                </div>
+                <h2 id="zone-seat-map-title" className="mt-0.5 text-base sm:text-xl font-black text-white truncate">
+                  {t('ผังที่นั่งแอดมิน', 'Admin Seat Map')} · {trData(zone?.name)}
+                </h2>
+              </div>
+            </div>
+
+            {/* Mobile quick Refresh + Close */}
+            <div className="flex md:hidden items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={onRefresh}
+                title={t('รีเฟรชข้อมูล', 'Refresh Data')}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
+              >
+                <RotateCcw size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={t('ปิด', 'Close')}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
+              >
+                <X size={16} />
+              </button>
             </div>
           </div>
 
-          {/* View Switcher & Actions */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-xl bg-white/5 p-1 border border-white/10 text-xs">
+          {/* View Switcher & Desktop Actions */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="grid grid-cols-3 md:flex rounded-xl bg-white/5 p-1 border border-white/10 text-[10px] sm:text-xs gap-1 md:gap-0 w-full md:w-auto">
               {allZones.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setViewMode('venue')}
-                  className={`flex items-center gap-1 rounded-lg px-3 py-1.5 font-bold transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-1 rounded-lg px-2 sm:px-3 py-1.5 font-bold transition-all cursor-pointer truncate ${
                     viewMode === 'venue' ? 'bg-cyan-300 text-black shadow-md' : 'text-gray-300 hover:text-white'
                   }`}
                 >
-                  <MapPinned size={13} />
-                  <span>{t('ผังโซนสนามจริง (Step 1)', 'Venue Map (Step 1)')}</span>
+                  <MapPinned size={12} className="shrink-0 hidden sm:inline" />
+                  <span className="truncate">{t('ผังโซนสนาม', 'Venue Map')}</span>
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => setViewMode('visual')}
-                className={`rounded-lg px-3 py-1.5 font-bold transition-all cursor-pointer ${
+                className={`rounded-lg px-2 sm:px-3 py-1.5 font-bold transition-all cursor-pointer truncate ${
                   viewMode === 'visual' ? 'bg-cyan-300 text-black shadow-md' : 'text-gray-300 hover:text-white'
                 }`}
               >
-                {isStanding
-                  ? t('ผังหลุมบัตรยืน (Step 2)', 'Standing Pit (Step 2)')
-                  : t('ผังเก้าอี้ 3 บล็อก (Step 2)', '3-Wing Seat Map (Step 2)')}
+                <span className="truncate">
+                  {isStanding ? t('ผังบัตรยืน', 'Standing') : t('ผังที่นั่ง', 'Seat Map')}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`rounded-lg px-3 py-1.5 font-bold transition-all cursor-pointer ${
+                className={`rounded-lg px-2 sm:px-3 py-1.5 font-bold transition-all cursor-pointer truncate ${
                   viewMode === 'table' ? 'bg-cyan-300 text-black shadow-md' : 'text-gray-300 hover:text-white'
                 }`}
               >
-                {t(`ตารางรายการ (${tickets.length})`, `Ticket List (${tickets.length})`)}
+                <span className="truncate">{t(`รายการ (${tickets.length})`, `List (${tickets.length})`)}</span>
               </button>
             </div>
 
@@ -535,7 +564,7 @@ export default function AdminSeatMapModal({
               type="button"
               onClick={onRefresh}
               title={t('รีเฟรชข้อมูล', 'Refresh Data')}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
+              className="hidden md:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
             >
               <RotateCcw size={15} />
             </button>
@@ -544,7 +573,7 @@ export default function AdminSeatMapModal({
               type="button"
               onClick={onClose}
               aria-label={t('ปิด', 'Close')}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
+              className="hidden md:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -585,80 +614,80 @@ export default function AdminSeatMapModal({
         )}
 
         {/* ── Status KPI Bar & Color Legend ── */}
-        <div className="border-b border-white/10 bg-black/40 px-5 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="border-b border-white/10 bg-black/40 px-3 sm:px-5 py-2 sm:py-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 text-[11px] sm:text-xs">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 sm:pb-0 sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => setStatusFilter('ALL')}
-                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-bold transition-all cursor-pointer ${
+                className={`shrink-0 flex items-center gap-1 rounded-xl border px-2.5 sm:px-3 py-1 sm:py-1.5 font-bold transition-all cursor-pointer ${
                   statusFilter === 'ALL'
                     ? 'border-white/30 bg-white/15 text-white'
                     : 'border-white/10 bg-white/5 text-gray-400 hover:text-white'
                 }`}
               >
                 <span>{t('ทั้งหมด', 'All')}</span>
-                <span className="font-mono text-[11px] text-gray-300">({stats.total})</span>
+                <span className="font-mono text-[10px] text-gray-300">({stats.total})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setStatusFilter('AVAILABLE')}
-                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-bold transition-all cursor-pointer ${
+                className={`shrink-0 flex items-center gap-1 rounded-xl border px-2.5 sm:px-3 py-1 sm:py-1.5 font-bold transition-all cursor-pointer ${
                   statusFilter === 'AVAILABLE'
                     ? 'border-emerald-400/50 bg-emerald-400/20 text-emerald-200'
                     : 'border-white/10 bg-white/5 text-emerald-400/80 hover:text-emerald-300'
                 }`}
               >
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                <span>{t('🟢 ว่าง (คลิกเพื่อล็อก)', '🟢 Available (Click to Lock)')}</span>
-                <span className="font-mono text-[11px]">({stats.available})</span>
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <span>{t('ว่าง', 'Free')}</span>
+                <span className="font-mono text-[10px]">({stats.available})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setStatusFilter('SOLD')}
-                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-bold transition-all cursor-pointer ${
+                className={`shrink-0 flex items-center gap-1 rounded-xl border px-2.5 sm:px-3 py-1 sm:py-1.5 font-bold transition-all cursor-pointer ${
                   statusFilter === 'SOLD'
                     ? 'border-purple-400/50 bg-purple-400/20 text-purple-200'
                     : 'border-white/10 bg-white/5 text-purple-400/80 hover:text-purple-300'
                 }`}
               >
-                <span className="h-2.5 w-2.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
-                <span>{t('🟪 ขายแล้ว', '🟪 Sold')}</span>
-                <span className="font-mono text-[11px]">({stats.sold})</span>
+                <span className="h-2 w-2 rounded-full bg-purple-400" />
+                <span>{t('ขายแล้ว', 'Sold')}</span>
+                <span className="font-mono text-[10px]">({stats.sold})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setStatusFilter('PENDING')}
-                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-bold transition-all cursor-pointer ${
+                className={`shrink-0 flex items-center gap-1 rounded-xl border px-2.5 sm:px-3 py-1 sm:py-1.5 font-bold transition-all cursor-pointer ${
                   statusFilter === 'PENDING'
                     ? 'border-amber-400/50 bg-amber-400/20 text-amber-200'
                     : 'border-white/10 bg-white/5 text-amber-400/80 hover:text-amber-300'
                 }`}
               >
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
-                <span>{t('🟡 รอจ่ายเงิน', '🟡 Pending Hold')}</span>
-                <span className="font-mono text-[11px]">({stats.pending})</span>
+                <span className="h-2 w-2 rounded-full bg-amber-400" />
+                <span>{t('รอจ่าย', 'Hold')}</span>
+                <span className="font-mono text-[10px]">({stats.pending})</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setStatusFilter('RESERVED')}
-                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-bold transition-all cursor-pointer ${
+                className={`shrink-0 flex items-center gap-1 rounded-xl border px-2.5 sm:px-3 py-1 sm:py-1.5 font-bold transition-all cursor-pointer ${
                   statusFilter === 'RESERVED'
                     ? 'border-orange-400/50 bg-orange-400/20 text-orange-200'
                     : 'border-white/10 bg-white/5 text-orange-400/80 hover:text-orange-300'
                 }`}
               >
-                <span className="h-2.5 w-2.5 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.8)]" />
-                <span>{t('🟧 สำรองไว้ (คลิกเพื่อปลด)', '🟧 Reserved (Click to Release)')}</span>
-                <span className="font-mono text-[11px]">({stats.reserved})</span>
+                <span className="h-2 w-2 rounded-full bg-orange-400" />
+                <span>{t('สำรองไว้', 'Locked')}</span>
+                <span className="font-mono text-[10px]">({stats.reserved})</span>
               </button>
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] text-gray-400">
+            <div className="hidden sm:flex items-center gap-2 text-[11px] text-gray-400">
               <span className="rounded-lg bg-cyan-400/10 px-2 py-0.5 text-cyan-300 font-bold border border-cyan-400/20">
                 1-Click Sync
               </span>
@@ -673,43 +702,43 @@ export default function AdminSeatMapModal({
         </div>
 
         {/* ── Main Content Area (Scrollable) ── */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4 sm:space-y-5">
           {/* Quick Reserve Preset Tag + Capacity Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-gray-300">
-                {t('ชื่อผู้จองสำรองด่วน:', 'Quick Reserve Label:')}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 rounded-2xl border border-white/10 bg-white/[0.02] p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 w-full lg:w-auto">
+              <span className="text-[11px] sm:text-xs font-semibold text-gray-300 shrink-0">
+                {t('ป้ายชื่อล็อกด่วน:', 'Reserve Label:')}
               </span>
               <input
                 type="text"
                 value={quickReserveName}
                 onChange={(e) => setQuickReserveName(e.target.value)}
                 placeholder={t('เช่น ผู้สนับสนุน, แขก VIP, ล็อกหน้างาน', 'e.g. VIP Sponsor, Artist Guest, Admin Lock')}
-                className="rounded-xl border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-cyan-300"
+                className="w-full sm:w-56 rounded-xl border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-cyan-300"
               />
             </div>
 
             {/* Capacity & Price Editor */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-gray-400">{t('ความจุ:', 'Capacity:')}</span>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-1.5 flex-1 sm:flex-initial">
+                <span className="text-[11px] text-gray-400 shrink-0">{t('ความจุ:', 'Cap:')}</span>
                 <input
                   type="number"
                   min="1"
                   value={capacityInput}
                   onChange={(e) => setCapacityInput(e.target.value)}
-                  className="w-20 rounded-xl border border-white/15 bg-black/40 px-2.5 py-1 text-xs font-mono text-white outline-none focus:border-cyan-300"
+                  className="w-full sm:w-20 min-w-0 rounded-xl border border-white/15 bg-black/40 px-2.5 py-1.5 text-xs font-mono text-white outline-none focus:border-cyan-300"
                 />
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-gray-400">{t('ราคา:', 'Price:')}</span>
+              <div className="flex items-center gap-1.5 flex-1 sm:flex-initial">
+                <span className="text-[11px] text-gray-400 shrink-0">{t('ราคา:', 'Price:')}</span>
                 <input
                   type="number"
                   min="0"
                   value={priceInput}
                   onChange={(e) => setPriceInput(e.target.value)}
-                  className="w-24 rounded-xl border border-white/15 bg-black/40 px-2.5 py-1 text-xs font-mono text-white outline-none focus:border-cyan-300"
+                  className="w-full sm:w-24 min-w-0 rounded-xl border border-white/15 bg-black/40 px-2.5 py-1.5 text-xs font-mono text-white outline-none focus:border-cyan-300"
                 />
               </div>
 
@@ -717,7 +746,7 @@ export default function AdminSeatMapModal({
                 type="button"
                 disabled={savingCapacity}
                 onClick={handleSaveCapacity}
-                className="rounded-xl bg-cyan-300 px-3.5 py-1.5 text-xs font-bold text-black hover:bg-cyan-200 disabled:opacity-50 transition-all cursor-pointer"
+                className="w-full sm:w-auto rounded-xl bg-cyan-300 px-3.5 py-1.5 text-xs font-bold text-black hover:bg-cyan-200 disabled:opacity-50 transition-all cursor-pointer"
               >
                 {savingCapacity ? t('กำลังบันทึก…', 'Saving…') : t('อัปเดต', 'Update')}
               </button>
@@ -746,11 +775,11 @@ export default function AdminSeatMapModal({
               VIEW 1: CUSTOMER-SYNCED 3-WING STADIUM MATRIX OR STANDING PIT
           ══════════════════════════════════════════════════════════════════ */}
           {viewMode === 'visual' && (
-            <div className="rounded-3xl border border-cyan-400/25 bg-[#0b0b12] p-5 sm:p-6 shadow-inner space-y-5">
+            <div className="rounded-2xl sm:rounded-3xl border border-cyan-400/25 bg-[#0b0b12] p-2.5 sm:p-6 shadow-inner space-y-3 sm:space-y-5">
               {/* Stage / Catwalk Direction Banner (Identical to Customer ZoneSelectPage.jsx) */}
-              <div className="relative text-center px-4">
-                <div className="mx-auto max-w-md rounded-b-2xl border-x border-b border-white/15 bg-gradient-to-b from-white/15 to-white/[0.03] py-2 px-6 shadow-[0_6px_25px_rgba(0,240,255,0.18)]">
-                  <span className="text-[11px] font-black uppercase tracking-[0.28em] text-gray-200">
+              <div className="relative text-center px-2 sm:px-4">
+                <div className="mx-auto max-w-md rounded-b-2xl border-x border-b border-white/15 bg-gradient-to-b from-white/15 to-white/[0.03] py-1.5 sm:py-2 px-3 sm:px-6 shadow-[0_6px_25px_rgba(0,240,255,0.18)]">
+                  <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] sm:tracking-[0.28em] text-gray-200">
                     {t('▲ STAGE / ทิศทางหน้าเวทีการแสดง ▲', '▲ STAGE DIRECTION ▲')}
                   </span>
                 </div>
@@ -758,39 +787,39 @@ export default function AdminSeatMapModal({
 
               {isStanding ? (
                 /* ── MODE A: STANDING PIT & QUEUE NO. GRID (Matches Customer Standing Pit) ── */
-                <div className="space-y-5">
+                <div className="space-y-4">
                   <div
-                    className="standing-pit-manager relative mx-auto max-w-3xl rounded-3xl border-2 p-5 sm:p-6 text-center transition-all overflow-hidden"
+                    className="standing-pit-manager relative mx-auto max-w-3xl rounded-2xl sm:rounded-3xl border-2 p-3 sm:p-6 text-center transition-all overflow-hidden"
                     style={{
                       borderColor: `${zoneColor}88`,
                       background: `radial-gradient(circle at 50% 0%, ${zoneColor}28, rgba(15,15,24,0.95) 75%)`,
                     }}
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10">
-                      <div className="standing-badge inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/50 px-3.5 py-1 text-xs font-black text-white">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3 pb-3 border-b border-white/10">
+                      <div className="standing-badge inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-black/50 px-3 py-1 text-[11px] sm:text-xs font-black text-white">
                         <Users size={14} style={{ color: zoneColor }} />
-                        <span>{trData(zone?.name)} — STANDING PIT QUEUE (STD-xxx)</span>
+                        <span className="truncate">{trData(zone?.name)} — STANDING PIT</span>
                       </div>
 
                       <button
                         type="button"
                         disabled={actionLoading || stats.available <= 0}
                         onClick={handleLockNextStandingQueue}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-orange-400 px-3.5 py-1.5 text-xs font-black text-black hover:bg-orange-300 disabled:opacity-40 transition-all cursor-pointer shadow-md"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-400 px-3.5 py-2 sm:py-1.5 text-xs font-black text-black hover:bg-orange-300 disabled:opacity-40 transition-all cursor-pointer shadow-md"
                       >
                         <Plus size={14} />
                         <span>{t('ล็อกคิวบัตรยืนถัดไป (+1 คิว)', 'Lock Next Standing Queue (+1)')}</span>
                       </button>
                     </div>
 
-                    <p className="text-xs text-gray-300 max-w-xl mx-auto mb-4">
+                    <p className="text-[11px] sm:text-xs text-gray-300 max-w-xl mx-auto mb-3 sm:mb-4">
                       {t(
-                        'โซนบัตรยืนหน้าเวทีใช้ระบบรันหมายเลขคิวเข้าฮอลล์ (STD-001, STD-002, ...) เหมือนหน้าจองของลูกค้า คลิกที่หมายเลขคิวด้านล่างเพื่อล็อกสำรองหรือตรวจสอบผู้ถือบัตร',
-                        'Standing Pit uses sequential entry queue numbers (STD-001, STD-002, ...) matching customer checkout. Click any queue badge below to reserve or inspect attendee details.'
+                        'โซนบัตรยืนรันคิวเข้าฮอลล์ (STD-001...) คลิกที่หมายเลขคิวด้านล่างเพื่อล็อกสำรองหรือตรวจสอบผู้ถือบัตร',
+                        'Standing Pit uses sequential entry queue numbers (STD-001...). Click any queue badge below to reserve or inspect.'
                       )}
                     </p>
 
-                    <div className="standing-slots-grid grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-72 overflow-y-auto p-2 rounded-2xl bg-black/40 border border-white/10">
+                    <div className="standing-slots-grid grid grid-cols-4 sm:grid-cols-8 md:grid-cols-10 gap-1.5 sm:gap-2 max-h-72 overflow-y-auto p-2 rounded-2xl bg-black/40 border border-white/10">
                       {standingSlots.map((qCode) => {
                         const seatInfo = seatMap.get(qCode);
                         const status = seatInfo?.status || 'AVAILABLE';
@@ -830,28 +859,24 @@ export default function AdminSeatMapModal({
               ) : (
                 /* ── MODE B: 3-WING STADIUM BOWL SEATED MATRIX (Matches Customer ZoneSelectPage.jsx 100%) ── */
                 <div className="space-y-3">
-                  {/* Live Hover Seat Inspector Pill (Identical to Customer ZoneSelectPage.jsx) */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400">{t('ข้อมูลที่นั่ง:', 'Seat Info:')}</span>
+                  {/* Live Hover Seat Inspector Pill + Mobile Zoom Toggle */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/40 px-3 sm:px-4 py-2 text-[11px] sm:text-xs">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className="text-gray-400 shrink-0">{t('ข้อมูลที่นั่ง:', 'Seat:')}</span>
                       {hoveredSeat ? (
-                        <span className="font-mono font-bold text-white">
-                          {t('โซน', 'Zone')}{' '}
-                          <span style={{ color: zoneColor }}>{trData(zone?.name)}</span> ·{' '}
-                          {t('แถว', 'Row')} <strong className="text-cyan-300">{hoveredSeat.row}</strong> ·{' '}
-                          {t('ที่นั่ง', 'Seat')}{' '}
-                          <strong className="text-cyan-300">{String(hoveredSeat.col).padStart(2, '0')}</strong> ·{' '}
+                        <span className="font-mono font-bold text-white truncate">
+                          {hoveredSeat.row}-{String(hoveredSeat.col).padStart(2, '0')} ·{' '}
                           {hoveredSeat.status === 'AVAILABLE' ? (
                             <span className="text-emerald-400">
-                              {t('ว่าง', 'Available')} (฿{zone?.price?.toLocaleString() || 0})
+                              {t('ว่าง', 'Free')} (฿{zone?.price?.toLocaleString() || 0})
                             </span>
                           ) : hoveredSeat.status === 'RESERVED' ? (
                             <span className="text-orange-300">
-                              {t('สำรองโดย', 'Reserved by')}: {hoveredSeat.attendeeName}
+                              {t('สำรอง', 'Locked')}: {hoveredSeat.attendeeName}
                             </span>
                           ) : hoveredSeat.status === 'PENDING' ? (
                             <span className="text-amber-300">
-                              {t('รอชำระเงิน', 'Pending')}: {hoveredSeat.attendeeName}
+                              {t('รอจ่าย', 'Hold')}: {hoveredSeat.attendeeName}
                             </span>
                           ) : (
                             <span className="text-purple-300">
@@ -860,22 +885,37 @@ export default function AdminSeatMapModal({
                           )}
                         </span>
                       ) : (
-                        <span className="text-gray-500">
+                        <span className="text-gray-400 truncate">
                           {t(
-                            'ชี้หรือคลิกที่เก้าอี้เพื่อดูผู้ถือตั๋ว หรือล็อก/ปลดล็อกที่นั่ง (ผัง 3 บล็อก 14 ที่นั่ง/แถว เหมือนหน้าลูกค้า)',
-                            'Hover or click any seat to inspect holder or lock/release (3-Wing 14-seat layout synced with customer view)'
+                            'แตะที่เก้าอี้เพื่อดูรายละเอียดหรือล็อก/ปลดล็อก',
+                            'Tap any seat to inspect or lock/release'
                           )}
                         </span>
                       )}
                     </div>
-                    <span className="font-mono text-[11px] text-gray-400">
-                      {t('ว่าง', 'Available')}: <strong className="text-white">{stats.available}</strong> / {stats.total}
-                    </span>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSeatZoom((z) => !z)}
+                        className="md:hidden inline-flex items-center gap-1 rounded-xl border border-cyan-400/35 bg-cyan-400/15 px-2.5 py-1 text-[10px] font-bold text-cyan-200 cursor-pointer"
+                      >
+                        {seatZoom ? <ZoomOut size={12} /> : <ZoomIn size={12} />}
+                        <span>{seatZoom ? t('พอดีจอ', 'Fit Screen') : t('ซูม / ล็อกทั้งแถว', 'Zoom / Rows')}</span>
+                      </button>
+                      <span className="font-mono text-[10px] sm:text-[11px] text-gray-400">
+                        {t('ว่าง', 'Free')}: <strong className="text-white">{stats.available}</strong>/{stats.total}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* 3-Wing Column Headers (01-04 Left Wing | 05-10 Center Block | 11-14 Right Wing) */}
-                  <div className="space-y-2.5 overflow-x-auto py-3 px-2">
-                    <div className="flex items-center justify-center gap-2.5 min-w-[760px] text-[10px] font-bold uppercase tracking-wider text-gray-500 pb-1">
+                  {/* 3-Wing Column Headers (Responsive Fit on Mobile, Full Size on Zoom/Desktop) */}
+                  <div className={`space-y-1.5 sm:space-y-2.5 py-2 sm:py-3 px-1 sm:px-2 ${seatZoom ? 'overflow-x-auto' : 'overflow-x-hidden md:overflow-x-auto'}`}>
+                    <div
+                      className={`items-center justify-center gap-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 pb-1 ${
+                        seatZoom ? 'flex min-w-[740px]' : 'hidden md:flex md:min-w-[740px]'
+                      }`}
+                    >
                       <span className="w-20 text-center">{t('ล็อกยกแถว', 'Lock Row')}</span>
                       <span className="w-7 text-center">ROW</span>
                       <span className="w-[132px] text-center">{t('ฝั่งซ้าย (01-04)', 'Left Wing (01-04)')}</span>
@@ -897,9 +937,13 @@ export default function AdminSeatMapModal({
                       return (
                         <div
                           key={rowLetter}
-                          className="flex items-center justify-center gap-2 sm:gap-2.5 min-w-[760px]"
+                          className={`flex items-center justify-center ${
+                            seatZoom
+                              ? 'gap-2 sm:gap-2.5 min-w-[740px]'
+                              : 'gap-[3px] sm:gap-2 md:gap-2.5 w-full md:min-w-[740px]'
+                          }`}
                         >
-                          {/* Left Action: Lock Entire Row (01-14) */}
+                          {/* Left Action: Lock Entire Row (Visible on Zoom or Desktop md+) */}
                           <button
                             type="button"
                             disabled={actionLoading || availableInRow === 0}
@@ -908,7 +952,9 @@ export default function AdminSeatMapModal({
                               `ล็อกทั้งแถว ${rowLetter} (${availableInRow} ที่นั่งว่าง)`,
                               `Lock entire Row ${rowLetter} (${availableInRow} available)`
                             )}
-                            className="w-20 flex items-center justify-center gap-1 rounded-lg border border-orange-400/25 bg-orange-400/10 px-2 py-1 text-[10px] font-bold text-orange-200 hover:bg-orange-400/20 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+                            className={`${
+                              seatZoom ? 'flex' : 'hidden md:flex'
+                            } w-20 items-center justify-center gap-1 rounded-lg border border-orange-400/25 bg-orange-400/10 px-2 py-1 text-[10px] font-bold text-orange-200 hover:bg-orange-400/20 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer`}
                           >
                             <Lock size={10} />
                             <span>
@@ -917,41 +963,49 @@ export default function AdminSeatMapModal({
                           </button>
 
                           {/* Left Row Badge */}
-                          <span className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 font-mono text-xs font-black text-cyan-300 flex items-center justify-center select-none">
+                          <span
+                            className={`rounded-md sm:rounded-lg bg-white/5 border border-white/10 font-mono font-black text-cyan-300 flex items-center justify-center select-none shrink-0 ${
+                              seatZoom ? 'w-7 h-7 text-xs' : 'w-[18px] h-[20px] sm:w-7 sm:h-7 text-[8px] sm:text-xs'
+                            }`}
+                          >
                             {rowLetter}
                           </span>
 
-                          {/* Left Wing (01 - 04) with Stadium Curve (-rotate-2) */}
-                          <div className="flex items-center gap-1 sm:gap-1.5 -rotate-2">
+                          {/* Left Wing (01 - 04) */}
+                          <div className={`flex items-center ${seatZoom ? 'gap-1 sm:gap-1.5 -rotate-2' : 'gap-[2px] sm:gap-1 -rotate-1 sm:-rotate-2'}`}>
                             {COLS_LEFT_WING.map((colNum) => renderAdminStadiumSeat(rowLetter, colNum))}
                           </div>
 
                           {/* Left Aisle Walkway */}
-                          <div className="w-3 sm:w-4 h-7 flex items-center justify-center select-none">
-                            <span className="w-0.5 h-5 bg-white/10 rounded-full" />
+                          <div className={`${seatZoom ? 'w-3 sm:w-4 h-7' : 'w-1 sm:w-3 md:w-4 h-5 sm:h-7'} flex items-center justify-center select-none shrink-0`}>
+                            <span className="w-0.5 h-3.5 sm:h-5 bg-white/10 rounded-full" />
                           </div>
 
                           {/* Center Block (05 - 10) */}
-                          <div className="flex items-center gap-1 sm:gap-1.5">
+                          <div className={`flex items-center ${seatZoom ? 'gap-1 sm:gap-1.5' : 'gap-[2px] sm:gap-1'}`}>
                             {COLS_CENTER.map((colNum) => renderAdminStadiumSeat(rowLetter, colNum))}
                           </div>
 
                           {/* Right Aisle Walkway */}
-                          <div className="w-3 sm:w-4 h-7 flex items-center justify-center select-none">
-                            <span className="w-0.5 h-5 bg-white/10 rounded-full" />
+                          <div className={`${seatZoom ? 'w-3 sm:w-4 h-7' : 'w-1 sm:w-3 md:w-4 h-5 sm:h-7'} flex items-center justify-center select-none shrink-0`}>
+                            <span className="w-0.5 h-3.5 sm:h-5 bg-white/10 rounded-full" />
                           </div>
 
-                          {/* Right Wing (11 - 14) with Stadium Curve (rotate-2) */}
-                          <div className="flex items-center gap-1 sm:gap-1.5 rotate-2">
+                          {/* Right Wing (11 - 14) */}
+                          <div className={`flex items-center ${seatZoom ? 'gap-1 sm:gap-1.5 rotate-2' : 'gap-[2px] sm:gap-1 rotate-1 sm:rotate-2'}`}>
                             {COLS_RIGHT_WING.map((colNum) => renderAdminStadiumSeat(rowLetter, colNum))}
                           </div>
 
                           {/* Right Row Badge */}
-                          <span className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 font-mono text-xs font-black text-cyan-300 flex items-center justify-center select-none">
+                          <span
+                            className={`rounded-md sm:rounded-lg bg-white/5 border border-white/10 font-mono font-black text-cyan-300 flex items-center justify-center select-none shrink-0 ${
+                              seatZoom ? 'w-7 h-7 text-xs' : 'w-[18px] h-[20px] sm:w-7 sm:h-7 text-[8px] sm:text-xs'
+                            }`}
+                          >
                             {rowLetter}
                           </span>
 
-                          {/* Right Action: Release Entire Row (01-14) */}
+                          {/* Right Action: Release Entire Row (Visible on Zoom or Desktop md+) */}
                           <button
                             type="button"
                             disabled={actionLoading || reservedInRow === 0}
@@ -960,7 +1014,9 @@ export default function AdminSeatMapModal({
                               `ปลดล็อกทั้งแถว ${rowLetter} (${reservedInRow} ที่นั่งสำรอง)`,
                               `Release entire Row ${rowLetter} (${reservedInRow} reserved)`
                             )}
-                            className="w-20 flex items-center justify-center gap-1 rounded-lg border border-cyan-400/25 bg-cyan-400/10 px-2 py-1 text-[10px] font-bold text-cyan-200 hover:bg-cyan-400/20 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+                            className={`${
+                              seatZoom ? 'flex' : 'hidden md:flex'
+                            } w-20 items-center justify-center gap-1 rounded-lg border border-cyan-400/25 bg-cyan-400/10 px-2 py-1 text-[10px] font-bold text-cyan-200 hover:bg-cyan-400/20 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer`}
                           >
                             <Unlock size={10} />
                             <span>
@@ -984,11 +1040,79 @@ export default function AdminSeatMapModal({
           )}
 
           {/* ═══════════════════════════════════════════════════════════════
-              VIEW 2: FULL TABLE VIEW
+              VIEW 2: FULL TABLE VIEW (Mobile Cards + Desktop Table)
           ══════════════════════════════════════════════════════════════════ */}
           {viewMode === 'table' && (
-            <div className="overflow-x-auto rounded-2xl border border-white/10">
-              <table className="w-full text-left text-xs">
+            <div>
+              {/* Mobile Ticket List Cards */}
+              <div className="grid gap-2.5 md:hidden">
+                {tickets.map((tk) => (
+                  <div
+                    key={tk.id}
+                    className="rounded-2xl border border-white/10 bg-[#141520] p-3.5 space-y-2 text-xs"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="font-mono font-black text-cyan-200">{tk.seatNumber || '—'}</span>
+                        <span className="ml-2 font-mono text-[10px] text-gray-400">{tk.ticketCode}</span>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          tk.status === 'USED'
+                            ? 'bg-purple-400/10 text-purple-300'
+                            : tk.status === 'VALID'
+                            ? 'bg-emerald-400/10 text-emerald-300'
+                            : tk.status === 'RESERVED'
+                            ? 'bg-orange-400/10 text-orange-300'
+                            : 'bg-white/5 text-gray-400'
+                        }`}
+                      >
+                        {tk.status === 'RESERVED'
+                          ? t('สำรอง', 'RESERVED')
+                          : tk.status === 'USED'
+                          ? t('ใช้แล้ว', 'USED')
+                          : tk.status === 'VALID'
+                          ? t('พร้อมใช้', 'VALID')
+                          : tk.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-gray-300">
+                      <span className="truncate font-semibold">{tk.attendeeName}</span>
+                      <span className="font-mono text-gray-400 shrink-0">{tk.booking?.bookingCode || '—'}</span>
+                    </div>
+                    {(tk.status === 'RESERVED' || tk.status === 'VALID') && (
+                      <div className="pt-1 flex justify-end">
+                        {tk.status === 'RESERVED' ? (
+                          <button
+                            type="button"
+                            onClick={() => releaseSingleSeat({ seatCode: tk.seatNumber, ticket: tk })}
+                            className="w-full rounded-xl border border-orange-400/30 py-1.5 text-[11px] font-bold text-orange-200 hover:bg-orange-400/10 cursor-pointer"
+                          >
+                            {t('ปลดสำรอง', 'Release')}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleRefundTicket(tk.id, tk.seatNumber)}
+                            className="w-full rounded-xl border border-rose-400/30 py-1.5 text-[11px] font-bold text-rose-300 hover:bg-rose-400/10 cursor-pointer"
+                          >
+                            {t('คืนเงิน / ยกเลิก', 'Refund / Cancel')}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {tickets.length === 0 && (
+                  <div className="rounded-2xl border border-white/10 p-8 text-center text-xs text-gray-500">
+                    {t('ยังไม่มีตั๋วหรือที่นั่งที่ถูกจองในโซนนี้', 'No tickets or reserved seats in this zone yet')}
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto rounded-2xl border border-white/10">
+                <table className="w-full text-left text-xs">
                 <thead className="bg-white/[0.04] text-[10px] uppercase font-bold text-gray-400 border-b border-white/10">
                   <tr>
                     <th className="p-3">{t('รหัสตั๋ว', 'Ticket Code')}</th>
@@ -1059,6 +1183,7 @@ export default function AdminSeatMapModal({
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 

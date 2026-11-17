@@ -4,13 +4,6 @@ const prisma = require('../lib/prisma');
 const { sendTicketToLineUser, sendTicketsToLineUser } = require('../services/lineService');
 const { requireCustomer } = require('../middleware/customerAuth');
 const {
-  isOmiseConfigured,
-  isTestMode,
-  createPromptPayCharge,
-  getCharge,
-  markTestChargeAsPaid
-} = require('../services/omiseService');
-const {
   ensureDefaultPromotions,
   calculateOrderPricing
 } = require('../services/promotionService');
@@ -18,14 +11,9 @@ const {
   getGatewayConfig,
   createVeritransTransaction,
   processSandboxPayment,
-  verifyWebhookSignature
+  verifyWebhookSignature,
+  getVeritransTransactionStatus
 } = require('../services/veritransService');
-
-function extractOmiseChargeId(paymentMethod) {
-  if (!paymentMethod || typeof paymentMethod !== 'string') return null;
-  const match = paymentMethod.match(/(chrg_[a-zA-Z0-9_]+)/);
-  return match ? match[1] : null;
-}
 
 const REAL_LINE_USER_ID_REGEX = /^U[0-9a-f]{32}$/i;
 
@@ -747,6 +735,23 @@ async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], 
           ...prevMeta,
           captureResult: gatewayCaptureResult,
         });
+
+        // Capture Midtrans Promo Engine discount if gross_amount paid in Snap differs from initial total
+        const capturedGross = Math.round(Number(gatewayCaptureResult.gross_amount || 0));
+        const promoDiscountFromApi = Math.round(Number(gatewayCaptureResult.promo_discount || 0));
+        if (capturedGross > 0 && capturedGross < booking.totalAmount) {
+          const midtransDiscount = promoDiscountFromApi > 0 ? promoDiscountFromApi : booking.totalAmount - capturedGross;
+          updateData.discountAmount = (booking.discountAmount || 0) + midtransDiscount;
+          updateData.couponDiscount = (booking.couponDiscount || 0) + midtransDiscount;
+          updateData.totalAmount = capturedGross;
+          updateData.promoCode =
+            gatewayCaptureResult.promo_code ||
+            gatewayCaptureResult.promo_id ||
+            booking.promoCode ||
+            'MIDTRANS_PROMO';
+        } else if (gatewayCaptureResult.promo_code) {
+          updateData.promoCode = gatewayCaptureResult.promo_code;
+        }
       }
 
       const updateResult = await tx.booking.updateMany({
@@ -840,6 +845,7 @@ async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], 
             message: 'การจองนี้ชำระเงินเรียบร้อยแล้ว',
             data: {
               bookingCode: latestBooking.bookingCode,
+              booking: latestBooking,
               tickets: latestBooking.tickets,
               gatewayResult: gatewayCaptureResult,
               lineDelivery: {
@@ -858,7 +864,8 @@ async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], 
     throw txError;
   }
 
-  const lineDelivery = await deliverTicketsToLine(booking, createdTickets);
+  const updatedBooking = await prisma.booking.findUnique({ where: { id: booking.id } });
+  const lineDelivery = await deliverTicketsToLine(updatedBooking || booking, createdTickets);
 
   return {
     httpStatus: 200,
@@ -867,6 +874,7 @@ async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], 
       message: 'ชำระเงินผ่าน VeriTrans สำเร็จ ออกตั๋วคอนเสิร์ตเรียบร้อย',
       data: {
         bookingCode: booking.bookingCode,
+        booking: updatedBooking || booking,
         tickets: createdTickets,
         gatewayResult: gatewayCaptureResult,
         lineDelivery
@@ -874,162 +882,6 @@ async function fulfillBookingPayment(bookingCode, { selectedSeatsFallback = [], 
     }
   };
 }
-
-// POST /api/bookings/:bookingCode/omise-charge - Create or reuse an Omise PromptPay QR charge
-router.post('/:bookingCode/omise-charge', async (req, res) => {
-  try {
-    const { bookingCode } = req.params;
-    const booking = await prisma.booking.findUnique({
-      where: { bookingCode }
-    });
-
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
-    }
-
-    if (booking.status === 'PAID') {
-      return res.json({
-        success: true,
-        configured: isOmiseConfigured(),
-        alreadyPaid: true
-      });
-    }
-
-    if (booking.status !== 'PENDING' || new Date() > new Date(booking.expiresAt)) {
-      return res.status(400).json({ success: false, message: 'รายการจองนี้หมดเวลาหรือถูกยกเลิกแล้ว' });
-    }
-
-    if (!isOmiseConfigured()) {
-      return res.json({
-        success: true,
-        configured: false,
-        mode: 'VERITRANS_SANDBOX',
-        veritrans: getGatewayConfig(),
-        message: 'ทำงานในโหมด VeriTrans Sandbox'
-      });
-    }
-
-    // Reuse existing pending Omise charge if stored in paymentMethod
-    const existingChargeId = extractOmiseChargeId(booking.paymentMethod);
-    if (existingChargeId) {
-      try {
-        const existingCharge = await getCharge(existingChargeId);
-        if (existingCharge.paid && existingCharge.status === 'successful') {
-          const fulfilled = await fulfillBookingPayment(bookingCode, {
-            paymentMethodOverride: `VERITRANS_PROMPTPAY:${existingCharge.id}`
-          });
-          return res.status(fulfilled.httpStatus).json({
-            ...fulfilled.body,
-            configured: true,
-            mode: existingCharge.livemode ? 'OMISE_LIVE' : 'OMISE_TEST',
-            charge: existingCharge
-          });
-        }
-        if (existingCharge.status === 'pending' && existingCharge.qrImageUrl) {
-          return res.json({
-            success: true,
-            configured: true,
-            mode: existingCharge.livemode ? 'OMISE_LIVE' : 'OMISE_TEST',
-            charge: existingCharge
-          });
-        }
-      } catch (reuseErr) {
-        console.warn('Could not reuse previous Omise charge, creating a new one:', reuseErr.message);
-      }
-    }
-
-    // Create new PromptPay charge with current net totalAmount (including discounts & VAT)
-    const charge = await createPromptPayCharge({
-      amountTHB: booking.totalAmount,
-      bookingCode: booking.bookingCode,
-      bookingId: booking.id,
-      expiresAt: booking.expiresAt
-    });
-
-    await prisma.booking.update({
-      where: { id: booking.id },
-      data: { paymentMethod: `VERITRANS_PROMPTPAY:${charge.id}` }
-    });
-
-    res.json({
-      success: true,
-      configured: true,
-      mode: charge.livemode ? 'OMISE_LIVE' : 'OMISE_TEST',
-      veritrans: getGatewayConfig(),
-      charge
-    });
-  } catch (error) {
-    console.error('Error creating PromptPay charge:', error);
-    res.json({
-      success: true,
-      configured: false,
-      mode: 'VERITRANS_SANDBOX',
-      veritrans: getGatewayConfig(),
-      message: 'ใช้ QR PromptPay จำลองของ VeriTrans Sandbox'
-    });
-  }
-});
-
-// GET /api/bookings/:bookingCode/omise-status - Poll charge status & fulfill if paid
-router.get('/:bookingCode/omise-status', async (req, res) => {
-  try {
-    const { bookingCode } = req.params;
-    const booking = await prisma.booking.findUnique({
-      where: { bookingCode },
-      include: { tickets: true }
-    });
-
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
-    }
-
-    if (booking.status === 'PAID') {
-      return res.json({
-        success: true,
-        paid: true,
-        status: 'PAID',
-        data: {
-          bookingCode: booking.bookingCode,
-          tickets: booking.tickets
-        }
-      });
-    }
-
-    const chargeId = extractOmiseChargeId(booking.paymentMethod);
-    if (!isOmiseConfigured() || !chargeId) {
-      return res.json({
-        success: true,
-        paid: false,
-        status: booking.status,
-        configured: isOmiseConfigured()
-      });
-    }
-
-    const charge = await getCharge(chargeId);
-    if (charge.paid && charge.status === 'successful') {
-      const fulfilled = await fulfillBookingPayment(bookingCode, {
-        paymentMethodOverride: `VERITRANS_PROMPTPAY:${charge.id}`
-      });
-      return res.status(fulfilled.httpStatus).json({
-        ...fulfilled.body,
-        paid: true,
-        status: 'PAID',
-        chargeStatus: charge.status
-      });
-    }
-
-    res.json({
-      success: true,
-      paid: false,
-      status: booking.status,
-      chargeStatus: charge.status,
-      failureMessage: charge.failureMessage
-    });
-  } catch (error) {
-    console.error('Error checking charge status:', error);
-    res.status(500).json({ success: false, message: 'ตรวจสอบสถานะไม่สำเร็จ' });
-  }
-});
 
 // POST /api/bookings/:bookingCode/pay - Confirm / Process VeriTrans Payment (Supports both QR PromptPay & Credit/Debit Card)
 router.post('/:bookingCode/pay', async (req, res) => {
@@ -1042,6 +894,7 @@ router.post('/:bookingCode/pay', async (req, res) => {
       cardHolder = '',
       cardExpiry = '',
       cardCvv = '',
+      snapResult = null,
     } = req.body || {};
 
     const booking = await prisma.booking.findUnique({ where: { bookingCode } });
@@ -1049,17 +902,50 @@ router.post('/:bookingCode/pay', async (req, res) => {
       return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจอง' });
     }
 
-    // Process through VeriTrans Sandbox Processor (handles both QR PromptPay & Credit Card verification)
-    const vtResult = processSandboxPayment({
-      bookingCode,
-      orderId: booking.gatewayOrderId || `${bookingCode}-VT`,
-      amount: booking.totalAmount,
-      paymentChannel,
-      cardNumber,
-      cardHolder,
-      cardExpiry,
-      cardCvv,
-    });
+    // If paid directly through Midtrans Snap Popup / Hosted Page, verify & extract promo_details from Midtrans Status API
+    let vtResult;
+    if (snapResult && (snapResult.transaction_id || snapResult.order_id)) {
+      const targetOrderId = snapResult.order_id || booking.gatewayOrderId;
+      const mtStatus = await getVeritransTransactionStatus(targetOrderId);
+      const mtPromo = mtStatus?.promo_details || {};
+      const maskedCard = mtStatus?.masked_card || '';
+      const resolvedBrand = maskedCard.startsWith('4')
+        ? 'VISA'
+        : maskedCard.startsWith('5')
+        ? 'MASTERCARD'
+        : maskedCard.startsWith('35')
+        ? 'JCB'
+        : String(mtStatus?.payment_type || snapResult.payment_type || paymentChannel).toUpperCase();
+
+      vtResult = {
+        success: true,
+        status_code: mtStatus?.status_code || snapResult.status_code || '200',
+        status_message: mtStatus?.status_message || snapResult.status_message || 'Midtrans Snap Payment Captured',
+        transaction_id: mtStatus?.transaction_id || snapResult.transaction_id || snapResult.order_id,
+        order_id: mtStatus?.order_id || targetOrderId,
+        gross_amount: Number(mtStatus?.gross_amount || snapResult.gross_amount) || booking.totalAmount,
+        payment_type: mtStatus?.payment_type || snapResult.payment_type || paymentChannel,
+        card_brand: resolvedBrand,
+        masked_card: maskedCard || null,
+        bank: mtStatus?.bank || null,
+        promo_id: mtPromo.promo_id || snapResult.promo_id || null,
+        promo_code: mtPromo.code || snapResult.promo_code || null,
+        promo_name: mtPromo.name || null,
+        promo_discount: Number(mtPromo.discount_amount || 0) || null,
+      };
+    } else {
+      // Process through VeriTrans Sandbox Processor (handles both QR PromptPay & Credit Card verification)
+      vtResult = processSandboxPayment({
+        bookingCode,
+        orderId: booking.gatewayOrderId || `${bookingCode}-VT`,
+        amount: booking.totalAmount,
+        paymentChannel,
+        cardNumber,
+        cardHolder,
+        cardExpiry,
+        cardCvv,
+      });
+    }
 
     if (!vtResult.success) {
       return res.status(402).json({
@@ -1069,25 +955,10 @@ router.post('/:bookingCode/pay', async (req, res) => {
       });
     }
 
-    // If an Omise test charge exists on this booking for PromptPay, mark it paid in Test Mode too
-    if (paymentChannel === 'PROMPTPAY' && isOmiseConfigured()) {
-      const chargeId = extractOmiseChargeId(booking?.paymentMethod);
-      if (chargeId) {
-        try {
-          const charge = await getCharge(chargeId);
-          if (!charge.paid && charge.status === 'pending' && isTestMode() && chargeId.startsWith('chrg_test_')) {
-            await markTestChargeAsPaid(chargeId);
-          }
-        } catch (omiseErr) {
-          console.warn('Omise mark/verify warning during /pay:', omiseErr.message);
-        }
-      }
-    }
-
     const methodLabel =
       paymentChannel === 'PROMPTPAY'
         ? `VERITRANS_PROMPTPAY:${vtResult.transaction_id}`
-        : `VERITRANS_CARD_${vtResult.card_brand || 'JCB'}:${vtResult.transaction_id}`;
+        : `VERITRANS_CARD_${vtResult.card_brand || 'VISA'}:${vtResult.transaction_id}`;
 
     const result = await fulfillBookingPayment(bookingCode, {
       selectedSeatsFallback: selectedSeats,
@@ -1167,58 +1038,6 @@ async function handleVeritransWebhook(req, res) {
   }
 }
 
-// POST /api/webhooks/omise (and /api/bookings/webhooks/omise) - Official Omise Webhook Handler
-async function handleOmiseWebhook(req, res) {
-  try {
-    const event = req.body;
-    if (!event || event.object !== 'event' || !event.data) {
-      return res.status(400).json({ success: false, message: 'Invalid Omise webhook payload' });
-    }
-
-    const eventData = event.data;
-    if (eventData.object !== 'charge' || !eventData.id) {
-      return res.json({ success: true, ignored: true });
-    }
-
-    let verifiedCharge = null;
-    if (isOmiseConfigured()) {
-      verifiedCharge = await getCharge(eventData.id);
-    } else {
-      return res.status(503).json({ success: false, message: 'OMISE_SECRET_KEY is not configured' });
-    }
-
-    if (!verifiedCharge.paid || verifiedCharge.status !== 'successful') {
-      return res.json({
-        success: true,
-        processed: false,
-        chargeStatus: verifiedCharge.status
-      });
-    }
-
-    let bookingCode = verifiedCharge.bookingCode;
-    if (!bookingCode) {
-      const matched = await prisma.booking.findFirst({
-        where: { paymentMethod: { contains: verifiedCharge.id } },
-        select: { bookingCode: true }
-      });
-      bookingCode = matched?.bookingCode;
-    }
-
-    if (!bookingCode) {
-      return res.status(404).json({ success: false, message: 'No matching booking found for charge' });
-    }
-
-    const result = await fulfillBookingPayment(bookingCode, {
-      paymentMethodOverride: `VERITRANS_PROMPTPAY:${verifiedCharge.id}`
-    });
-    return res.status(result.httpStatus).json(result.body);
-  } catch (error) {
-    console.error('Error handling Omise webhook:', error);
-    return res.status(500).json({ success: false, message: 'Webhook processing error' });
-  }
-}
-
-router.post('/webhooks/omise', handleOmiseWebhook);
 router.post('/webhooks/veritrans', handleVeritransWebhook);
 
 // POST /api/bookings/:bookingCode/line-resend - Retry ticket delivery after payment
@@ -1241,6 +1060,5 @@ router.post('/:bookingCode/line-resend', async (req, res) => {
   }
 });
 
-router.handleOmiseWebhook = handleOmiseWebhook;
 router.handleVeritransWebhook = handleVeritransWebhook;
 module.exports = router;

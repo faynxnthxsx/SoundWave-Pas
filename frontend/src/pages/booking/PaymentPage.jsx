@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Clock,
@@ -24,26 +24,26 @@ import TaxInvoiceModal from '../../components/TaxInvoiceModal';
 
 const TEST_CARDS = [
   {
-    id: 'jcb_ok',
-    labelTh: '🇯🇵 บัตร JCB ทดสอบ (อนุมัติสำเร็จ)',
-    labelEn: '🇯🇵 JCB Test Card (Approved)',
-    brand: 'JCB',
-    number: '3528 0000 0000 0007',
-    holder: 'TARO YAMADA',
+    id: 'visa_ok',
+    labelTh: '💳 บัตร Visa ทดสอบ Midtrans (3DS OTP: 112233)',
+    labelEn: '💳 Midtrans Visa Test Card (3DS OTP: 112233)',
+    brand: 'VISA',
+    number: '4811 1111 1111 1114',
+    holder: 'SOUNDWAVE USER',
     expiry: '12/29',
-    cvv: '888',
-    badgeTh: 'แนะนำ · ลดเพิ่ม 5%',
-    badgeEn: 'Recommended · +5% Off',
+    cvv: '123',
+    badgeTh: 'ผ่าน 100% · โปร FAY123',
+    badgeEn: '100% Pass · Promo Ready',
     isSuccess: true,
   },
   {
-    id: 'visa_ok',
-    labelTh: '💳 บัตร Visa ทดสอบ (อนุมัติสำเร็จ)',
-    labelEn: '💳 Visa Test Card (Approved)',
-    brand: 'VISA',
-    number: '4242 4242 4242 4242',
+    id: 'mc_ok',
+    labelTh: '💳 บัตร Mastercard ทดสอบ Midtrans',
+    labelEn: '💳 Midtrans Mastercard Test Card',
+    brand: 'MASTERCARD',
+    number: '5573 3811 1111 1111',
     holder: 'SOMCHAI RAKDONTREE',
-    expiry: '08/28',
+    expiry: '12/29',
     cvv: '123',
     badgeTh: 'ผ่าน 100%',
     badgeEn: '100% Pass',
@@ -51,13 +51,13 @@ const TEST_CARDS = [
   },
   {
     id: 'card_fail',
-    labelTh: '⚠️ บัตรทดสอบวงเงินไม่พอ (จำลองถูกปฏิเสธ)',
-    labelEn: '⚠️ Declined Test Card (Insufficient Funds)',
+    labelTh: '⚠️ บัตรทดสอบ Midtrans ปฏิเสธยอด (จำลอง Error)',
+    labelEn: '⚠️ Midtrans Declined Test Card (Simulate Error)',
     brand: 'VISA',
-    number: '4000 0000 0000 0000',
+    number: '4811 1111 1111 1115',
     holder: 'TEST DECLINED CARD',
-    expiry: '05/27',
-    cvv: '999',
+    expiry: '12/29',
+    cvv: '123',
     badgeTh: 'ทดสอบ Error',
     badgeEn: 'Test Error',
     isSuccess: false,
@@ -66,6 +66,7 @@ const TEST_CARDS = [
 
 export default function PaymentPage() {
   const { bookingCode } = useParams();
+  const navigate = useNavigate();
   const { t, trData } = useLanguage();
 
   const [booking, setBooking] = useState(null);
@@ -81,11 +82,11 @@ export default function PaymentPage() {
 
   // Payment channel & Credit card state
   const [paymentChannel, setPaymentChannel] = useState('PROMPTPAY'); // PROMPTPAY | CREDIT_CARD
-  const [cardNumber, setCardNumber] = useState('3528 0000 0000 0007');
-  const [cardHolder, setCardHolder] = useState('TARO YAMADA');
+  const [cardNumber, setCardNumber] = useState('4811 1111 1111 1114');
+  const [cardHolder, setCardHolder] = useState('SOUNDWAVE USER');
   const [cardExpiry, setCardExpiry] = useState('12/29');
-  const [cardCvv, setCardCvv] = useState('888');
-  const [selectedTestCardId, setSelectedTestCardId] = useState('jcb_ok');
+  const [cardCvv, setCardCvv] = useState('123');
+  const [selectedTestCardId, setSelectedTestCardId] = useState('visa_ok');
 
   // Promo & Tax state on checkout page
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -97,6 +98,7 @@ export default function PaymentPage() {
 
   // Live VeriTrans Step-by-Step Inspector state
   const [activeGatewayStep, setActiveGatewayStep] = useState(2);
+  const [showGatewayWorkflow, setShowGatewayWorkflow] = useState(false);
   const [showPayloadInspector, setShowPayloadInspector] = useState(false);
   const [gatewayCaptureResult, setGatewayCaptureResult] = useState(null);
 
@@ -265,8 +267,8 @@ export default function PaymentPage() {
     if (typeof window !== 'undefined' && window.snap && token && !token.startsWith('vt_snap_')) {
       setActiveGatewayStep(3);
       window.snap.pay(token, {
-        onSuccess: () => {
-          handleConfirmPayment();
+        onSuccess: (result) => {
+          handleConfirmPayment(result);
         },
         onPending: () => {
           setActiveGatewayStep(3);
@@ -281,7 +283,7 @@ export default function PaymentPage() {
     }
   };
 
-  const handleConfirmPayment = async () => {
+  const handleConfirmPayment = async (snapResult = null) => {
     setPaying(true);
     setPaymentError('');
     setActiveGatewayStep(3);
@@ -304,6 +306,7 @@ export default function PaymentPage() {
           cardHolder,
           cardExpiry,
           cardCvv,
+          ...(snapResult && (snapResult.transaction_id || snapResult.order_id) ? { snapResult } : {}),
         }),
       });
       const data = await res.json();
@@ -316,7 +319,29 @@ export default function PaymentPage() {
         setPaidSuccess(true);
         const issuedTickets = data.data?.tickets || [];
         setTickets(issuedTickets);
-        saveOrderToLocalHistory(booking, issuedTickets);
+
+        const updatedFromApi = data.data?.booking;
+        if (updatedFromApi) {
+          setBooking((prev) => {
+            const merged = {
+              ...(prev || {}),
+              ...updatedFromApi,
+              pricing: {
+                ...(prev?.pricing || {}),
+                subtotalAmount: updatedFromApi.subtotalAmount ?? prev?.pricing?.subtotalAmount ?? prev?.totalAmount,
+                discountAmount: updatedFromApi.discountAmount ?? prev?.pricing?.discountAmount ?? 0,
+                couponDiscount: updatedFromApi.couponDiscount ?? prev?.pricing?.couponDiscount ?? 0,
+                vatAmount: updatedFromApi.vatAmount ?? prev?.pricing?.vatAmount ?? 0,
+                whtAmount: updatedFromApi.whtAmount ?? prev?.pricing?.whtAmount ?? 0,
+                totalAmount: updatedFromApi.totalAmount ?? prev?.totalAmount,
+              },
+            };
+            saveOrderToLocalHistory(merged, issuedTickets);
+            return merged;
+          });
+        } else {
+          saveOrderToLocalHistory(booking, issuedTickets);
+        }
       } else {
         setActiveGatewayStep(2);
         setPaymentError(data.message || t('เกิดข้อผิดพลาดในการชำระเงิน', 'Payment failed'));
@@ -395,19 +420,27 @@ export default function PaymentPage() {
           <div className="flex justify-between text-gray-400">
             <span>{t('ช่องทางชำระเงิน:', 'Payment Method:')}</span>
             <span className="font-mono font-bold text-white">
-              {paymentChannel === 'PROMPTPAY'
+              {gatewayCaptureResult?.payment_type === 'promptpay_qr' ||
+              (!gatewayCaptureResult?.masked_card && paymentChannel === 'PROMPTPAY')
                 ? 'VeriTrans QR PromptPay'
-                : `VeriTrans Credit Card (${gatewayCaptureResult?.card_brand || 'JCB'})`}
+                : `VeriTrans Card (${gatewayCaptureResult?.card_brand || 'VISA'}${
+                    gatewayCaptureResult?.masked_card ? ` · ${gatewayCaptureResult.masked_card.slice(-4)}` : ''
+                  })`}
             </span>
           </div>
           <div className="flex justify-between text-gray-400">
             <span>{t('ราคาบัตรตั้งต้น:', 'Ticket Subtotal:')}</span>
             <span className="font-mono text-white">฿{(pricing.subtotalAmount || booking.totalAmount).toLocaleString()}</span>
           </div>
-          {pricing.discountAmount > 0 && (
+          {(pricing.discountAmount > 0 || booking.discountAmount > 0) && (
             <div className="flex justify-between text-emerald-300">
-              <span>{t('หักส่วนลดโปรโมชันรวม:', 'Total Discounts:')}</span>
-              <span className="font-mono font-bold">-฿{pricing.discountAmount.toLocaleString()}</span>
+              <span>
+                {t('หักส่วนลดโปรโมชัน', 'Midtrans Promo Discount')}
+                {booking.promoCode ? ` (${booking.promoCode})` : ''}:
+              </span>
+              <span className="font-mono font-bold">
+                -฿{(pricing.discountAmount || booking.discountAmount || 0).toLocaleString()}
+              </span>
             </div>
           )}
           {pricing.vatAmount > 0 && (
@@ -799,7 +832,7 @@ export default function PaymentPage() {
           <button
             type="button"
             disabled={paying || recalculating}
-            onClick={handleConfirmPayment}
+            onClick={() => handleConfirmPayment()}
             className="payment-confirm-btn w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 to-sky-400 hover:from-cyan-300 hover:to-sky-300 text-black font-black text-xs uppercase flex items-center justify-center gap-2 shadow-lg shadow-cyan-400/25 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
           >
             <CheckCircle2 className="w-4 h-4 text-emerald-800 shrink-0" />
@@ -836,55 +869,17 @@ export default function PaymentPage() {
               <span className="font-mono text-[11px] font-bold text-cyan-300">{booking.bookingCode}</span>
             </div>
 
-            {/* Quick Promo Code & WHT Switcher on Checkout */}
+            {/* Compact 1-Line Promo Notice & WHT Switcher */}
             <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
-              <label className="text-[10px] font-bold text-gray-300 flex items-center gap-1">
-                <Tag size={11} className="text-pink-400" />
-                {t('เปลี่ยน/ใช้โค้ดส่วนลดในหน้าชำระเงิน:', 'Apply or Change Promo Code:')}
-              </label>
-              <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={promoCodeInput}
-                  onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                  placeholder={t('เช่น EARLYBIRD15 หรือ SOUNDWAVE300', 'e.g. EARLYBIRD15')}
-                  className="flex-1 rounded-xl border border-white/15 bg-[#09090f] px-2.5 py-1.5 font-mono text-xs text-white uppercase outline-none focus:border-cyan-300"
-                />
-                <button
-                  type="button"
-                  disabled={recalculating}
-                  onClick={() => handleRecalculateBooking({ nextPromo: promoCodeInput })}
-                  className="rounded-xl bg-cyan-400/20 border border-cyan-400/40 px-3 py-1.5 text-[11px] font-bold text-cyan-200 hover:bg-cyan-400/30 cursor-pointer"
-                >
-                  {t('คำนวณใหม่', 'Apply')}
-                </button>
+              <div className="rounded-xl border border-pink-400/25 bg-pink-500/10 px-2.5 py-1.5 flex items-center gap-1.5 text-[11px] min-w-0">
+                <Tag size={12} className="text-pink-300 shrink-0" />
+                <span className="text-pink-100 truncate">
+                  {t(
+                    'โปรโมชัน Midtrans: กดใช้ได้ในปุ่ม Snap Popup ด้านซ้าย',
+                    'Midtrans Promos: apply via Snap Popup button on the left'
+                  )}
+                </span>
               </div>
-
-              {/* Quick clickable coupon pills */}
-              {pricing.availableCoupons?.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {pricing.availableCoupons.map((cp) => (
-                    <button
-                      key={cp.code}
-                      type="button"
-                      disabled={!cp.eligible}
-                      onClick={() => {
-                        setPromoCodeInput(cp.code);
-                        handleRecalculateBooking({ nextPromo: cp.code });
-                      }}
-                      className={`rounded-lg px-2 py-0.5 font-mono text-[10px] font-bold border transition cursor-pointer ${
-                        booking.promoCode === cp.code
-                          ? 'border-cyan-300 bg-cyan-300 text-black'
-                          : cp.eligible
-                          ? 'border-white/15 bg-white/5 text-cyan-200 hover:border-cyan-400/50'
-                          : 'border-white/5 bg-white/[0.02] text-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {cp.code} {cp.isBestDeal ? '✨' : ''}
-                    </button>
-                  ))}
-                </div>
-              )}
 
               <label className="flex items-center gap-2 pt-1.5 text-[11px] text-gray-300 cursor-pointer">
                 <input
@@ -1014,126 +1009,143 @@ export default function PaymentPage() {
             </div>
           </div>
 
-          {/* Card 2: LIVE VERITRANS STEP-BY-STEP WORKFLOW VISUALIZER */}
-          <div className="rounded-3xl border border-cyan-400/25 bg-[#101018] p-5 shadow-2xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-cyan-300 flex items-center gap-1.5">
-                <Code2 size={15} />
-                {t('ขั้นตอนการทำงานของ VeriTrans Gateway (สด)', 'Live VeriTrans Gateway Workflow')}
-              </span>
-              <span className="rounded bg-cyan-400/15 px-2 py-0.5 font-mono text-[9px] font-bold text-cyan-200">
-                Step {activeGatewayStep}/4
-              </span>
-            </div>
-
-            <div className="space-y-2 text-[11px]">
-              {[
-                {
-                  step: 1,
-                  title: t('1. คำนวณส่วนลด 3 ต่อ & ภาษี (Tax Engine)', '1. Calculate 3-Tier Discounts & Tax (VAT 7%)'),
-                  desc: t(
-                    `ราคาตั้งต้น ฿${(pricing.subtotalAmount || 0).toLocaleString()} หักส่วนลด ฿${(pricing.discountAmount || 0).toLocaleString()} + VAT 7% (฿${(pricing.vatAmount || 0).toLocaleString()})`,
-                    `Subtotal ฿${(pricing.subtotalAmount || 0).toLocaleString()} - Discounts ฿${(pricing.discountAmount || 0).toLocaleString()} + VAT 7% (฿${(pricing.vatAmount || 0).toLocaleString()})`
-                  ),
-                },
-                {
-                  step: 2,
-                  title: t('2. สร้างรายการไปที่ VeriTrans API (Snap Token)', '2. Create VeriTrans Transaction (Snap Token)'),
-                  desc: t(
-                    `สร้าง Order ${booking.gatewayOrderId || booking.bookingCode} พร้อมแนบ item_details ให้ยอดตรงกับ gross_amount (฿${booking.totalAmount.toLocaleString()})`,
-                    `Order ${booking.gatewayOrderId || booking.bookingCode} created with item_details matching gross_amount (฿${booking.totalAmount.toLocaleString()})`
-                  ),
-                },
-                {
-                  step: 3,
-                  title: t('3. เข้ารหัสบัตรเครดิต / สแกน QR PromptPay', '3. Card Tokenization / QR PromptPay Scan'),
-                  desc:
-                    paymentChannel === 'PROMPTPAY'
-                      ? t('รอรับการสแกน QR PromptPay จากแอปธนาคาร', 'Waiting for QR PromptPay scan')
-                      : t(
-                          `แปลงเลขบัตร ${cardNumber.slice(0, 4)}•••• เป็น Token ปลอดภัยส่งให้ธนาคาร`,
-                          `Tokenizing card ${cardNumber.slice(0, 4)}•••• securely for bank authorization`
-                        ),
-                },
-                {
-                  step: 4,
-                  title: t('4. เกตเวย์อนุมัติ (200 OK) & ยิง Webhook ออกตั๋ว', '4. Gateway Capture (200 OK) & Issue Tickets'),
-                  desc: t(
-                    'เมื่อตัดเงินสำเร็จ VeriTrans ส่งสัญญาณกลับมาเปลี่ยนสถานะเป็น PAID และส่งตั๋วเข้า LINE',
-                    'VeriTrans confirms settlement, transitions booking to PAID, and delivers tickets to LINE'
-                  ),
-                },
-              ].map((s) => {
-                const done = activeGatewayStep >= s.step;
-                return (
-                  <div
-                    key={s.step}
-                    className={`rounded-xl border p-2.5 transition ${
-                      done
-                        ? 'border-cyan-400/35 bg-cyan-400/10 text-white'
-                        : 'border-white/5 bg-white/[0.02] text-gray-500'
-                    }`}
-                  >
-                    <p className="font-bold flex items-center justify-between">
-                      <span>{s.title}</span>
-                      {done && <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />}
-                    </p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{s.desc}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Toggle JSON Payload Inspector */}
+          {/* Card 2: COMPACT 1-LINE VERITRANS WORKFLOW & JSON INSPECTOR */}
+          <div className="rounded-2xl border border-cyan-400/25 bg-[#101018] shadow-xl overflow-hidden">
             <button
               type="button"
-              onClick={() => setShowPayloadInspector((v) => !v)}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] font-bold text-cyan-200 hover:bg-white/5 flex items-center justify-between cursor-pointer"
+              onClick={() => setShowGatewayWorkflow((v) => !v)}
+              className="w-full px-4 py-2.5 flex items-center justify-between gap-2 text-left hover:bg-white/[0.03] transition-colors cursor-pointer"
             >
-              <span>
-                {t(
-                  '🔍 ดูข้อมูล JSON ที่ส่งไปหา VeriTrans API (item_details)',
-                  '🔍 Inspect VeriTrans API JSON Payload (item_details)'
-                )}
+              <span className="text-xs font-black text-cyan-300 flex items-center gap-1.5 min-w-0">
+                <Code2 size={14} className="shrink-0" />
+                <span className="truncate">
+                  {t('ขั้นตอน VeriTrans Gateway (สด) & JSON', 'Live VeriTrans Gateway & JSON')}
+                </span>
               </span>
-              {showPayloadInspector ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="rounded bg-cyan-400/15 px-2 py-0.5 font-mono text-[9px] font-bold text-cyan-200">
+                  Step {activeGatewayStep}/4
+                </span>
+                {showGatewayWorkflow ? (
+                  <ChevronUp size={14} className="text-cyan-300" />
+                ) : (
+                  <ChevronDown size={14} className="text-cyan-300" />
+                )}
+              </div>
             </button>
 
-            {showPayloadInspector && (
-              <div className="space-y-2">
-                <pre className="max-h-56 overflow-auto rounded-xl border border-white/10 bg-slate-900 p-3 font-mono text-[10px] text-emerald-300">
-                  {JSON.stringify(
-                    vtData?.requestPayload || {
-                      transaction_details: {
-                        order_id: booking.gatewayOrderId || booking.bookingCode,
-                        gross_amount: booking.totalAmount,
-                      },
-                      item_details: pricing.veritransItemDetails || [],
+            {showGatewayWorkflow && (
+              <div className="px-4 pb-4 pt-1 border-t border-white/10 space-y-3">
+                <div className="space-y-2 text-[11px]">
+                  {[
+                    {
+                      step: 1,
+                      title: t('1. คำนวณภาษีไทย & เตรียมโปร Midtrans', '1. Calculate Thai Tax & Prepare Midtrans Promo'),
+                      desc: t(
+                        `ราคาตั้งต้น ฿${(pricing.subtotalAmount || 0).toLocaleString()} + VAT 7% (฿${(pricing.vatAmount || 0).toLocaleString()})${pricing.whtAmount > 0 ? ` - WHT 3% (฿${pricing.whtAmount.toLocaleString()})` : ''}`,
+                        `Subtotal ฿${(pricing.subtotalAmount || 0).toLocaleString()} + VAT 7% (฿${(pricing.vatAmount || 0).toLocaleString()})${pricing.whtAmount > 0 ? ` - WHT 3% (฿${pricing.whtAmount.toLocaleString()})` : ''}`
+                      ),
                     },
-                    null,
-                    2
-                  )}
-                </pre>
-                <div className="flex flex-wrap gap-2 text-[10px]">
-                  <a
-                    href="https://dashboard.midtrans.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-cyan-300 hover:underline"
-                  >
-                    <ExternalLink size={11} />{' '}
-                    {t('เปิดเว็บ Dashboard ของ VeriTrans/Midtrans', 'Open VeriTrans/Midtrans Dashboard')}
-                  </a>
-                  <a
-                    href="https://simulator.sandbox.midtrans.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-pink-300 hover:underline"
-                  >
-                    <ExternalLink size={11} />{' '}
-                    {t('เปิดเว็บ Simulator ทดสอบจ่ายเงิน', 'Open Sandbox Payment Simulator')}
-                  </a>
+                    {
+                      step: 2,
+                      title: t('2. สร้างรายการไปที่ VeriTrans API (Snap Token)', '2. Create VeriTrans Transaction (Snap Token)'),
+                      desc: t(
+                        `สร้าง Order ${booking.gatewayOrderId || booking.bookingCode} พร้อมแนบ item_details ให้ยอดตรงกับ gross_amount (฿${booking.totalAmount.toLocaleString()})`,
+                        `Order ${booking.gatewayOrderId || booking.bookingCode} created with item_details matching gross_amount (฿${booking.totalAmount.toLocaleString()})`
+                      ),
+                    },
+                    {
+                      step: 3,
+                      title: t('3. เข้ารหัสบัตรเครดิต / สแกน QR PromptPay', '3. Card Tokenization / QR PromptPay Scan'),
+                      desc:
+                        paymentChannel === 'PROMPTPAY'
+                          ? t('รอรับการสแกน QR PromptPay จากแอปธนาคาร', 'Waiting for QR PromptPay scan')
+                          : t(
+                              `แปลงเลขบัตร ${cardNumber.slice(0, 4)}•••• เป็น Token ปลอดภัยส่งให้ธนาคาร`,
+                              `Tokenizing card ${cardNumber.slice(0, 4)}•••• securely for bank authorization`
+                            ),
+                    },
+                    {
+                      step: 4,
+                      title: t('4. เกตเวย์อนุมัติ (200 OK) & ยิง Webhook ออกตั๋ว', '4. Gateway Capture (200 OK) & Issue Tickets'),
+                      desc: t(
+                        'เมื่อตัดเงินสำเร็จ VeriTrans ส่งสัญญาณกลับมาเปลี่ยนสถานะเป็น PAID และส่งตั๋วเข้า LINE',
+                        'VeriTrans confirms settlement, transitions booking to PAID, and delivers tickets to LINE'
+                      ),
+                    },
+                  ].map((s) => {
+                    const done = activeGatewayStep >= s.step;
+                    return (
+                      <div
+                        key={s.step}
+                        className={`rounded-xl border p-2.5 transition ${
+                          done
+                            ? 'border-cyan-400/35 bg-cyan-400/10 text-white'
+                            : 'border-white/5 bg-white/[0.02] text-gray-500'
+                        }`}
+                      >
+                        <p className="font-bold flex items-center justify-between">
+                          <span>{s.title}</span>
+                          {done && <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{s.desc}</p>
+                      </div>
+                    );
+                  })}
                 </div>
+
+                {/* Toggle JSON Payload Inspector */}
+                <button
+                  type="button"
+                  onClick={() => setShowPayloadInspector((v) => !v)}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] font-bold text-cyan-200 hover:bg-white/5 flex items-center justify-between cursor-pointer"
+                >
+                  <span>
+                    {t(
+                      '🔍 ดูข้อมูล JSON ที่ส่งไปหา VeriTrans API (item_details)',
+                      '🔍 Inspect VeriTrans API JSON Payload (item_details)'
+                    )}
+                  </span>
+                  {showPayloadInspector ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+
+                {showPayloadInspector && (
+                  <div className="space-y-2">
+                    <pre className="max-h-56 overflow-auto rounded-xl border border-white/10 bg-slate-900 p-3 font-mono text-[10px] text-emerald-300">
+                      {JSON.stringify(
+                        vtData?.requestPayload || {
+                          transaction_details: {
+                            order_id: booking.gatewayOrderId || booking.bookingCode,
+                            gross_amount: booking.totalAmount,
+                          },
+                          item_details: pricing.veritransItemDetails || [],
+                        },
+                        null,
+                        2
+                      )}
+                    </pre>
+                    <div className="flex flex-wrap gap-2 text-[10px]">
+                      <a
+                        href="https://dashboard.sandbox.midtrans.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-cyan-300 hover:underline"
+                      >
+                        <ExternalLink size={11} />{' '}
+                        {t('เปิดเว็บ Dashboard ของ VeriTrans/Midtrans', 'Open VeriTrans/Midtrans Dashboard')}
+                      </a>
+                      <a
+                        href="https://simulator.sandbox.midtrans.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-pink-300 hover:underline"
+                      >
+                        <ExternalLink size={11} />{' '}
+                        {t('เปิดเว็บ Simulator ทดสอบจ่ายเงิน', 'Open Sandbox Payment Simulator')}
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

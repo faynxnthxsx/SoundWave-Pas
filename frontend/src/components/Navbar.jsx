@@ -212,7 +212,7 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* MOBILE TOP RIGHT (md:hidden): Subtle Team Portal Shield + Download App + Theme & Language Switcher */}
+          {/* MOBILE TOP RIGHT (md:hidden): Download App + Theme & Language Switcher */}
           <div className="flex md:hidden items-center gap-1.5 shrink-0">
             {!isInApp && !isTeamSurface && (
               <button
@@ -225,16 +225,6 @@ export default function Navbar() {
                 <Download size={13} />
                 <span>{t('แอป', 'App')}</span>
               </button>
-            )}
-            {!isTeamSurface && (
-              <Link
-                to="/team"
-                aria-label={t('พื้นที่ทีมงาน', 'Team Portal')}
-                title={t('พื้นที่ทีมงาน', 'Team Portal')}
-                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-gray-500 hover:text-cyan-300 hover:border-cyan-400/30 active:scale-95 transition-all"
-              >
-                <ShieldCheck size={15} />
-              </Link>
             )}
             <ThemeToggle />
             <LanguageSwitch />
@@ -300,17 +290,17 @@ export default function Navbar() {
           </div>
         ) : (
           /* Customer Storefront Mobile Bar */
-          <div className="flex items-center justify-around max-w-md mx-auto">
+          <div className="flex items-center justify-around max-w-md mx-auto gap-1">
             {/* Home */}
             <Link
               to="/"
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all shrink-0 ${
                 isActive('/')
                   ? 'text-cyan-400 font-bold'
                   : 'text-gray-400 hover:text-white font-medium'
               }`}
             >
-              <Home size={19} className={isActive('/') ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
+              <Home size={18} className={isActive('/') ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
               <span className="text-[10px] mt-0.5 tracking-tight">{t('หน้าแรก', 'Home')}</span>
             </Link>
 
@@ -318,19 +308,34 @@ export default function Navbar() {
             <button
               type="button"
               onClick={authUser ? openHistoryModal : () => setAuthOpen(true)}
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer shrink-0 ${
                 showHistory
                   ? 'text-cyan-400 font-bold'
                   : 'text-gray-400 hover:text-white font-medium'
               }`}
             >
-              <Ticket size={19} className={showHistory ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
+              <Ticket size={18} className={showHistory ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
               <span className="text-[10px] mt-0.5 tracking-tight">{t('ประวัติบัตร', 'My Tickets')}</span>
             </button>
 
+            {/* Team Portal Shield */}
+            <Link
+              to="/team"
+              aria-label={t('พื้นที่ทีมงาน', 'Team Portal')}
+              title={t('พื้นที่ทีมงาน', 'Team Portal')}
+              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all shrink-0 ${
+                isActive('/team')
+                  ? 'text-cyan-400 font-bold'
+                  : 'text-gray-400 hover:text-white font-medium'
+              }`}
+            >
+              <ShieldCheck size={18} className={isActive('/team') ? 'drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]' : ''} />
+              <span className="text-[10px] mt-0.5 tracking-tight">{t('ทีมงาน', 'Team')}</span>
+            </Link>
+
             {/* Profile & Logout / Sign In */}
             {authUser ? (
-              <div className="flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 shrink-0">
+              <div className="flex items-center gap-1 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-1.5 py-1 shrink-0">
                 {authUser.avatarUrl ? (
                   <img
                     src={authUser.avatarUrl}
@@ -340,7 +345,7 @@ export default function Navbar() {
                 ) : (
                   <UserRound size={13} className="text-emerald-300 shrink-0" />
                 )}
-                <span className="max-w-[70px] xs:max-w-[85px] text-left text-[11px] font-bold text-white truncate shrink-0">
+                <span className="max-w-[54px] xs:max-w-[72px] text-left text-[10px] font-bold text-white truncate shrink-0">
                   {authUser.username}
                 </span>
                 <button
@@ -348,7 +353,7 @@ export default function Navbar() {
                   onClick={logout}
                   aria-label={t('ออกจากระบบ', 'Logout')}
                   title={t('ออกจากระบบ', 'Logout')}
-                  className="nav-logout-btn ml-0.5 flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-black dark:text-rose-300 cursor-pointer shrink-0 transition-all"
+                  className="nav-logout-btn ml-0.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 active:scale-95 text-black dark:text-rose-300 cursor-pointer shrink-0 transition-all"
                 >
                   <LogOut size={11} className="text-black dark:text-rose-400 shrink-0" />
                   <span className="text-[10px] font-bold tracking-tight text-black dark:text-rose-200">
@@ -360,9 +365,9 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => setAuthOpen(true)}
-                className="flex flex-col items-center justify-center py-1 px-3 rounded-xl text-cyan-400 hover:text-white transition-all font-semibold cursor-pointer"
+                className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-cyan-400 hover:text-white transition-all font-semibold cursor-pointer shrink-0"
               >
-                <UserRound size={19} />
+                <UserRound size={18} />
                 <span className="text-[10px] mt-0.5 tracking-tight">{t('เข้าสู่ระบบ', 'Sign In')}</span>
               </button>
             )}

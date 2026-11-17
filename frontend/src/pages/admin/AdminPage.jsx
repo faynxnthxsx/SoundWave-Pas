@@ -731,7 +731,7 @@ export default function AdminPage() {
     localStorage.removeItem('soundwave_organizer');
     setViewBookingTickets(null);
     setViewTaxInvoiceBooking(null);
-    setSelectedSeatConcert(null);
+    setZoneSeatsModal(null);
     setArtistEditor(null);
     setConfirmDialog(null);
     setOrganizer(null);
@@ -821,79 +821,81 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="admin-dashboard-screen min-h-screen w-full max-w-full overflow-x-hidden bg-[#07070c] px-3.5 py-6 text-white sm:px-6 sm:py-8 lg:px-8">
-      <div className="mx-auto max-w-7xl w-full">
+    <div className="admin-dashboard-screen min-h-screen w-full max-w-full overflow-x-hidden bg-[#07070c] px-3 py-5 pb-24 text-white sm:px-6 sm:py-8 sm:pb-10 lg:px-8">
+      <div className="mx-auto max-w-7xl w-full min-w-0">
         {/* ── Top Header & Tab Navigation Bar ── */}
-        <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
+        <header className="mb-6 sm:mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-5 sm:pb-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="flex h-6 items-center rounded-md bg-cyan-400/15 px-2 font-mono text-[10px] font-bold uppercase tracking-widest text-cyan-300 ring-1 ring-cyan-400/30">
                 Organizer Portal
               </span>
-              <span className="text-xs text-gray-400">ระบบจัดการผู้จัดงาน SoundWave Pass</span>
+              <span className="text-xs text-gray-400">{t('ระบบจัดการผู้จัดงาน SoundWave Pass', 'SoundWave Pass Organizer System')}</span>
             </div>
-            <h1 className="mt-1 text-2xl font-black sm:text-3xl">แผงควบคุมและสถิติคอนเสิร์ต</h1>
+            <h1 className="mt-1.5 text-xl sm:text-3xl font-black leading-tight break-words">
+              {t('แผงควบคุมและสถิติคอนเสิร์ต', 'Concert Control & Analytics')}
+            </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            {/* ── Main Navigation Tabs (2x2 Grid on Mobile, Original Flex on Desktop) ── */}
-            <nav className="grid grid-cols-2 sm:flex rounded-xl bg-white/5 p-1 border border-white/10 gap-1 sm:gap-0 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap lg:justify-end items-stretch sm:items-center gap-2 sm:gap-2.5 w-full lg:w-auto min-w-0">
+            {/* ── Main Navigation Tabs (Balanced 2-col Grid on Mobile, Flex on Desktop) ── */}
+            <nav className="grid grid-cols-2 sm:flex rounded-xl bg-white/5 p-1 border border-white/10 gap-1 sm:gap-0.5 w-full sm:w-auto min-w-0">
               <button
                 type="button"
                 onClick={() => setActiveTab('overview')}
-                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition-all ${
+                className={`min-w-0 flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'overview'
                     ? 'bg-cyan-300 text-black shadow-md shadow-cyan-300/30'
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
                 <TrendingUp size={14} className="shrink-0" />
-                <span className="truncate">📊 ภาพรวม & ยอดขาย</span>
+                <span className="truncate">{t('📊 ภาพรวม & ยอดขาย', '📊 Overview')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('events')}
-                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition-all ${
+                className={`min-w-0 flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'events'
                     ? 'bg-cyan-300 text-black shadow-md shadow-cyan-300/30'
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
                 <Layers size={14} className="shrink-0" />
-                <span className="truncate">🎸 คอนเสิร์ต & ผังที่นั่ง</span>
+                <span className="truncate">{t('🎸 คอนเสิร์ต & โซน', '🎸 Events')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('orders')}
-                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition-all ${
+                className={`min-w-0 flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'orders'
                     ? 'bg-cyan-300 text-black shadow-md shadow-cyan-300/30'
                     : 'text-gray-300 hover:text-white'
                 }`}
               >
                 <FileSpreadsheet size={14} className="shrink-0" />
-                <span className="truncate">🧾 รายการจอง & ตั๋วลูกค้า</span>
+                <span className="truncate">{t('🧾 จอง & ตั๋วลูกค้า', '🧾 Orders')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('promotions')}
-                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-bold transition-all ${
+                className={`min-w-0 flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2 sm:px-3 py-2 text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'promotions'
                     ? 'bg-pink-400 text-black shadow-md shadow-pink-400/30'
                     : 'text-pink-200 hover:text-white'
                 }`}
               >
                 <Tag size={14} className="shrink-0" />
-                <span className="truncate">{t('🎟️ โปรโมชัน & ภาษี (VeriTrans)', '🎟️ Promos & Tax (VeriTrans)')}</span>
+                <span className="truncate">{t('🎟️ Midtrans โปร & ภาษี', '🎟️ Midtrans Promos')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('create')}
-                className={`flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs font-bold transition-all ${
+                className={`col-span-2 sm:col-span-1 min-w-0 flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'create'
                     ? 'bg-cyan-300 text-black shadow-md shadow-cyan-300/30'
                     : 'text-gray-400 hover:text-white'
@@ -904,36 +906,38 @@ export default function AdminPage() {
               </button>
             </nav>
 
-            {/* Event Discovery Radar Button */}
-            <button
-              type="button"
-              onClick={() => setDiscoveryOpen(true)}
-              title="Event Discovery Radar: ตรวจจับคอนเสิร์ตจริงในไทย พร้อมนำเข้าใน 1 คลิก"
-              className="relative flex items-center gap-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3.5 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20 hover:border-cyan-400/50 transition-all shadow-lg shadow-cyan-400/10 cursor-pointer"
-            >
-              <Radar size={14} className="text-cyan-300" />
-              <span>{t('เรดาร์คอนเสิร์ต 🔔', 'Event Radar 🔔')}</span>
-              {discoveryPendingCount > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white animate-pulse">
-                  {discoveryPendingCount}
-                </span>
-              )}
-            </button>
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto min-w-0">
+              {/* Event Discovery Radar Button */}
+              <button
+                type="button"
+                onClick={() => setDiscoveryOpen(true)}
+                title="Event Discovery Radar: ตรวจจับคอนเสิร์ตจริงในไทย พร้อมนำเข้าใน 1 คลิก"
+                className="col-span-2 sm:col-span-1 min-w-0 relative flex items-center justify-center gap-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20 hover:border-cyan-400/50 transition-all shadow-lg shadow-cyan-400/10 cursor-pointer"
+              >
+                <Radar size={14} className="text-cyan-300 shrink-0" />
+                <span className="truncate">{t('เรดาร์คอนเสิร์ต 🔔', 'Event Radar 🔔')}</span>
+                {discoveryPendingCount > 0 && (
+                  <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white animate-pulse">
+                    {discoveryPendingCount}
+                  </span>
+                )}
+              </button>
 
-            <Link
-              to="/"
-              className="rounded-xl border border-white/10 px-3.5 py-2 text-xs font-semibold text-gray-300 hover:bg-white/5"
-            >
-              {t('กลับหน้าร้าน', 'Back to Store')}
-            </Link>
+              <Link
+                to="/"
+                className="min-w-0 flex items-center justify-center rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-gray-300 hover:bg-white/5 truncate"
+              >
+                {t('กลับหน้าร้าน', 'Back to Store')}
+              </Link>
 
-            <button
-              type="button"
-              onClick={handleOrganizerLogout}
-              className="admin-logout-btn rounded-xl border border-rose-400/30 bg-rose-500/10 px-3.5 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/20 cursor-pointer"
-            >
-              {t(`ออก (${organizer.name})`, `Sign Out (${organizer.name})`)}
-            </button>
+              <button
+                type="button"
+                onClick={handleOrganizerLogout}
+                className="admin-logout-btn min-w-0 flex items-center justify-center rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/20 cursor-pointer"
+              >
+                <span className="truncate">{t(`ออก (${organizer.name})`, `Sign Out (${organizer.name})`)}</span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -988,9 +992,9 @@ export default function AdminPage() {
                 onClick={() => navigate('/admin/insights/concerts')}
               />
             </section>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-black text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-black text-white break-words">
                   {t('รายงานสรุปภาพรวมและการเงิน (Financial Summary)', 'Financial & Sales Overview')}
                 </h2>
                 <p className="mt-0.5 text-xs text-gray-400">
@@ -1000,32 +1004,29 @@ export default function AdminPage() {
                   )}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setActiveTab('promotions')}
-                  className="flex items-center gap-1.5 rounded-xl border border-pink-400/35 bg-pink-500/15 px-3.5 py-1.5 text-xs font-bold text-pink-200 hover:bg-pink-500/25 cursor-pointer"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl border border-pink-400/35 bg-pink-500/15 px-3 py-2 sm:py-1.5 text-xs font-bold text-pink-200 hover:bg-pink-500/25 cursor-pointer"
                 >
-                  <Tag size={13} />
-                  <span>
-                    {t(
-                      `จัดการโปรโมชัน & ภาษี (${stats?.activePromotionsCount ?? 6} แคมเปญ)`,
-                      `Manage Promos & Tax (${stats?.activePromotionsCount ?? 6} active)`
-                    )}
+                  <Tag size={13} className="shrink-0" />
+                  <span className="truncate">
+                    {t('Midtrans Promo Engine (สร้างโปร Sandbox)', 'Midtrans Promo Engine (Dashboard)')}
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleExportCSV()}
-                  className="flex items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3.5 py-1.5 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20"
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 sm:py-1.5 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20"
                 >
-                  <Download size={13} />
-                  <span>{t('ส่งออก CSV ทั้งหมด', 'Export CSV')}</span>
+                  <Download size={13} className="shrink-0" />
+                  <span>{t('ส่งออก CSV', 'Export CSV')}</span>
                 </button>
                 <button
                   type="button"
                   onClick={loadDashboard}
-                  className="rounded-xl border border-white/10 px-3.5 py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/5"
+                  className="flex-1 sm:flex-initial flex items-center justify-center rounded-xl border border-white/10 px-3 py-2 sm:py-1.5 text-xs font-semibold text-gray-300 hover:bg-white/5"
                 >
                   {t('รีเฟรชข้อมูล', 'Refresh')}
                 </button>
@@ -1359,51 +1360,51 @@ export default function AdminPage() {
                       </div>
 
                       {/* Header Quick Actions */}
-                      <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto shrink-0">
+                      <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
                         {/* Edit Concert Button */}
                         <button
                           type="button"
                           onClick={() => setEditConcertModal(c)}
                           title="แก้ไขชื่อ วันแสดง สถานที่ รูปภาพ และรายละเอียดคอนเสิร์ต"
-                          className="flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-gray-200 hover:bg-white/20 hover:text-white transition-all cursor-pointer"
+                          className="min-w-0 flex items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-2.5 sm:px-3 py-2 text-xs font-bold text-gray-200 hover:bg-white/20 hover:text-white transition-all cursor-pointer"
                         >
-                          <PenLine size={13} className="text-cyan-300" />
-                          <span>แก้ไขข้อมูล</span>
+                          <PenLine size={13} className="text-cyan-300 shrink-0" />
+                          <span className="truncate">{t('แก้ไขข้อมูล', 'Edit')}</span>
                         </button>
 
                         {/* Copy Store Link Button */}
                         <button
                           type="button"
                           onClick={() => handleCopyStoreLink(c)}
-                          className="flex items-center gap-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20"
+                          className="min-w-0 flex items-center justify-center gap-1.5 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-2.5 sm:px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-400/20"
                         >
-                          <Copy size={13} />
-                          <span>คัดลอกลิงก์ร้าน</span>
+                          <Copy size={13} className="shrink-0" />
+                          <span className="truncate">{t('คัดลอกลิงก์ร้าน', 'Copy Link')}</span>
                         </button>
 
                         {/* Export CSV for this concert */}
                         <button
                           type="button"
                           onClick={() => handleExportCSV(c.id)}
-                          className="flex items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20"
+                          className="min-w-0 flex items-center justify-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-2.5 sm:px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-400/20"
                         >
-                          <Download size={13} />
-                          <span>ส่งออก CSV</span>
+                          <Download size={13} className="shrink-0" />
+                          <span className="truncate">{t('ส่งออก CSV', 'Export CSV')}</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => openArtistEditor(c)}
-                          className="flex items-center gap-1.5 rounded-xl border border-pink-400/30 bg-pink-400/10 px-3 py-2 text-xs font-bold text-pink-200 hover:bg-pink-400/20"
+                          className="min-w-0 flex items-center justify-center gap-1.5 rounded-xl border border-pink-400/30 bg-pink-400/10 px-2.5 sm:px-3 py-2 text-xs font-bold text-pink-200 hover:bg-pink-400/20"
                         >
-                          <Mic2 size={13} />
-                          <span>จัดการศิลปิน</span>
+                          <Mic2 size={13} className="shrink-0" />
+                          <span className="truncate">{t('จัดการศิลปิน', 'Artists')}</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => toggleExpand(c.id)}
-                          className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-gray-400 hover:text-white"
+                          className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-gray-400 hover:text-white"
                         >
                           {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                         </button>
@@ -1436,7 +1437,7 @@ export default function AdminPage() {
                               return (
                                 <div
                                   key={z.id}
-                                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 space-y-3"
+                                  className="min-w-0 w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 space-y-3"
                                 >
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
@@ -1463,23 +1464,23 @@ export default function AdminPage() {
                                     </button>
                                   </div>
 
-                                  <div className="grid grid-cols-3 gap-2 rounded-xl bg-black/30 p-2.5 text-center text-[11px]">
-                                    <div>
-                                      <p className="text-[10px] text-gray-400">ราคาบัตร</p>
-                                      <p className="mt-0.5 font-mono font-bold text-cyan-200">{money(z.price)}</p>
+                                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2 rounded-xl bg-black/30 p-2 sm:p-2.5 text-center text-[10px] sm:text-[11px]">
+                                    <div className="min-w-0">
+                                      <p className="text-[10px] text-gray-400 truncate">{t('ราคาบัตร', 'Price')}</p>
+                                      <p className="mt-0.5 font-mono font-bold text-cyan-200 break-words">{money(z.price)}</p>
                                     </div>
-                                    <div>
-                                      <p className="text-[10px] text-gray-400">ขายแล้ว / เหลือ</p>
-                                      <p className="mt-0.5 font-mono font-bold text-white">
+                                    <div className="min-w-0">
+                                      <p className="text-[10px] text-gray-400 truncate">{t('ขาย / เหลือ', 'Sold / Left')}</p>
+                                      <p className="mt-0.5 font-mono font-bold text-white break-words">
                                         {zoneSold}/{zoneCap}{' '}
                                         <span className={zoneAvail > 0 ? 'text-emerald-300' : 'text-rose-400'}>
                                           ({zoneAvail > 0 ? zoneAvail : 0})
                                         </span>
                                       </p>
                                     </div>
-                                    <div>
-                                      <p className="text-[10px] text-gray-400">รายได้โซน</p>
-                                      <p className="mt-0.5 font-mono font-bold text-emerald-300">{money(zoneRevenue)}</p>
+                                    <div className="min-w-0">
+                                      <p className="text-[10px] text-gray-400 truncate">{t('รายได้โซน', 'Revenue')}</p>
+                                      <p className="mt-0.5 font-mono font-bold text-emerald-300 break-words">{money(zoneRevenue)}</p>
                                     </div>
                                   </div>
 
@@ -1670,7 +1671,7 @@ export default function AdminPage() {
                 return (
                   <article
                     key={booking.id}
-                    className="rounded-2xl border border-white/10 bg-[#101018] p-4 space-y-3 shadow-xl"
+                    className="min-w-0 w-full overflow-hidden rounded-2xl border border-white/10 bg-[#101018] p-3.5 sm:p-4 space-y-3 shadow-xl"
                   >
                     <div className="flex items-start justify-between gap-2 border-b border-white/5 pb-2.5">
                       <div>
@@ -2524,18 +2525,18 @@ function StatCard({ label, value, detail, subTag, icon: Icon, color = 'text-cyan
     <button
       type="button"
       onClick={onClick}
-      className="w-full min-w-0 rounded-2xl border border-white/10 bg-[#101018] p-5 text-left shadow-lg transition hover:border-white/20 hover:bg-[#14141e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+      className="w-full min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#101018] p-4 sm:p-5 text-left shadow-lg transition hover:border-white/20 hover:bg-[#14141e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
     >
-      <div className="flex items-start justify-between">
-        <p className="text-xs font-semibold text-gray-400">{label}</p>
-        <div className={`p-2 rounded-xl bg-white/5 ${color}`}>
-          <Icon size={18} />
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold text-gray-400 min-w-0 break-words">{label}</p>
+        <div className={`p-2 rounded-xl bg-white/5 shrink-0 ${color}`}>
+          <Icon size={17} />
         </div>
       </div>
-      <p className="mt-2 text-2xl font-black text-white font-mono">{value}</p>
+      <p className="mt-2 text-xl sm:text-2xl font-black text-white font-mono break-words">{value}</p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] text-gray-400 border-t border-white/5 pt-2">
-        <span>{detail}</span>
-        {subTag && <span className="font-semibold text-cyan-200">{subTag}</span>}
+        <span className="min-w-0 break-words">{detail}</span>
+        {subTag && <span className="font-semibold text-cyan-200 shrink-0">{subTag}</span>}
       </div>
     </button>
   );
